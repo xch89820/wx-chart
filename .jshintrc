@@ -1,0 +1,7 @@
+{
+  "browser": true,
+  "undef": true,
+  "unused": true,
+  "strict":true,
+  "predef": [ "require", "module", "wx", "Page", "App" ]
+}

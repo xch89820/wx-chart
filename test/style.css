@@ -1,0 +1,12 @@
+@font-face {
+    font-family: proxima-nova;
+    src: url(https://use.typekit.net/af/015ec8/00000000000000003b9ad1b5/27/l?primer=7ceb210e49ade74e23101e10f006f110a0b6588c7c57777a6e3d98a38b749696&fvd=n3&token=is%2FBLxWujV%2FYvAJXUCLef5dVIoYhn3j1BPi5Ln4SvflwptmOf0my2uJJwqAyCt7f) format("woff2"), url(https://use.typekit.net/af/015ec8/00000000000000003b9ad1b5/27/d?primer=7ceb210e49ade74e23101e10f006f110a0b6588c7c57777a6e3d98a38b749696&fvd=n3&token=is%2FBLxWujV%2FYvAJXUCLef5dVIoYhn3j1BPi5Ln4SvflwptmOf0my2uJJwqAyCt7f) format("woff"), url(https://use.typekit.net/af/015ec8/00000000000000003b9ad1b5/27/a?primer=7ceb210e49ade74e23101e10f006f110a0b6588c7c57777a6e3d98a38b749696&fvd=n3&token=is%2FBLxWujV%2FYvAJXUCLef5dVIoYhn3j1BPi5Ln4SvflwptmOf0my2uJJwqAyCt7f) format("opentype");
+    font-weight: 300;
+    font-style: normal;
+}
+
+body {
+    font-size: 100%;
+    font-family: proxima-nova;
+    -webkit-font-smoothing: antialiased;
+}
