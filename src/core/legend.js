@@ -3,6 +3,7 @@
 
 import WxChart from './base'
 import {extend, is} from '../util/helper'
+import { BoxInstance } from './layout';
 
 // Legend default config
 const WX_LEGEND_DEFAULT_CONFIG = {
@@ -51,8 +52,8 @@ export default class WxLegend {
 
     /**
      * Update datasets config
-     * @param datasets
-     * @param area
+     * @param {Object[]} datasets
+     * @param {Object} area
      * area's example: {
             x: 0,
             y: 0,
@@ -77,10 +78,9 @@ export default class WxLegend {
         // Calculate the legend items
         datasets = me.calculateLegendItem(datasets, labelsConfig);
         // Calculate the top-lef point and width and height
-        let box = me.calculateBox(datasets, area, labelsConfig);
+        me.box = me.calculateBox(datasets, area, labelsConfig);
 
         me._datasets = datasets;
-        me.box = box;
 
         if (!!config.display) {
             me.draw(me._datasets);
@@ -199,9 +199,10 @@ export default class WxLegend {
                 x = area.lx - outerWidth;
                 x = x < 0 ? 0 : x;
             }
+            return new BoxInstance({position: position, x, y, width, outerWidth, height, outerHeight});
         }
 
-        return {x, y, width, outerWidth, height, outerHeight};
+        return new BoxInstance({position: me.config.position, x, y, width, outerWidth, height, outerHeight});
     }
 
     /**

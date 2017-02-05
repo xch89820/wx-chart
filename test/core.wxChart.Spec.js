@@ -5,7 +5,7 @@ import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
 import WxChart, { wxChartInstances } from '../src/core/base'
 import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
 
-describe('Util wxChart', () => {
+describe('WxChart component test', () => {
     beforeEach(() => {
         createWXEnv();
         initCanvasElement();

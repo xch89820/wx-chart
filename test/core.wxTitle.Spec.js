@@ -6,7 +6,7 @@ import WxChart from '../src/core/base'
 import WxTitle from '../src/core/title'
 import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
 
-describe('Util wxChart', () => {
+describe('WxTitle component test', () => {
     let wxChart;
     beforeEach(() => {
         createWXEnv();
@@ -26,7 +26,7 @@ describe('Util wxChart', () => {
     });
 
     afterEach(() => {
-        // destoryCanvasElement();
-        // wxChart.destroy();
+        wxChart.destroy();
+        destoryCanvasElement();
     })
 });

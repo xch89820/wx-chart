@@ -3,6 +3,7 @@
 
 import { checkWX, is, wxConverToPx, uid, retinaScale, extend } from '../util/helper';
 import WxCanvas from '../util/wxCanvas';
+import { BoxInstance } from './layout';
 
 // Chart default config
 let wxChartDefaultConfig = {
@@ -10,7 +11,8 @@ let wxChartDefaultConfig = {
     'width': 300,
     'height': 200,
     'display': 'block',
-    'padding': 0
+    'padding': 0,
+    'backgroundColor': null
 };
 
 // Store all references of 'WxChart' instances - allowing us to globally resize chart instances on window resize.
@@ -19,10 +21,12 @@ export let wxChartInstances = {};
 export default class WxChart {
     /**
      * @constructor
-     * @param {String} id - Canvas id ,DOM ID or HTMLElement
-     * @param {Object|Number} [config] - The config of Canvas or the width of chart.
-     * @param {Number} [height] - The height of chart.
-     * @param {String} [display] - The display style of chart.
+     * @param {string} id - Canvas id ,DOM ID or HTMLElement
+     * @param {Object|number} [config] - The config of Canvas or the width of chart.
+     * @param {number} [config.width] - The width of canvas.
+     * @param {number} [config.height] - The height of canvas.
+     * @param {number} [config.padding] - The padding of canvas.
+     * @param {string} [config.display] - The display style of chart.
      */
     constructor(id, config) {
         let me = this;
@@ -92,18 +96,27 @@ export default class WxChart {
 
         // calculate box
         let padding = me.config.padding||0;
-        me.innerBox = {
-            x: 0 + padding,
-            y: 0 + padding,
-            width: me.canvas.width - padding*2,
-            height: me.canvas.height - padding*2,
-            lx: me.canvas.width - padding,
-            ly: me.canvas.height - padding,
-        };
+        me.innerBox = new BoxInstance(
+            'top',
+            0,
+            0,
+            me.canvas.width - padding*2,
+            me.canvas.height - padding*2,
+            me.canvas.width,
+            me.canvas.height
+        );
     }
 
     clear() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        let me = this;
+        me.ctx.clearRect(0, 0, me.canvas.width, me.canvas.height);
+        if (me.config.backgroundColor) {
+            me.ctx.save();
+            me.ctx.fillStyle = me.config.backgroundColor;
+            me.ctx.fillRect(0, 0, me.canvas.width, me.canvas.height);
+            me.ctx.restore();
+            me.ctx.draw();
+        }
     }
     destroy() {
         let me = this;
@@ -141,5 +154,45 @@ export default class WxChart {
 
     draw() {
         // Do nothing...
+    }
+
+    update(datasets, defaultItemOpt) {
+        let me = this;
+        if (is.Undefined(datasets)) {
+            return;
+        }
+        if (!is.Array(datasets)) {
+            datasets = [datasets];
+        }
+
+        datasets = datasets.map(function(dataset){
+            return extend({}, defaultItemOpt, dataset);
+        });
+        // Fill default Options
+        me.clear();
+        me._datasets = datasets;
+        return me._datasets;
+    }
+
+    get datasets(){
+        return this._datasets;
+    }
+    set datasets(datasets) {
+        return this.update(datasets);
+    }
+
+    calculateTotal() {
+        let datasets = this.datasets;
+        let total = 0;
+        let value;
+
+        datasets.forEach(function(dataset, index) {
+            value = parseFloat(dataset.value);
+            if (!is.NaN(value) && !dataset.hidden) {
+                total += Math.abs(value);
+            }
+        });
+
+        return total;
     }
 }

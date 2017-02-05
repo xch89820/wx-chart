@@ -7,7 +7,7 @@ import WxLegend from '../src/core/legend'
 import randomColor from '../src/util/randomColor'
 import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
 
-describe('Util wxChart', () => {
+describe('WxLegend component test', () => {
     let wxChart;
     beforeEach(() => {
         createWXEnv();
@@ -45,7 +45,7 @@ describe('Util wxChart', () => {
     });
 
     afterEach(() => {
-        destoryCanvasElement();
         wxChart.destroy();
+        destoryCanvasElement();
     })
 });

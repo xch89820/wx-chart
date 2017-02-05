@@ -3,6 +3,7 @@
 
 import WxChart from './base'
 import {extend, is} from '../util/helper'
+import { BoxInstance } from './layout';
 
 // Legend default config
 const WX_TITLE_DEFAULT_CONFIG = {
@@ -28,8 +29,8 @@ export default class WxTitle {
 
     /**
      * Update text config
-     * @param text
-     * @param area
+     * @param {string} text
+     * @param {Object} area
      * area's example: {
             x: 0,
             y: 0,
@@ -41,16 +42,16 @@ export default class WxTitle {
      */
     update(text, area) {
         let me = this;
+        let config = me.config;
 
-        if (is.Undefined(text) || is.Undefined(area)) {
+        text = text || config.text;
+        if (is.Undefined(text) || is.Null(text) || is.Undefined(area)) {
             return;
         }
 
         me.clear();
-        let config = me.config;
         // Calculate the top-lef point and width and height
-        let box = me.calculateBox(text, area, config);
-        me.box = box;
+        me.box = me.calculateBox(text, area, config);
 
         if (!!config.display) {
             me.draw(text);
@@ -75,7 +76,7 @@ export default class WxTitle {
             y = y < area.y ? area.y : y;
         }
 
-        return {x, y, width, outerWidth, height, outerHeight};
+        return new BoxInstance({position: me.config.position, x, y, width, height, outerWidth, outerHeight});
     }
 
     /**
