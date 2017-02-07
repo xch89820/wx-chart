@@ -64,13 +64,29 @@ export class BoxInstance {
             }
         });
     }
+
     /**
-     * The right-bottom x point
+     * The x,y in right-bottom
+     */
+    get ex() {
+        return this.x + this.outerWidth;
+    }
+    get ey() {
+        return this.y + this.outerHeight;
+    }
+    /**
+     * The x,y in content
      */
     get lx() {
-        return this.x + this.width + (this.outerWidth - this.width)/2
+        return this.x + (this.outerWidth - this.width)/2
     }
     get ly() {
+        return this.y + (this.outerHeight - this.height)/2
+    }
+    get rx() {
+        return this.x + this.width + (this.outerWidth - this.width)/2
+    }
+    get ry() {
         return this.y + this.height + (this.outerHeight - this.height)/2
     }
     isBorderless() {
@@ -82,13 +98,25 @@ export class BoxInstance {
         return new BoxInstance(me.position, me.x, me.y, me.width, me.height, me.outerWidth, me.outerHeight)
     }
 
+    /**
+     * Check whether intersect with other BoxInstance
+     */
+    isIntersect(boxInstance) {
+        let me = this;
+        return !(me.ex < boxInstance.x || me.x > boxInstance.ex || me.ey < boxInstance.y || me.y < boxInstance.ey);
+    }
+
     toObject() {
         return {
             position: this.position,
             x: this.x,
             y: this.y,
+            ex: this.ex,
+            ey: this.ey,
             lx: this.lx,
             ly: this.ly,
+            rx: this.rx,
+            ry: this.ry,
             width: this.width,
             height: this.height,
             outerHeight: this.outerHeight,

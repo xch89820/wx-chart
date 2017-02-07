@@ -15,32 +15,55 @@ describe('WxDoughnut component test', () => {
             'width': 600,
             'height': 350,
             'cutoutPercentage': 0,
+            'title': '测试饼图',
+            'legendOptions':{
+                'position': 'bottom'
+            }
         });
     });
 
     it('Draw an wxDoughnut', () => {
         wxDoughnut.update([{
-            label: '测试',
-            value: 100,
-            percentage: 50
-        },{
-            label: '测试2',
-            value: 100,
-            percentage: 60
-        },{
             label: '测试3',
-            value: 50,
-            percentage: 70
+            value: 3
         },{
             label: '测试4',
-            value: 30,
-            percentage: 80
+            value: 3
         },{
-            label: '测试55',
-            value: 30,
-            percentage: 100
-        }])
+            label: '测试5',
+            value: 3
+        },{
+            label: '测试',
+            value: 100
+        },{
+            label: '测试2',
+            value: 3
+        }]);
     });
+    //
+    // it('Draw an wxDoughnut percentage', () => {
+    //     wxDoughnut.update([{
+    //         label: '测试',
+    //         value: 100,
+    //         percentage: 50
+    //     },{
+    //         label: '测试2',
+    //         value: 100,
+    //         percentage: 60
+    //     },{
+    //         label: '测试3',
+    //         value: 50,
+    //         percentage: 70
+    //     },{
+    //         label: '测试4',
+    //         value: 30,
+    //         percentage: 80
+    //     },{
+    //         label: '测试5',
+    //         value: 30,
+    //         percentage: 100
+    //     }])
+    // });
 
     afterEach(() => {
         //wxDoughnut.destroy();

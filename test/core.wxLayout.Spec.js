@@ -45,20 +45,20 @@ describe('Util wxChart', () => {
 
         box = wxLayout.adjustBox();
         assert.deepEqual(box.toObject(),
-            {position: 'top', x: 0, y: 0, lx: 600, ly: 350, width: 600, height: 350, outerHeight: 350, outerWidth: 600});
+            {position: 'top', x: 0, y: 0, ex:600, ey: 350,lx: 0, ly: 0, rx: 600, ry: 350, width: 600, height: 350, outerHeight: 350, outerWidth: 600});
         legend.update(datasets, box);
         wxLayout.addBox(legend.box);
 
         let title = new WxTitle(wxChart);
         box = wxLayout.adjustBox();
         assert.deepEqual(box.toObject(),
-            {position: 'top', x: 0, y: 0, lx: 600, ly: 330, width: 600, height: 330, outerHeight: 330, outerWidth: 600});
+            {position: 'top', x: 0, y: 0, ex:600, ey: 330, lx: 0, ly: 0, rx: 600, ry: 330, width: 600, height: 330, outerHeight: 330, outerWidth: 600});
         title.update('My Chart Title', box);
         wxLayout.addBox(title.box);
 
         box = wxLayout.adjustBox();
         assert.deepEqual(box.toObject(),
-            {position: 'top', x: 0, y: 40, lx: 600, ly: 330, width: 600, height: 290, outerHeight: 290, outerWidth: 600});
+            {position: 'top', x: 0, y: 40, ex:600, ey: 330, lx: 0, ly: 40, rx: 600, ry: 330, width: 600, height: 290, outerHeight: 290, outerWidth: 600});
     });
 
     it('Create left legend layout', () => {

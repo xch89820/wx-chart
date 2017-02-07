@@ -30,15 +30,7 @@ export default class WxTitle {
     /**
      * Update text config
      * @param {string} text
-     * @param {Object} area
-     * area's example: {
-            x: 0,
-            y: 0,
-            width: canvas.width,
-            height: canvas.height,
-            lx: canvas.width - padding,
-            ly: canvas.height - padding,
-        };
+     * @param {BoxInstance} area
      */
     update(text, area) {
         let me = this;
@@ -72,7 +64,7 @@ export default class WxTitle {
             outerHeight = height + padding * 2;
 
         if (me.config.position == 'bottom') {
-            y = area.ly - outerHeight;
+            y = area.ry - outerHeight;
             y = y < area.y ? area.y : y;
         }
 

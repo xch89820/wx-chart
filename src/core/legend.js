@@ -53,15 +53,6 @@ export default class WxLegend {
     /**
      * Update datasets config
      * @param {Object[]} datasets
-     * @param {Object} area
-     * area's example: {
-            x: 0,
-            y: 0,
-            width: canvas.width,
-            height: canvas.height,
-            lx: canvas.width - padding,
-            ly: canvas.height - padding,
-        };
      */
     update(datasets, area) {
         let me = this;
@@ -170,7 +161,7 @@ export default class WxLegend {
 
             x += (width - maxLineWidth) / 2;
             if (me.config.position == 'bottom') {
-                y = area.ly - outerHeight;
+                y = area.ry - outerHeight;
                 y = y < area.y ? area.y : y;
             }
         } else {
@@ -192,11 +183,11 @@ export default class WxLegend {
             outerHeight = height + padding * 2;
 
             if (align == 'bottom') {
-                y = area.ly - outerHeight;
+                y = area.ry - outerHeight;
                 y = y < area.y ? area.y : y;
             }
             if (position == 'right') {
-                x = area.lx - outerWidth;
+                x = area.rx - outerWidth;
                 x = x < 0 ? 0 : x;
             }
             return new BoxInstance({position: position, x, y, width, outerWidth, height, outerHeight});
