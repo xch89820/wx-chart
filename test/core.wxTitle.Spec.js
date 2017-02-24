@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
-import WxChart from '../src/core/base'
+import WxChart from '../src/core/wxChart'
 import WxTitle from '../src/core/title'
 import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
 

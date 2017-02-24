@@ -23,50 +23,58 @@ describe('WxDoughnut component test', () => {
     });
 
     it('Draw an wxDoughnut', () => {
+        let formatLabel = function(label, value, totalValue) {
+            return label + ' (' + (value/totalValue*100).toFixed(2) + '%)';
+        };
         wxDoughnut.update([{
             label: '测试3',
-            value: 3
+            value: 30,
+            format:formatLabel
         },{
             label: '测试4',
-            value: 3
+            value: 32,
+            format:formatLabel
         },{
             label: '测试5',
-            value: 3
+            value: 10,
+            format:formatLabel
         },{
             label: '测试',
-            value: 100
+            value: 100,
+            format:formatLabel
         },{
             label: '测试2',
-            value: 3
+            value: 3,
+            format:formatLabel
         }]);
     });
-    //
-    // it('Draw an wxDoughnut percentage', () => {
-    //     wxDoughnut.update([{
-    //         label: '测试',
-    //         value: 100,
-    //         percentage: 50
-    //     },{
-    //         label: '测试2',
-    //         value: 100,
-    //         percentage: 60
-    //     },{
-    //         label: '测试3',
-    //         value: 50,
-    //         percentage: 70
-    //     },{
-    //         label: '测试4',
-    //         value: 30,
-    //         percentage: 80
-    //     },{
-    //         label: '测试5',
-    //         value: 30,
-    //         percentage: 100
-    //     }])
-    // });
+
+    it('Draw an wxDoughnut percentage', () => {
+        wxDoughnut.update([{
+            label: '测试',
+            value: 100,
+            percentage: 50
+        },{
+            label: '测试2',
+            value: 100,
+            percentage: 60
+        },{
+            label: '测试3',
+            value: 50,
+            percentage: 70
+        },{
+            label: '测试4',
+            value: 30,
+            percentage: 80
+        },{
+            label: '测试5',
+            value: 30,
+            percentage: 100
+        }])
+    });
 
     afterEach(() => {
-        //wxDoughnut.destroy();
-        //destoryCanvasElement();
+        wxDoughnut.destroy();
+        destoryCanvasElement();
     })
 });

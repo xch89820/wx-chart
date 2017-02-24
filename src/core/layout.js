@@ -12,11 +12,21 @@ import {extend, is} from '../util/helper'
  * @property {number} height - Inner height (context only, not calculate padding and margin)
  * @property {number} outerWidth - Outer width
  * @property {number} outerHeight - Outer height
+ *
+ *
+ * (x,y) -------------------------- (ex, y)
+ *   |                                 |
+ *   |    (lx,ly)-------------(rx,ly)  |
+ *   |      |                    |     |
+ *   |      |                    |     |
+ *   |    (lx,ry)-------------(rx,ry)  |
+ *   |                                 |
+ * (x,ey) ------------------------- (ex, ey)
  */
 export class BoxInstance {
     constructor(position, x, y, width, height, outerWidth, outerHeight) {
         let me = this;
-        if (is.Object(position)) {
+        if (is.PureObject(position)) {
             let opt = position;
 
             position = opt.position;
@@ -78,21 +88,38 @@ export class BoxInstance {
      * The x,y in content
      */
     get lx() {
-        return this.x + (this.outerWidth - this.width)/2
+        return this.x + this.marginLR;
     }
     get ly() {
-        return this.y + (this.outerHeight - this.height)/2
+        return this.y + this.marginTB;
     }
     get rx() {
-        return this.x + this.width + (this.outerWidth - this.width)/2
+        return this.x + this.width + this.marginLR;
     }
     get ry() {
-        return this.y + this.height + (this.outerHeight - this.height)/2
+        return this.y + this.height + this.marginTB;
     }
-    isBorderless() {
-        return this.width === this.outerWidth && this.height === this.outerHeight;
+    get marginLR() {
+        return (this.outerWidth - this.width)/2;
+    }
+    set marginLR(value) {
+        if (is.Number(value)) {
+            this.width -= value*2;
+        }
+    }
+    get marginTB() {
+        return (this.outerHeight - this.height)/2;
+    }
+    set marginTB(value) {
+        if (is.Number(value)) {
+            this.height -= value*2;
+        }
     }
 
+    /**
+     * Clone this box and return an new Instance
+     * @returns {BoxInstance}
+     */
     clone() {
         let me = this;
         return new BoxInstance(me.position, me.x, me.y, me.width, me.height, me.outerWidth, me.outerHeight)

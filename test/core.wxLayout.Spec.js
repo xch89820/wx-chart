@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
-import WxChart from '../src/core/base'
+import WxChart from '../src/core/wxChart'
 import WxLegend from '../src/core/legend'
 import WxTitle from '../src/core/title'
 import WxLayout from '../src/core/layout'

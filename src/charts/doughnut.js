@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas from '../util/wxCanvas';
-import WxChart from '../core/base';
+import WxChart from '../core/wxChart';
 import WxTitle from '../core/title';
 import WxLayout, { BoxInstance } from '../core/layout';
 import WxLegend from '../core/legend';
@@ -72,7 +72,7 @@ export default class WxDoughnut extends WxChart {
         me.title = null;
         // Initialize title and legend
         if (me.chartConfig.title) {
-            me.title = new WxTitle(me, is.Object(me.chartConfig.title) ? me.chartConfig.title : null);
+            me.title = new WxTitle(me, is.PureObject(me.chartConfig.title) ? me.chartConfig.title : null);
             me.titleText = is.String(me.chartConfig.title) ? me.chartConfig.title : me.chartConfig.title.text;
         }
 
@@ -137,7 +137,7 @@ export default class WxDoughnut extends WxChart {
                     fillStyle: dataset.color,
                     strokeStyle: rBorderColor[0]
                 });
-            } else if (is.Object(legend)){
+            } else if (is.PureObject(legend)){
                 legendDatasets.push(
                     extend({hidden: dataset.hidden}, legend)
                 );
@@ -212,8 +212,9 @@ export default class WxDoughnut extends WxChart {
         let me = this, ctx = me.ctx;
         let labelDistancePercentage = me.chartConfig.labelDistancePercentage||0.2;
         let { pointX, pointY, startAngle, endAngle, outerRadius, innerRadius, totalValue, borderWidth } = options;
-        let { label, value, color, borderColor, percentage, hidden} = dataset;
+        let { label, value, color, borderColor, percentage, format, hidden} = dataset;
         let currentRadius = (outerRadius - innerRadius)/100 * percentage;
+        label = is.Function(format) ? format.call(me, label, value, totalValue, currentRadius, dataset, options) : label;
 
         if (!!hidden) {
             return;

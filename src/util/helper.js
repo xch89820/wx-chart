@@ -24,6 +24,12 @@ is['Object'] = function (obj) {
     return type === 'function' || type === 'object' && !!obj;
 };
 
+// Is a given variable an object?
+is['PureObject'] = function(obj) {
+    var type = typeof obj;
+    return type === 'object' && !!obj;
+};
+
 is['Boolean'] = function(obj) {
     return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
 };
@@ -42,6 +48,15 @@ is['Undefined'] = function(obj) {
 is['NaN'] = function(obj) {
     return is.Number(obj) && obj !== +obj;
 };
+
+// Some helper function
+export function sum() {
+    let args = Array.from(arguments);
+    let res = 0;
+    return args.reduce(function(a, b) {
+        return a + b;
+    }, 0);
+}
 
 // Some regex
 export const REG_HANZI = /[\u4e00-\u9fa5]/;
@@ -67,7 +82,7 @@ function _assignGenerator(own, defaults) {
                     if (own && !sc.hasOwnProperty(key)) continue;
                     let so = sc[key], to = target[key] || {};
                     if (!defaults || target[i] === void 0) {
-                        target[key] = is.Object(so) && deep ?
+                        target[key] = is.PureObject(so) && deep ?
                             (deep? extend(true, {}, so) :extend({}, so)) :
                             so;
                     }
@@ -127,7 +142,14 @@ export function wxConverToPx(val) {
     } else {
         throw new Error('Convert px error');
     }
-};
+}
+
+export function toRadians(degrees) {
+    return degrees * (Math.PI / 180);
+}
+export function toDegrees(radians) {
+    return radians * (180 / Math.PI);
+}
 /**
  * Get window size (px)
  * @returns {*}

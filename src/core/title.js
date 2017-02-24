@@ -4,6 +4,7 @@
 import WxChart from './base'
 import {extend, is} from '../util/helper'
 import { BoxInstance } from './layout';
+import WxBaseComponent from './base';
 
 // Legend default config
 const WX_TITLE_DEFAULT_CONFIG = {
@@ -15,37 +16,39 @@ const WX_TITLE_DEFAULT_CONFIG = {
     'padding': 10
 };
 
-export default class WxTitle {
+export default class WxTitle extends WxBaseComponent{
     constructor(wxChart, config) {
-        let me = this;
-
-        if (!wxChart || !wxChart instanceof WxChart) {
-            throw new Error('Should be an WxChart instance');
-        }
-        me.wxChart = wxChart;
-        me.config = extend(true, {}, WX_TITLE_DEFAULT_CONFIG, config);
-
+        super(wxChart, config);
+        this.config = extend(true, {}, WX_TITLE_DEFAULT_CONFIG, config);
     }
 
     /**
-     * Update text config
-     * @param {string} text
-     * @param {BoxInstance} area
+     * Update data and re-draw
+     * @param {Object[]} text
+     * @param {BoxInstance} [area=this.box]
+     * @param {Object} [defaultOptions]
+     * @returns {string} text
      */
-    update(text, area) {
+    update(text, area, defaultOptions = {}) {
         let me = this;
         let config = me.config;
 
-        text = text || config.text;
-        if (is.Undefined(text) || is.Null(text) || is.Undefined(area)) {
-            return;
+
+        area = area ? area: me.box;
+        if (is.Undefined(area) || is.Null(area)) {
+            throw new Error('Draw area is null');
+        }
+
+        text = text ? text : config.text;
+        if (is.Undefined(text) || is.Null(text)) {
+            throw new Error('Text is null');
         }
 
         me.clear();
         // Calculate the top-lef point and width and height
         me.box = me.calculateBox(text, area, config);
 
-        if (!!config.display) {
+        if (me.isVisiable()) {
             me.draw(text);
         }
     }
@@ -72,12 +75,17 @@ export default class WxTitle {
     }
 
     /**
-     * Draw legend
-     * @param [datasets]
+     * Draw title
+     * @param {string} [text] - The title's text
      */
     draw(text) {
         let me = this, ctx = me.wxChart.ctx;
         let {x, y, width, outerWidth, height, outerHeight} = me.box;
+
+        text = text || me.config.text;
+        if (is.Undefined(text) || is.Null(text)) {
+            throw new Error('Text is null');
+        }
 
         let {fontColor, fontSize} = me.config;
         // Clear the area of legend
@@ -96,23 +104,5 @@ export default class WxTitle {
 
         ctx.restore();
         ctx.draw();
-    }
-
-    clear() {
-        let me = this;
-        if (me.box) {
-            me.wxChart.ctx.clearRect(
-                me.box.x,
-                me.box.y,
-                me.box.outerWidth,
-                me.box.outerHeight
-            );
-            me.wxChart.ctx.draw();
-        }
-    }
-
-    isHorizontal() {
-        let position = this.config.position;
-        return position == 'top' || position == 'bottom';
     }
 };

@@ -425,13 +425,12 @@ export class WxCanvasRenderingContext2D {
         });
     }
     // Wrapper 'measureText' function for WeiXin APP
-    measureText(text) {
+    measureText(text, fontSize = this.fontSize) {
         let me = this;
         if (me.isWeiXinAPP) {
             if (!text) {
                 return 0;
             }
-            let fontSize = me.fontSize;
             let textLen = text.length;
             let hanzi = text.match(new RegExp(REG_HANZI, 'g'));
             let hanziNum = !!hanzi ? hanzi.length : 0;

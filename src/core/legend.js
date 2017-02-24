@@ -4,6 +4,7 @@
 import WxChart from './base'
 import {extend, is} from '../util/helper'
 import { BoxInstance } from './layout';
+import WxBaseComponent from './base'
 
 // Legend default config
 const WX_LEGEND_DEFAULT_CONFIG = {
@@ -20,48 +21,41 @@ const WX_LEGEND_DEFAULT_CONFIG = {
     }
 };
 
+//
+// The datasets is an empty array at the first time
+// When you set 'data' attribute, the legend items will draw on Canvas
+// Format
+// {
+//    text: 'Displayed Text String',
+//    fillStyle: 'Color', // Fill style of the legend box
+//    hidden: Boolean, // If true, this item represents a hidden datasets. Label will be rendered with a strike-through effect,
+//    strokeStyle: 'Color'
+//    lineCap: String,
+//    lineJoin: String,
+//    lineWidth: Number
+// }
 const WX_LEGEND_DEFAULT_ITEM_CONFIG = {
     'lineWidth': 2
 };
 
-export default class WxLegend {
+export default class WxLegend extends WxBaseComponent {
     constructor(wxChart, config) {
-        let me = this;
-
-        if (!wxChart || !wxChart instanceof WxChart) {
-            throw new Error('Should be an WxChart instance');
-        }
-        me.wxChart = wxChart;
-        me.config = extend(true, {}, WX_LEGEND_DEFAULT_CONFIG, config);
-
-        //
-        // The datasets is an empty array at the first time
-        // When you set 'data' attribute, the legend items will draw on Canvas
-        // Format
-        // {
-        //    text: 'Displayed Text String',
-        //    fillStyle: 'Color', // Fill style of the legend box
-        //    hidden: Boolean, // If true, this item represents a hidden datasets. Label will be rendered with a strike-through effect,
-        //    strokeStyle: 'Color'
-        //    lineCap: String,
-        //    lineJoin: String,
-        //    lineWidth: Number
-        // }
-        this._datasets = [];
+        super(wxChart, config);
+        this.config = extend(true, {}, WX_LEGEND_DEFAULT_CONFIG, config);
     }
 
     /**
-     * Update datasets config
+     * Update data and re-draw
      * @param {Object[]} datasets
+     * @param {BoxInstance} [area=this.box]
+     * @param {Object} [defaultOptions]
+     * @returns {Array} datasets
      */
-    update(datasets, area) {
+    update(datasets, area, defaultOptions = WX_LEGEND_DEFAULT_ITEM_CONFIG) {
         let me = this;
 
-        if (is.Undefined(area) || is.Undefined(datasets)) {
-            return;
-        }
+        datasets = super.update(datasets, area, defaultOptions);
 
-        me.clear();
         let config = me.config;
         let labelsConfig = config.labels || {};
 
@@ -72,8 +66,7 @@ export default class WxLegend {
         me.box = me.calculateBox(datasets, area, labelsConfig);
 
         me._datasets = datasets;
-
-        if (!!config.display) {
+        if (me.isVisiable()) {
             me.draw(me._datasets);
         }
     }
@@ -85,12 +78,11 @@ export default class WxLegend {
         let ctx = me.wxChart.ctx;
         let boxWidth = labelsConfig.boxWidth;
         let fontSize = labelsConfig.fontSize;
-        if (!is.Array(datasets) && is.Object(datasets)) {
+        if (!is.Array(datasets) && is.PureObject(datasets)) {
             datasets = [datasets];
         }
 
-        datasets = datasets.map(function (dt) {
-            let dataset = extend({}, WX_LEGEND_DEFAULT_ITEM_CONFIG, dt);
+        datasets = datasets.map(function (dataset) {
             let textWidth = ctx.measureText(dataset.text).width;
 
             let width = boxWidth + (fontSize / 2) + textWidth;
@@ -160,13 +152,13 @@ export default class WxLegend {
             }
 
             x += (width - maxLineWidth) / 2;
-            if (me.config.position == 'bottom') {
+            if (me.position == 'bottom') {
                 y = area.ry - outerHeight;
                 y = y < area.y ? area.y : y;
             }
         } else {
-            let position = me.config.position.match(/left/) ? 'left' : 'right';
-            let align = me.config.position.match(/top/) ? 'top' : 'bottom';
+            let position = me.position.match(/left/) ? 'left' : 'right';
+            let align = me.position.match(/top/) ? 'top' : 'bottom';
             let width = 0, lineNum = 0;
             datasets.forEach(function (dataset) {
                 let wh = dataset._prop.width;
@@ -210,7 +202,7 @@ export default class WxLegend {
         // Begin a new sub-context
         ctx.save();
         // Draw all items
-        datasets = datasets || me._datasets;
+        datasets = datasets ? datasets : me.datasets;
         let currentLineNum = -1;
         let currentX = x, currentY = y;
         datasets.forEach(function(dataset){
@@ -264,23 +256,5 @@ export default class WxLegend {
         ctx.restore();
 
         ctx.draw();
-    }
-
-    clear() {
-        let me = this;
-        if (me.box) {
-            me.wxChart.ctx.clearRect(
-                me.box.x,
-                me.box.y,
-                me.box.outerWidth,
-                me.box.outerHeight
-            );
-            me.wxChart.ctx.draw();
-        }
-    }
-
-    isHorizontal() {
-        let position = this.config.position;
-        return position == 'top' || position == 'bottom';
     }
 }
