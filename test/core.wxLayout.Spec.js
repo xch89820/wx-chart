@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
-import WxChart from '../src/core/wxChart'
+import WxChart from '../src/charts/wxChart'
 import WxLegend from '../src/core/legend'
 import WxTitle from '../src/core/title'
 import WxLayout from '../src/core/layout'
@@ -49,16 +49,22 @@ describe('Util wxChart', () => {
         legend.update(datasets, box);
         wxLayout.addBox(legend.box);
 
+        let legendHeight = legend.box.outerHeight,
+            leftHeight = 350-legendHeight,
+            ey = 350-legendHeight;
         let title = new WxTitle(wxChart);
         box = wxLayout.adjustBox();
         assert.deepEqual(box.toObject(),
-            {position: 'top', x: 0, y: 0, ex:600, ey: 330, lx: 0, ly: 0, rx: 600, ry: 330, width: 600, height: 330, outerHeight: 330, outerWidth: 600});
+            {position: 'top', x: 0, y: 0, ex:600, ey: ey, lx: 0, ly: 0, rx: 600, ry: ey, width: 600, height: leftHeight, outerHeight: leftHeight, outerWidth: 600});
         title.update('My Chart Title', box);
         wxLayout.addBox(title.box);
 
+
+        let titleHeight = title.box.outerHeight;
+            leftHeight -= titleHeight;
         box = wxLayout.adjustBox();
         assert.deepEqual(box.toObject(),
-            {position: 'top', x: 0, y: 40, ex:600, ey: 330, lx: 0, ly: 40, rx: 600, ry: 330, width: 600, height: 290, outerHeight: 290, outerWidth: 600});
+            {position: 'top', x: 0, y: 40, ex:600, ey: ey, lx: 0, ly: 40, rx: 600, ry: ey, width: 600, height: leftHeight, outerHeight: leftHeight, outerWidth: 600});
     });
 
     it('Create left legend layout', () => {

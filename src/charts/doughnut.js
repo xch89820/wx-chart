@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas from '../util/wxCanvas';
-import WxChart from '../core/wxChart';
+import WxChart from './wxChart';
 import WxTitle from '../core/title';
 import WxLayout, { BoxInstance } from '../core/layout';
 import WxLegend from '../core/legend';
@@ -43,7 +43,7 @@ const WX_DOUGHUT_DEFAULT_CONFIG = {
  * legend: [Object] legend options
  */
 const WX_DOUGHUT_ITEM_DEFAULT_CONFIG = {
-    'hidden': false,
+    'display': true,
     'percentage': 100
 };
 
@@ -117,11 +117,11 @@ export default class WxDoughnut extends WxChart {
         box = wxLayout.adjustBox();
         // Second, random color and get legend datasets
         let rColors = randomColor(
-            extend(true, {}, color, {count: me.datasets.length})
+            extend(true, {}, color, {count: me.visDatasets.length})
         );
         let rBorderColor = randomColor({hue: color.hue || 'black', luminosity: 'dark', count: 1});
         let legendDatasets = [];
-        me.datasets.forEach(function(dataset, index){
+        me.visDatasets.forEach(function(dataset, index){
             if (!dataset.color) {
                 dataset.color = rColors[index];
             }
@@ -164,7 +164,7 @@ export default class WxDoughnut extends WxChart {
 
         let drawAngle = rotation;
         me.initAvoidCollision();
-        me.datasets.forEach(function(dataset, index){
+        me.visDatasets.forEach(function(dataset, index){
             let startAngle = drawAngle,
                 endAngle = startAngle + (Math.PI * 2.0) * (dataset.value / totalValue);
             let opt = {pointX, pointY, startAngle, endAngle, innerRadius, outerRadius, totalValue, borderWidth};

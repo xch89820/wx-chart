@@ -3,7 +3,7 @@
 
 import { checkWX, is, wxConverToPx, uid, retinaScale, extend } from '../util/helper';
 import WxCanvas from '../util/wxCanvas';
-import { BoxInstance } from './layout';
+import { BoxInstance } from '../core/layout';
 
 // Chart default config
 let wxChartDefaultConfig = {
@@ -179,6 +179,10 @@ export default class WxChart {
     }
     set datasets(datasets) {
         return this.update(datasets);
+    }
+
+    get visDatasets() {
+        return this.datasets.filter(x => !!x.display);
     }
 
     calculateTotal() {

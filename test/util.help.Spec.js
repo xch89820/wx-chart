@@ -13,8 +13,8 @@ describe('Util helper extend', () => {
     let target, dTarget,source, source2, dSource, dSource2;
 
     beforeEach(() => {
-        target = {'a': 1};
-        source = {'b': 2, 'c': 3};
+        target = {'a': 1, 'k': []};
+        source = {'b': 2, 'c': 3, 'k': [1, 2, 3]};
         source2 = {'d': 4, 'e': 5};
 
         dTarget = {'target': 1};
@@ -24,12 +24,13 @@ describe('Util helper extend', () => {
 
     it('extend one target', () => {
         extend(target, source);
-        assert.deepEqual(target, {'a': 1, 'b': 2, 'c': 3}, 'merge source to target');
+
+        assert.deepEqual(target, {'a': 1, 'b': 2, 'c': 3, 'k': [1, 2, 3]}, 'merge source to target');
     });
 
     it('extend two source to target', () => {
         extend(target, source, source2);
-        assert.deepEqual(target, {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5}, 'merge source to target');
+        assert.deepEqual(target, {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'k': [1, 2, 3]}, 'merge source to target');
     });
 
     it('extend deep copy', () => {

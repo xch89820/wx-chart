@@ -17,7 +17,7 @@ const WX_LEGEND_DEFAULT_CONFIG = {
     'labels': {
         'boxWidth': 30,
         'fontSize': 10,
-        'padding': 5 // Padding width between legend items
+        'padding': 10 // Padding width between legend items
     }
 };
 
@@ -44,36 +44,23 @@ export default class WxLegend extends WxBaseComponent {
         this.config = extend(true, {}, WX_LEGEND_DEFAULT_CONFIG, config);
     }
 
-    /**
-     * Update data and re-draw
-     * @param {Object[]} datasets
-     * @param {BoxInstance} [area=this.box]
-     * @param {Object} [defaultOptions]
-     * @returns {Array} datasets
-     */
-    update(datasets, area, defaultOptions = WX_LEGEND_DEFAULT_ITEM_CONFIG) {
+    init(datasets, defaultOptions = WX_LEGEND_DEFAULT_ITEM_CONFIG) {
         let me = this;
-
-        datasets = super.update(datasets, area, defaultOptions);
-
         let config = me.config;
-        let labelsConfig = config.labels || {};
 
+        datasets = super.init(datasets, defaultOptions);
         // Reset legendBox
         // Calculate the legend items
-        datasets = me.calculateLegendItem(datasets, labelsConfig);
-        // Calculate the top-lef point and width and height
-        me.box = me.calculateBox(datasets, area, labelsConfig);
+        datasets = me.calculateLegendItem(datasets, config);
 
         me._datasets = datasets;
-        if (me.isVisiable()) {
-            me.draw(me._datasets);
-        }
+
+        return datasets;
     }
 
-    calculateLegendItem(datasets, labelsConfig) {
+    calculateLegendItem(datasets, config) {
         let me = this;
-        labelsConfig = labelsConfig || {};
+        let labelsConfig = config.labels || {};
 
         let ctx = me.wxChart.ctx;
         let boxWidth = labelsConfig.boxWidth;
@@ -99,7 +86,7 @@ export default class WxLegend extends WxBaseComponent {
         return datasets;
     }
 
-    calculateBox(datasets, area, labelsConfig) {
+    calculateBox(area, datasets = this.datasets, config = this.config) {
         let me = this;
         let outerWidth, outerHeight,
             width, height;
@@ -107,11 +94,11 @@ export default class WxLegend extends WxBaseComponent {
             ctx = wxChart.ctx,
             fontSize = ctx.fontSize;
         let x = area.x, y = area.y;
-        let padding = labelsConfig.padding||10;
+        let padding = config.labels.padding||10;
 
         if (me.isHorizontal()) {
-            width = !!me.config.fullWidth ? (area.width - padding * 2) : me.config.width;
-            outerWidth = !!me.config.fullWidth ? area.width: me.config.width;
+            width = !!config.fullWidth ? (area.width - padding * 2) : config.width;
+            outerWidth = !!config.fullWidth ? area.width: config.width;
             height = fontSize;
             outerHeight = height + padding * 2;
 
@@ -185,16 +172,12 @@ export default class WxLegend extends WxBaseComponent {
             return new BoxInstance({position: position, x, y, width, outerWidth, height, outerHeight});
         }
 
-        return new BoxInstance({position: me.config.position, x, y, width, outerWidth, height, outerHeight});
+        return new BoxInstance({position: config.position, x, y, width, outerWidth, height, outerHeight});
     }
 
-    /**
-     * Draw legend
-     * @param [datasets]
-     */
-    draw(datasets) {
+    draw(datasets = this.datasets, box = this.box, config = this.config) {
         let me = this, ctx = me.wxChart.ctx;
-        let {x, y, width, outerWidth, height, outerHeight} = me.box;
+        let {x, y, width, outerWidth, height, outerHeight} = box;
 
         // Clear the area of legend
         me.clear();
@@ -202,7 +185,6 @@ export default class WxLegend extends WxBaseComponent {
         // Begin a new sub-context
         ctx.save();
         // Draw all items
-        datasets = datasets ? datasets : me.datasets;
         let currentLineNum = -1;
         let currentX = x, currentY = y;
         datasets.forEach(function(dataset){

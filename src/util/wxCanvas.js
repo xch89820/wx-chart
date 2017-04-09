@@ -331,7 +331,9 @@ export class WxCanvasRenderingContext2D {
                     return me.cp[p];
                 },
                 set: (value) => {
-                    return me._wxSetPropertyCallable(value.toLowerCase(), p)
+                    if (value) {
+                        return me._wxSetPropertyCallable(value.toLowerCase(), p)
+                    }
                 }
             })
         });

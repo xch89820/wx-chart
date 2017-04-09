@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
-import WxChart, { wxChartInstances } from '../src/core/wxChart'
+import WxChart, { wxChartInstances } from '../src/charts/wxChart'
 import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
 
 describe('WxChart component test', () => {

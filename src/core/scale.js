@@ -13,7 +13,8 @@ const WX_SCALE_DEFAULT_CONFIG = {
     "extendLeft": 0,
     "extendTop":0,
     'title': undefined,
-    'titleFontSize': 15,
+    'titleFontSize': 12,
+    'titleFontColor': '#cccccc',
     //'lineSpace' = fontSize * 0.5'
     'color' : '#000000', // Line color
 
@@ -31,6 +32,8 @@ const WX_SCALE_DEFAULT_CONFIG = {
         //'fontSize': 10,
         'minRotation': 0,
         'maxRotation': 90
+
+        //'maxTicksLimit': null,
     }
 };
 
@@ -50,37 +53,22 @@ export default class WxScale extends WxBaseComponent {
     }
 
     /**
-     * Update data and re-draw
-     * @param {Object[]} datasets
-     * @param {BoxInstance} [area]
-     * @param {Object} [defaultOptions]
-     * @returns {Array} datasets
-     */
-    update(datasets, area, defaultOptions = WX_SCALE_DEFAULT_ITEM_CONFIG) {
-        let me = this;
-        let config = me.config;
-
-        datasets = super.update(datasets, area, defaultOptions);
-
-        me.box = area;
-        me._datasets = datasets;
-        if (me.isVisiable()) {
-            me.ticketWidth = me.calculateTickWidth(area);
-            me.box = me.calculateBox(area);
-            me.draw();
-        }
-    }
-    /**
      * Get visible ticks
      */
-    getVisibleTicks() {
-        return this.datasets.filter((v) => !!v.display);
+    get visDatasets() {
+        return this._visDatasets ? this._visDatasets : this._visDatasets = this.datasets.filter((v) => !!v.display);
     }
+    // Can not reset
+    set visDatasets(val) {}
+
     /**
-     * Get visible ticks' text data
+     * Get visible tick's text data
      */
-    getTicksTexts() {
-        return this.getVisibleTicks().map((v) => v.text);
+    getTicksText(tick) {
+        if (!!tick && !!tick.text) {
+            return tick.format ? tick.format.call(tick, tick.text, tick) : tick.text;
+        }
+        return null;
     }
 
     /**
@@ -99,6 +87,7 @@ export default class WxScale extends WxBaseComponent {
      * Get longest text
      */
     longestText(ctx = this.wxChart.ctx, datasets = this.datasets) {
+        let me = this;
         let maxTextLen = 0;
         datasets.forEach(function(dataset){
             if (!!dataset.display) {
@@ -106,7 +95,7 @@ export default class WxScale extends WxBaseComponent {
                 if (dataset.textWidth) {
                     textWidth = dataset.textWidth
                 } else {
-                    let text = dataset.format ? dataset.format.call(dataset, dataset.text, dataset) : dataset.text;
+                    let text = me.getTicksText(dataset);
                     textWidth = ctx.measureText(text).width;
                     dataset.textWidth = textWidth;
                 }
@@ -116,62 +105,99 @@ export default class WxScale extends WxBaseComponent {
         return maxTextLen;
     };
 
-    /**
-     * Calculate axis box
-     * @param {BoxInstance} area - Current box area
-     * @param {number} tickWidth
-     */
-    calculateBox(area, tickWidth = this.ticketWidth) {
+    calculateFixPadding(datasets, config) {
+        let me = this, ctx = me.wxChart.ctx;
+        if (config.fixPadding) {
+            return config.fixPadding;
+        }
+        if (me.isHorizontal()) {
+            let visTicks = me.visDatasets;
+            let firstTickText = me.getTicksText(visTicks[0]),
+                lastTickText = me.getTicksText(visTicks[visTicks.length-1]);
+            return Math.max(
+                    ctx.measureText(firstTickText).width,
+                    ctx.measureText(lastTickText).width
+                )
+        } else {
+            return ctx.fontSize;
+        }
+    }
+
+    init(datasets, defaultOptions = WX_SCALE_DEFAULT_ITEM_CONFIG) {
+        let me = this;
+        let config = me.config;
+
+        datasets = super.init(datasets, defaultOptions);
+        me.visDatasets = null;
+        me._datasets = datasets;
+        me.fixPadding = me.calculateFixPadding(datasets, config);
+
+        return datasets
+    }
+
+    calculateBox(area, datasets = this.datasets, config = this.config) {
         let me = this, ctx = me.wxChart.ctx;
         let fontSize = ctx.fontSize;
-        let minWidth, minHeight;
-        let minFontRotation = toRadians(me.config.ticks.minRotation||0),
-            maxFontRotation = toRadians(me.config.ticks.maxRotation||90),
+        let tickWidth = me.calculateTickWidth(datasets, area, config);
+        let x, y, minWidth, minHeight, maxWidth, maxHeight;
+        let minFontRotation = toRadians(config.ticks.minRotation||0),
+            maxFontRotation = toRadians(config.ticks.maxRotation||90),
             fontRadians = minFontRotation;
         let lineSpace = me.lineSpace;
         let lineWidth = 1;
-        let newBox;//position, x, y, width, height, outerWidth, outerHeight
 
         let longestText = me.longestText();
+        if (me.isHorizontal()) {
+            if (longestText > tickWidth) {
+                // Ticket's width not satisfied with the longest text's width
+                if (tickWidth <= ctx.fontSize) {
+                    fontRadians = maxFontRotation;
+                } else {
+                    fontRadians = Math.acos(tickWidth / longestText);
+                    minHeight = Math.sin(fontRadians) * longestText + lineWidth + lineSpace + fontSize/2;
+                    if (minHeight > area.height) {
+                        minHeight = area.height;
+                        fontRadians = Math.asin((minHeight - lineWidth - lineSpace - fontSize/2) / longestText);
+                    } else if (fontRadians > maxFontRotation) {
+                        fontRadians = maxFontRotation;
+                        minHeight = Math.sin(fontRadians) * longestText + lineWidth + lineSpace + fontSize/2;
+                    }
+                }
+            } else {
+                minHeight = fontSize * 1.5 + lineWidth + lineSpace;
+            }
+            minWidth = area.width;
+            maxWidth = area.outerWidth;
+            maxHeight = minHeight;
+        } else {
+            minWidth = longestText + lineWidth + lineSpace + fontSize/2;
+            if (minWidth > area.width) {
+                minWidth = area.width;
+                fontRadians = Math.acos((minWidth - lineWidth - lineSpace - fontSize/2) / longestText);
+                fontRadians = fontRadians > maxFontRotation ? maxFontRotation : fontRadians;
+            }
+            minHeight = area.height;
+            maxWidth = minWidth;
+            maxHeight = area.outerHeight;
+        }
         switch (me.position) {
             case 'left':
-            case 'right':
-                minWidth = longestText + lineWidth + lineSpace + fontSize * 1.5;
-                if (minWidth > area.width) {
-                    minWidth = area.width;
-                    fontRadians = Math.acos((minWidth - lineWidth - lineSpace - fontSize * 1.5) / longestText);
-                    fontRadians = fontRadians > maxFontRotation ? maxFontRotation : fontRadians;
-                }
-                minHeight = area.height;
-                newBox = new BoxInstance(me.position, area.x, area.y, minWidth, minHeight, minWidth, area.outerHeight);
-                break;
             case 'top':
+                x = area.x;
+                y = area.y;
+                break;
+            case 'right':
+                x = area.x + area.width - maxWidth;
+                y = area.y;
+                break;
             case 'bottom':
-                if (longestText > tickWidth) {
-                    // Ticket's width not satisfied with the longest text's width
-                    if (tickWidth <= ctx.fontSize) {
-                        fontRadians = maxFontRotation;
-                    } else {
-                        fontRadians = Math.acos(tickWidth / longestText);
-                        minHeight = Math.sin(fontRadians) * longestText + lineWidth + lineSpace + fontSize * 1.5;
-                        if (minHeight > area.height) {
-                            minHeight = area.height;
-                            fontRadians = Math.asin((minHeight - lineWidth - lineSpace - fontSize * 1.5) / longestText);
-                        } else if (fontRadians > maxFontRotation) {
-                            fontRadians = maxFontRotation;
-                            minHeight = Math.sin(fontRadians) * longestText + lineWidth + lineSpace + fontSize * 1.5;
-                        }
-                    }
-                } else {
-                    minHeight = fontSize * 1.5;
-                }
-                minWidth = area.width;
-                newBox = new BoxInstance(me.position, area.x, area.y, minWidth, minHeight, area.outerWidth, minHeight);
+                x = area.x;
+                y = area.y + area.height - maxHeight;
                 break;
         }
 
         me.fontRadians = fontRadians;
-        return newBox;
+        return new BoxInstance(me.position, x, y, minWidth, minHeight, maxWidth, maxHeight);
     };
 
     /**
@@ -180,57 +206,65 @@ export default class WxScale extends WxBaseComponent {
      *
      *
      * Horizontal Scale:
-     * x------------------------------------x(first tick)-------------------------------x(last tick)--margin--x
-     * x------------------------------------x(first tick)-----x(last tick)------margin--x--titleWidth+padding--
+     * x------------------------------------.--x(first tick)--------------------------.--x(last tick)--margin--x
+     * x------------------------------------.--x(first tick)-----x(last tick)--margin-.--x--titleWidth+padding--
      * |---extendLeft---|(box.x)---margin---|-----------area.width----------------------|---------margin------|
      *                  |----------------------------area box-------------------------------------------------|
      * Vertical Scale:
-     * x----------------------------------------x--------(first tick)---------------x(last tick)-x
-     * x------------------titleHeight+padding---x---margin-x-------(first tick)-----x(last tick)-x
-     * |---extendTop----|(box.y)---margin-------|-----------area.height-------------|---margin---|
-     *                  |----------------------------area box------------------------------------|
+     * x----------------------------------------.--x--------(first tick)----------.--x(last tick)-x
+     * x------------------titleHeight+padding---.--x---margin-x-------(first tick).--x(last tick)-x
+     * |---extendTop----|(box.y)---margin-------|-----------area.height--------------|---margin---|
+     *                  |----------------------------area box-------------------------------------|
      */
-    calculateTickWidth(area = this.box) {
-        let me = this, ctx = me.wxChart.ctx,
-            config = me.config,
-            ticketWidth;
-        let visTicks = me.getVisibleTicks();
+    calculateTickWidth(datasets = this  .datasets, area = this.box, config = this.config) {
+        let me = this, ticketWidth;
+        let visTicks = me.visDatasets;
         let defaultLineWidth = config.ticks.lineWidth;
         // total line width
         let totalLineWidth = sum.apply(null, visTicks.map((v) => v.lineWidth||defaultLineWidth));
-        let title2Padding = ctx.fontSize;
+        let fixPadding = me.fixPadding;
 
         if (me.isHorizontal()) {
             let innerWidth = area.width,
                 marginLR = area.marginLR;
-            let titleWidth =
-                config.title ? ctx.measureText(config.title, config.titleFontSize) + title2Padding: 0;
+            let titleWidth = me.calculateTitleWidth();
             let extendLeft = me.config.extendLeft;
             if (marginLR !== 0) {
                 totalLineWidth += defaultLineWidth*2;
             } else if (extendLeft !== 0) {
                 totalLineWidth += defaultLineWidth;
             }
-            ticketWidth = (innerWidth - titleWidth - totalLineWidth) / (visTicks.length-1);
+            ticketWidth = (innerWidth - titleWidth - totalLineWidth - fixPadding) / (visTicks.length-1);
         } else {
             let innerHeight = area.height,
                 marginTB = area.marginTB;
-            let titleHeight = config.title ? config.titleFontSize + title2Padding : 0;
+            let titleHeight = me.calculateTitleWidth();
             let extendTop = config.extendTop;
             if (marginTB !== 0) {
                 totalLineWidth += defaultLineWidth*2;
             } else if (extendTop !== 0) {
                 totalLineWidth += defaultLineWidth;
             }
-            ticketWidth = (innerHeight - titleHeight - totalLineWidth) / (visTicks.length-1);
+            ticketWidth = (innerHeight - titleHeight - totalLineWidth - fixPadding) / (visTicks.length-1);
         }
         return ticketWidth;
+    }
+
+    calculateTitleWidth(config = this.config) {
+        let titleWidth, me = this, ctx = me.wxChart.ctx;
+        if (me.isHorizontal()) {
+            titleWidth =
+                config.title ? ctx.measureText(config.title, config.titleFontSize).width : 0;
+        } else {
+            titleWidth = config.title ? config.titleFontSize : 0;
+        }
+        return titleWidth;
     }
 
     _getTicksLineWidthOffset(index, visTicks) {
         let offset = 0, me = this;
         if (!visTicks) {
-            visTicks = me.getVisibleTicks();
+            visTicks = me.visDatasets;
         }
         let defaultLineWidth = this.config.ticks.lineWidth;
         visTicks.map((tick, i) => {
@@ -247,24 +281,24 @@ export default class WxScale extends WxBaseComponent {
      * @param {number} [ticketWidth=this.ticketWidth]
      * @param {BoxInstance} [area=this.box]
      */
-    getTicksPosition(index, ticketWidth = this.ticketWidth, area = this.box) {
+    getTicksPosition(index, ticketWidth, area = this.box) {
         let me = this, ctx = me.wxChart.ctx;
+        let fixPadding = me.fixPadding;
         if (!ticketWidth) {
-            ticketWidth = me.calculateTickWidth(me.box);
+            ticketWidth = me.calculateTickWidth();
         }
-        let visTicks = me.getVisibleTicks();
+        let visTicks = me.visDatasets;
 
         let baseX, baseY;
         if (me.isHorizontal()) {
             baseX = index === -1 ?
-                area.x - me.config.extendLeft :
-                area.lx + me._getTicksLineWidthOffset(index, visTicks) + (visTicks.length-1)*ticketWidth;
+                area.x - me.config.extendLeft + fixPadding/2 + (me.config.extendLeft ? me.config.ticks.lineWidth: 0 ):
+                area.lx + me._getTicksLineWidthOffset(index, visTicks) + ticketWidth*index + fixPadding/2;
             baseY = me.position === 'top' ? area.ry - me.lineSpace : area.ly +  me.lineSpace;
         } else {
-            let titleHeight = me.config.titleFontSize + ctx.fontSize;
             baseY = index === -1 ?
-                area.y - me.config.extendTop :
-                area.ly + titleHeight + me._getTicksLineWidthOffset(index, visTicks) + (visTicks.length-1)*ticketWidth;
+                area.y - me.config.extendTop + fixPadding/2 + (me.config.extendTop ? me.config.ticks.lineWidth: 0 ):
+                area.ly + me.calculateTitleWidth() + me._getTicksLineWidthOffset(index, visTicks) + ticketWidth*index + fixPadding/2;
             baseX = me.position === 'left' ? area.rx - me.lineSpace : area.lx + me.lineSpace;
         }
         return {
@@ -329,11 +363,11 @@ export default class WxScale extends WxBaseComponent {
                     // ctx.fillText(text, x + ctx.fontSize/2, y);
                     break;
                 case 'top':
-                    ctx.translate(x, y - textWidth/2);
+                    ctx.translate(x, y - fontSize/2);
                     ctx.rotate(-me.fontRadians);
                     break;
                 case 'bottom':
-                    ctx.translate(x, y + textWidth/2);
+                    ctx.translate(x, y + fontSize/2);
                     ctx.rotate(me.fontRadians);
                     break;
             }
@@ -342,36 +376,43 @@ export default class WxScale extends WxBaseComponent {
             ctx.restore();
         }
     }
-    draw() {
+
+    draw(datasets = this.datasets, box = this.box, config = this.config) {
         let me = this, ctx = me.wxChart.ctx;
         let fontSize = ctx.fontSize;
-        let config = me.config;
-        let tickConfig = me.config.ticks;
-        let {x, y, width, outerWidth, height, outerHeight} = me.box;
-        let tickWidth = me.ticketWidth;
-        let visTicks = me.getVisibleTicks();
+        let fixPadding = me.fixPadding,
+            tickWidth = me.calculateTickWidth(datasets, box, config);
+        let tickConfig = config.ticks;
+        let {x, y, width, outerWidth, height, outerHeight} = box;
+        let visTicks = me.visDatasets;
 
         let {x: currX, y: currY, x: baseX, y: baseY} = me.getTicksPosition(-1, tickWidth);
         ctx.save();
         ctx.fillStyle = tickConfig.fontColor;
         ctx.lineWidth = tickConfig.lineWidth;
+        let titleWidth = me.calculateTitleWidth();
 
         if (me.isHorizontal()) {
             // Draw the first point
-            me._drawATickLine(currX, currY, fontSize);
+            if (me.box.marginLR || config.extendLeft) {
+                me._drawATickLine(currX, currY, fontSize);
+            }
             // Move to first tick
-            currX =  me.box.lx;
+            currX =  me.box.lx + fixPadding/2;
             // Draw ticks
             visTicks.map((tick) => {
+                currX += tick.lineWidth;
                 ctx.fillStyle = tick.fontColor;
                 ctx.lineWidth = tick.lineWidth;
                 ctx.fontSize = tick.fontSize||ctx.fontSize;
                 me._drawATickLine(currX, currY, fontSize, tick);
-                currX+= tickWidth;
+                currX += tickWidth;
             });
             // Draw the last point
-            currX = me.box.ex;
-            me._drawATickLine(currX, currY, fontSize);
+            currX = me.box.ex - fixPadding/2 - titleWidth;
+            if (me.box.marginLR) {
+                me._drawATickLine(currX, currY, fontSize);
+            }
 
             ctx.fillStyle = tickConfig.fontColor;
             ctx.lineWidth = tickConfig.lineWidth;
@@ -386,7 +427,8 @@ export default class WxScale extends WxBaseComponent {
                 currX += fontSize/2;
                 ctx.fontSize = config.titleFontSize;
                 ctx.textAlign = 'start';
-                ctx.textBaseline = 'middle';
+                ctx.textBaseline = 'bottom';
+                ctx.fillStyle = config.titleFontColor;
                 ctx.fillText(config.title, currX, currY);
                 ctx.restore();
             }
@@ -394,20 +436,24 @@ export default class WxScale extends WxBaseComponent {
         } else {
             if (config.title) {
                 ctx.save();
-                currY += fontSize/2;
                 ctx.fontSize = config.titleFontSize;
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
+                ctx.textBaseline = 'bottom';
+                ctx.fillStyle = config.titleFontColor;
                 ctx.fillText(config.title, currX, currY);
                 ctx.restore();
             }
 
+
             // Draw the first point
-            me._drawATickLine(currX, currY, fontSize);
-            // Move to first tick
-            currY =  me.box.ly;
+            if (me.box.marginTB || config.extendTop) {
+                currY += titleWidth;
+                me._drawATickLine(currX, currY, fontSize);
+            }
+            currY = me.box.ly + fixPadding/2 + titleWidth;
             // Draw ticks
             visTicks.map((tick) => {
+                currY += tick.lineWidth;
                 ctx.fillStyle = tick.fontColor;
                 ctx.lineWidth = tick.lineWidth;
                 ctx.fontSize = tick.fontSize||ctx.fontSize;
@@ -415,14 +461,16 @@ export default class WxScale extends WxBaseComponent {
                 currY += tickWidth;
             });
             // Draw the last point
-            currY = me.box.ey;
-            me._drawATickLine(currX, currY, fontSize);
+            currY = me.box.ey - fixPadding/2;
+            if (me.box.marginTB) {
+                me._drawATickLine(currX, currY, fontSize);
+            }
 
             ctx.fillStyle = tickConfig.fontColor;
             ctx.lineWidth = tickConfig.lineWidth;
             // draw axis line
             ctx.beginPath();
-            ctx.moveTo(currX, baseY);
+            ctx.moveTo(currX, baseY + titleWidth);
             ctx.lineTo(currX, currY);
             ctx.stroke();
         }

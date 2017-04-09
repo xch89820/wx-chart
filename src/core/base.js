@@ -2,7 +2,8 @@
 'use strict';
 
 import { checkWX, is, wxConverToPx, uid, retinaScale, extend } from '../util/helper';
-import WxChart from './wxChart';
+import { BoxInstance } from './layout';
+import WxChart from '../charts/wxChart';
 import WxCanvas from '../util/wxCanvas';
 
 // The basic component
@@ -22,13 +23,12 @@ export default class WxBaseComponent {
     }
 
     /**
-     * Update data and re-draw
-     * @param {Object[]} [datasets]
-     * @param {BoxInstance} [area=this.box]
+     * Initialize datasets and options
+     * @param {Object[]} datasets
      * @param {Object} [defaultOptions]
-     * @returns {Array} datasets
+     * @returns {Array|*}
      */
-    update(datasets, area, defaultOptions={}) {
+    init(datasets, defaultOptions={}) {
         let me = this;
 
         if (is.Undefined(datasets) || is.Null(datasets)) {
@@ -37,12 +37,6 @@ export default class WxBaseComponent {
                 throw new Error('Datasets is null');
             }
         }
-        area = area ? area : me.box;
-        if (is.Undefined(area) || is.Null(area)) {
-            throw new Error('Draw area is null');
-        }
-
-        me.clear();
 
         if (!is.Array(datasets)) {
             datasets = [datasets];
@@ -56,6 +50,73 @@ export default class WxBaseComponent {
         return me._datasets;
     }
 
+    /**
+     * Update data and re-draw
+     * @param {Object[]} datasets
+     * @param {BoxInstance} [area]
+     * @param {Object} [config]
+     */
+    update(datasets, area, config = this.config) {
+        let me = this;
+
+        me.clear();
+        if (!datasets) {
+            return;
+        }
+        datasets = me.init(datasets);
+
+        if (area && area instanceof BoxInstance) {
+            area = me.box = me.calculateBox(area, datasets, config);
+        } else if (me.box) {
+            area = me.box;
+        } else {
+            return;
+        }
+
+        if (me.isVisiable()) {
+            me.draw(datasets, area, config);
+        }
+    }
+
+    /**
+     * Calculate occupied space
+     * @param {Object[]} [datasets] - datasets
+     * @param {BoxInstance} [area] - Current box area
+     * @param {Object} [config]
+     * @returns {BoxInstance}
+     */
+    calculateBox(area, datasets = this.datasets, config = this.config) {
+        return area;
+    }
+
+    /**
+     * Set an occupied space for component
+     * @param {BoxInstance} box - New box
+     * @param {Boolean} [redraw=true] - Re-draw the component
+     */
+    setBox(box, redraw = true) {
+        let me = this;
+        if (redraw) {
+            me.clear();
+        }
+        if (box && box instanceof BoxInstance) {
+            me.box = box;
+        }
+        if (redraw && me.isVisiable()) {
+            me.draw();
+        }
+    }
+
+    /**
+     * Draw the component
+     *
+     * @param {Object[]} [datasets] - datasets
+     * @param {BoxInstance} [box] - Current box area
+     * @param {Object} [config]
+     */
+    draw(datasets = this.datasets, box = this.box, config = this.config) {
+
+    }
     /**
      * Clear canvas in component's box
      */

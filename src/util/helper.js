@@ -24,10 +24,29 @@ is['Object'] = function (obj) {
     return type === 'function' || type === 'object' && !!obj;
 };
 
+let class2type = {};
+let toString = class2type.toString;
+let hasOwn = class2type.hasOwnProperty;
+let fnToString = hasOwn.toString;
+let ObjectFunctionString = fnToString.call( Object );
 // Is a given variable an object?
 is['PureObject'] = function(obj) {
-    var type = typeof obj;
-    return type === 'object' && !!obj;
+    let proto, Ctor;
+
+    // Detect obvious negatives
+    // Use toString instead of jQuery.type to catch host objects
+    if ( !obj || ObjProto.toString.call( obj ) !== "[object Object]" ) {
+        return false;
+    }
+
+    proto = Object.getPrototypeOf( obj );
+    // Objects with no prototype (e.g., `Object.create( null )`) are plain
+    if ( !proto ) {
+        return true;
+    }
+    // Objects with prototype are plain iff they were constructed by a global Object function
+    Ctor = hasOwn.call( proto, "constructor" ) && proto.constructor;
+    return typeof Ctor === "function" && fnToString.call( Ctor ) === ObjectFunctionString;
 };
 
 is['Boolean'] = function(obj) {
@@ -65,7 +84,7 @@ export const REG_NUMBER = /[0-9]/;
 export const REG_ALPHABET_NUMBER = /[0-9a-zA-Z]/;
 
 // Assign function generator
-function _assignGenerator(own, defaults) {
+function _assignGenerator(own) {
     let _copy = function (target, ...source) {
         let deep = true;
         if (is.Boolean(target)) {
@@ -74,20 +93,23 @@ function _assignGenerator(own, defaults) {
         }
 
         if (is.Array(target)) {
-            target.push(...source);
+            source.forEach( sc => {
+                target.push(...sc);
+            });
         } else if (is.Object(target)) {
-            for (let index = 0; index < source.length; index++) {
-                let sc = source[index];
+            source.forEach( sc => {
                 for (let key in sc) {
                     if (own && !sc.hasOwnProperty(key)) continue;
-                    let so = sc[key], to = target[key] || {};
-                    if (!defaults || target[i] === void 0) {
-                        target[key] = is.PureObject(so) && deep ?
-                            (deep? extend(true, {}, so) :extend({}, so)) :
-                            so;
+                    let so = sc[key], to = target[key];
+                    if (is.PureObject(so)) {
+                        target[key] = deep? extend(true, is.PureObject(to) ? to : {} , so) : so;
+                    } else if (is.Array(so)) {
+                        target[key] = deep? extend(true, is.Array(to) ? to : [], so) : so;
+                    } else {
+                        target[key] = so;
                     }
                 }
-            }
+            });
         }
         // Do nothing
         return target;
@@ -104,7 +126,6 @@ function _assignGenerator(own, defaults) {
  */
 export let extend = _assignGenerator(false);
 export let extendOwn = _assignGenerator(true);
-
 /**
  * Check WeiXin environment
  */
@@ -186,6 +207,73 @@ export let uid = (function () {
         return 'u' + id;
     };
 }());
+
+export function niceNum(range, round) {
+    let exponent = Math.floor(Math.log10(range));
+    let fraction = range / Math.pow(10, exponent);
+    let niceFraction;
+
+    if (round) {
+        if (fraction < 1.5) {
+            niceFraction = 1;
+        } else if (fraction < 3) {
+            niceFraction = 2;
+        } else if (fraction < 7) {
+            niceFraction = 5;
+        } else {
+            niceFraction = 10;
+        }
+    } else if (fraction <= 1.0) {
+        niceFraction = 1;
+    } else if (fraction <= 2) {
+        niceFraction = 2;
+    } else if (fraction <= 5) {
+        niceFraction = 5;
+    } else {
+        niceFraction = 10;
+    }
+
+    return niceFraction * Math.pow(10, exponent);
+}
+
+export function almostEquals(a, b, epsilon) {
+    return Math.abs(a - b) < epsilon;
+}
+
+export function splineCurve(firstPoint, middlePoint, afterPoint, t = 0.4) {
+    // Props to Rob Spencer at scaled innovation for his post on splining between points
+    // http://scaledinnovation.com/analytics/splines/aboutSplines.html
+
+    // This function must also respect "skipped" points
+
+    let previous = !firstPoint ? middlePoint : firstPoint,
+        current = middlePoint,
+        next = !afterPoint ? middlePoint : afterPoint;
+
+    let d01 = Math.sqrt(Math.pow(current.x - previous.x, 2) + Math.pow(current.y - previous.y, 2));
+    let d12 = Math.sqrt(Math.pow(next.x - current.x, 2) + Math.pow(next.y - current.y, 2));
+
+    let s01 = d01 / (d01 + d12);
+    let s12 = d12 / (d01 + d12);
+
+    // If all points are the same, s01 & s02 will be inf
+    s01 = isNaN(s01) ? 0 : s01;
+    s12 = isNaN(s12) ? 0 : s12;
+
+    let fa = t * s01; // scaling factor for triangle Ta
+    let fb = t * s12;
+
+    return {
+        previous: {
+            x: current.x - fa * (next.x - previous.x),
+            y: current.y - fa * (next.y - previous.y)
+        },
+        next: {
+            x: current.x + fb * (next.x - previous.x),
+            y: current.y + fb * (next.y - previous.y)
+        }
+    };
+}
 
 /**
  * Get element style
