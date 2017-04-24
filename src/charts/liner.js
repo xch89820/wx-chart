@@ -221,13 +221,12 @@ export default class WxLiner extends WxChart {
         let rColors = randomColor(extend(true, {}, color, {count: me.legends.length}));
 
         me.legends = me.legends.map(function(legend, index) {
-            if (!legend.borderColor) {
-                legend.borderColor = me.chartConfig.backgroundColor || "#ffffff";
+            if (!legend.strokeStyle) {
+                legend.strokeStyle = me.chartConfig.backgroundColor || legend.borderColor || "#ffffff";
             }
 
             return extend(true, {
-              fillStyle: rColors[index],
-              strokeStyle: rColors[index]
+              fillStyle: rColors[index]
             }, WX_LINE_LEGEND_DEFAULT_CONFIG, legend);
         });
         me.legend.update(me.legends, box);
@@ -430,7 +429,7 @@ export default class WxLiner extends WxChart {
 
             if (pointBorderWidth) {
                 ctx.lineWidth = pointBorderWidth;
-                ctx.strokeStyle = pointBorderColor || legend.borderColor;
+                ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
                 ctx.stroke();
             }
             ////

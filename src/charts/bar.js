@@ -10,7 +10,7 @@ import WxCrossScale from '../scale/scale.crosshelp';
 import WxCategoryScale from '../scale/scale.category';
 import WxLegend from '../core/legend';
 import WxLayout, {BoxInstance} from '../core/layout';
-import {extend, is, splineCurve} from '../util/helper';
+import {extend, is, splineCurve, shadeBlendConvert} from '../util/helper';
 import randomColor from '../util/randomColor';
 
 // Bar legend's default config
@@ -62,7 +62,7 @@ const WX_BAR_ITEM_DEFAULT_CONFIG = {
     //borderWidth: 2,
     //fillArea: true,
     //fillAlpha: 0.5,
-    //borderColor: '#ffffff',
+    //strokeStyle: '#ffffff',
     display: true
 };
 
@@ -216,6 +216,28 @@ export default class WxBar extends WxChart {
             me.title.update(me.titleText, box);
             wxLayout.addBox(me.title.box);
         }
+
+        // Second, random color and get legend datasets
+        box = wxLayout.adjustBox();
+        let rColors = randomColor(extend(true, {}, color, {count: me.legends.length}));
+
+        me.legends = me.legends.map(function(legend, index) {
+            if (!legend.strokeStyle) {
+                legend.strokeStyle = legend.borderColor || shadeBlendConvert(-0.3, rColors[index]);
+            }
+
+            return extend(true, {
+              fillStyle: rColors[index]
+            }, WX_LINE_LEGEND_DEFAULT_CONFIG, legend);
+        });
+        me.legend.update(me.legends, box);
+        wxLayout.addBox(me.legend.box);
+
+        // Thirdly, draw scale
+        me._drawScale();
+
+        // Finally, draw bar
+        
     }
 
     /**
