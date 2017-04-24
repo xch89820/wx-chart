@@ -51,6 +51,9 @@ describe('WxLiner component test', () => {
             'height': 400,
             'title': '测试线状图',
             'fillArea': true,
+            'crossScaleOptions': {
+                'xFirstPointSpace': 0
+            },
             'legends':[{
                 'text': '测试图1',
                 'key': 'test1',
@@ -86,7 +89,7 @@ describe('WxLiner component test', () => {
     });
 
     afterEach(() => {
-        wxLiner.destroy();
-        destoryCanvasElement();
+        // wxLiner.destroy();
+        // destoryCanvasElement();
     });
 });

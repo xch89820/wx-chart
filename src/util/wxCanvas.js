@@ -6,23 +6,23 @@ import {REG_HANZI, REG_ALPHABET_NUMBER} from './helper';
 
 // Chart default config
 const WX_CANVAS_DEFAULT_PROPERTY = {
-    'width': 300,
-    'height': 200
+    width: 300,
+    height: 200
 };
 const WX_CANVAS_CTX_DEFAULT_PROPERTY = {
-    'fillStyle': '#000000',
-    'lineCap': 'butt',
-    'lineJoin': 'miter',
-    'miterLimit': 10,
-    'lineWidth': 1,
-    'strokeStyle': '#000000',
-    'shadowBlur': 0,
-    'shadowOffsetX': 0,
-    'shadowOffsetY': 0,
-    'shadowColor': '#000000',
-    'font': '10px',
-    'textBaseline': 'alphabetic', // only support top, middle and alphabetic
-    'textAlign': 'start' // only support start, end and center
+    fillStyle: '#000000',
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    miterLimit: 10,
+    lineWidth: 1,
+    strokeStyle: '#000000',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    shadowColor: '#000000',
+    font: '10px',
+    textBaseline: 'alphabetic', // only support top, middle and alphabetic
+    textAlign: 'start' // only support start, end and center
 };
 
 // Base text size
@@ -76,11 +76,12 @@ export default class WxCanvas {
      */
     acquireContext(id, config) {
         let me = this,
-            canvas, context;
+            canvas,
+            context;
         if (is.String(id)) {
-            canvas = me.isWeiXinAPP ?
-                context = wx.createCanvasContext(id) :
-                (document.getElementById(id)).canvas;
+            canvas = me.isWeiXinAPP
+                ? context = wx.createCanvasContext(id)
+                : (document.getElementById(id)).canvas;
         } else if (me.isWeiXinAPP) {
             throw new Error('Should set an id');
         }
@@ -101,9 +102,13 @@ export default class WxCanvas {
      * Initializes the HTMLCanvasElement style and render size without modifying the canvas display size
      */
     initCanvas() {
-        let canvas = this._canvas, config = this._config,
-            renderHeight, renderWidth,
-            display, height, width;
+        let canvas = this._canvas,
+            config = this._config,
+            renderHeight,
+            renderWidth,
+            display,
+            height,
+            width;
         if (this.isWeiXinAPP) {
             renderHeight = height = config.height;
             renderWidth = width = config.width;
@@ -163,7 +168,8 @@ export default class WxCanvas {
      * Restores the canvas initial state, such as render/display sizes and style.
      */
     releaseContext() {
-        let canvas = this._canvas, config = this._config;
+        let canvas = this._canvas,
+            config = this._config;
         if (!config._wxChart) {
             return;
         }
@@ -172,7 +178,7 @@ export default class WxCanvas {
         if (this.isWeiXinAPP) {
             // Do nothing
         } else {
-            ['height', 'width'].forEach(function (prop) {
+            ['height', 'width'].forEach(function(prop) {
                 let value = initial[prop];
                 if (value === undefined || value === null) {
                     canvas.removeAttribute(prop);
@@ -287,8 +293,7 @@ export class WxCanvasRenderingContext2D {
     }
 
     // Property
-    _wxSetPropertyCallable(value, propertyName,
-                           wxSetName = 'set' + propertyName.replace(/(\w)/, v => v.toUpperCase())) {
+    _wxSetPropertyCallable(value, propertyName, wxSetName = 'set' + propertyName.replace(/(\w)/, v => v.toUpperCase())) {
         let me = this;
 
         if (is.Null(value) || is.Undefined(value)) {
@@ -313,7 +318,9 @@ export class WxCanvasRenderingContext2D {
         }
         if (me.isWeiXinAPP) {
             me.cp[propertyName] = value;
-            setWX ? me._ctx[propertyName] = value : null;
+            setWX
+                ? me._ctx[propertyName] = value
+                : null;
         } else {
             me._ctx[propertyName] = value;
             me.cp[propertyName] = me._ctx[propertyName];
@@ -338,7 +345,6 @@ export class WxCanvasRenderingContext2D {
             })
         });
 
-
     }
     createShadowsProperty() {
         let me = this;
@@ -352,12 +358,7 @@ export class WxCanvasRenderingContext2D {
                     let me = this;
                     if (me.isWeiXinAPP) {
                         me.cp[p] = value;
-                        me._ctx.setShadow(
-                            me.cp['shadowOffsetX'] || 0,
-                            me.cp['shadowOffsetY'] || 0,
-                            me.cp['shadowBlur'] || 0,
-                            me.cp['shadowColor'] || '#000000'
-                        );
+                        me._ctx.setShadow(me.cp['shadowOffsetX'] || 0, me.cp['shadowOffsetY'] || 0, me.cp['shadowBlur'] || 0, me.cp['shadowColor'] || '#000000');
                     } else if (!is.Null(value) && !is.Undefined(value)) {
                         me._ctx[p] = value;
                         me.cp[p] = me._ctx[p];
@@ -413,7 +414,9 @@ export class WxCanvasRenderingContext2D {
                     return;
                 }
 
-                let currentFont = me.isWeiXinAPP ? me.cp.font : me._ctx.font;
+                let currentFont = me.isWeiXinAPP
+                    ? me.cp.font
+                    : me._ctx.font;
                 currentFont = currentFont.replace(pxReg, fontSize + 'px');
                 if (me.isWeiXinAPP) {
                     me._ctx.setFontSize(fontSize);
@@ -435,10 +438,14 @@ export class WxCanvasRenderingContext2D {
             }
             let textLen = text.length;
             let hanzi = text.match(new RegExp(REG_HANZI, 'g'));
-            let hanziNum = !!hanzi ? hanzi.length : 0;
+            let hanziNum = !!hanzi
+                ? hanzi.length
+                : 0;
             let otherNum = textLen - hanziNum;
 
-            return {'width': fontSize * (otherNum + hanziNum * 2) / 2  + fontSize / 2};
+            return {
+                'width': fontSize * (otherNum + hanziNum * 2) / 2 + fontSize / 2
+            };
         } else {
             return me._ctx.measureText(text);
         }
@@ -478,7 +485,7 @@ export class WxCanvasRenderingContext2D {
                 culX = x - me.measureText(text).width;
                 break;
             case 'center':
-                culX = x - me.measureText(text).width/2;
+                culX = x - me.measureText(text).width / 2;
                 break;
             case 'start':
                 break;
@@ -496,10 +503,15 @@ export class WxCanvasRenderingContext2D {
      */
     fillText(text, x, y, ...options) {
         let me = this,
-            maxWidth = 0 in options ? options[0] : undefined,
-            baseNum = 1 in options ? options[1] : WX_BASE_TEXT_SIZE;
+            maxWidth = 0 in options
+                ? options[0]
+                : undefined,
+            baseNum = 1 in options
+                ? options[1]
+                : WX_BASE_TEXT_SIZE;
         if (me.isWeiXinAPP) {
-            let culX, culY;
+            let culX,
+                culY;
             culY = me._calculateYForTextBaseline(y, text, baseNum);
             culX = me._calculateXFortextAlign(x, text, baseNum);
             return me._ctx.fillText(text, culX, culY);
@@ -549,7 +561,7 @@ export class WxCanvasRenderingContext2D {
     createRectProperty() {
         let me = this;
         ['clearRect', 'fillRect', 'strokeRect'].forEach(function(functionName) {
-            me[functionName] = function(...args){
+            me[functionName] = function(...args) {
                 return me._ctx[functionName](...args);
             }
         })
@@ -559,7 +571,7 @@ export class WxCanvasRenderingContext2D {
     createGradientProperty() {
         let me = this;
         ['createLinearGradient'].forEach(function(functionName) {
-            me[functionName] = function(...args){
+            me[functionName] = function(...args) {
                 return me._ctx[functionName](...args);
             }
         })
@@ -576,15 +588,23 @@ export class WxCanvasRenderingContext2D {
     // Paths and Drawing paths
     createPathProperty() {
         let me = this;
-        ['beginPath', 'closePath', 'moveTo', 'lineTo', 'bezierCurveTo', 'quadraticCurveTo',
-        'arc', 'rect'].forEach(function(functionName) {
-            me[functionName] = function(...args){
+        [
+            'beginPath',
+            'closePath',
+            'moveTo',
+            'lineTo',
+            'bezierCurveTo',
+            'quadraticCurveTo',
+            'arc',
+            'rect'
+        ].forEach(function(functionName) {
+            me[functionName] = function(...args) {
                 return me._ctx[functionName](...args);
             }
         });
 
         ['fill', 'stroke'].forEach(function(functionName) {
-            me[functionName] = function(...args){
+            me[functionName] = function(...args) {
                 return me._ctx[functionName](...args);
             }
         })
@@ -602,7 +622,7 @@ export class WxCanvasRenderingContext2D {
     createTransformationProperty() {
         let me = this;
         ['rotate', 'scale', 'translate'].forEach(function(functionName) {
-            me[functionName] = function(...args){
+            me[functionName] = function(...args) {
                 return me._ctx[functionName](...args);
             }
         });
@@ -637,9 +657,3 @@ export class WxCanvasRenderingContext2D {
         }
     }
 }
-
-
-
-
-
-

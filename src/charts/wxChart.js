@@ -1,18 +1,25 @@
 /* global module, wx, window: false, document: false */
 'use strict';
 
-import { checkWX, is, wxConverToPx, uid, retinaScale, extend } from '../util/helper';
+import {
+    checkWX,
+    is,
+    wxConverToPx,
+    uid,
+    retinaScale,
+    extend
+} from '../util/helper';
 import WxCanvas from '../util/wxCanvas';
-import { BoxInstance } from '../core/layout';
+import {BoxInstance} from '../core/layout';
 
 // Chart default config
 let wxChartDefaultConfig = {
-    'fontSize': 10,
-    'width': 300,
-    'height': 200,
-    'display': 'block',
-    'padding': 0,
-    'backgroundColor': null
+    fontSize: 10,
+    width: 300,
+    height: 200,
+    display: 'block',
+    padding: 0,
+    backgroundColor: null
 };
 
 // Store all references of 'WxChart' instances - allowing us to globally resize chart instances on window resize.
@@ -39,8 +46,12 @@ export default class WxChart {
             // WxChart(id, width, height, display, ...options)
             chartConf = {
                 'width': arguments[1],
-                'height': 2 in arguments ? arguments[2] : wxChartDefaultConfig.height,
-                'display': 3 in arguments ? arguments[3] : wxChartDefaultConfig.display
+                'height': 2 in arguments
+                    ? arguments[2]
+                    : wxChartDefaultConfig.height,
+                'display': 3 in arguments
+                    ? arguments[3]
+                    : wxChartDefaultConfig.display
             };
             if (4 in arguments && is.PureObject(arguments[4])) {
                 extend({}, wxChartDefaultConfig, chartConf, arguments[4]);
@@ -58,7 +69,7 @@ export default class WxChart {
         me.initContext();
 
         // Append to wxChartInstances
-        wxChartInstances[me.id+''] = me;
+        wxChartInstances[me.id + ''] = me;
 
         return me;
     }
@@ -72,10 +83,11 @@ export default class WxChart {
         let canvas = me.canvas,
             cvWidth = canvas.width,
             cvHeight = canvas.height;
-        config.aspectRatio = config.aspectRatio ?
-            config.aspectRatio :
-            !is.Undefined(cvHeight) && !is.Undefined(cvWidth) ?
-                (cvWidth / cvWidth).toFixed(2) : null;
+        config.aspectRatio = config.aspectRatio
+            ? config.aspectRatio
+            : !is.Undefined(cvHeight) && !is.Undefined(cvWidth)
+                ? (cvWidth / cvWidth).toFixed(2)
+                : null;
         config.display = config.display || 'block';
         return config;
     }
@@ -95,16 +107,8 @@ export default class WxChart {
         }
 
         // calculate box
-        let padding = me.config.padding||0;
-        me.innerBox = new BoxInstance(
-            'top',
-            0,
-            0,
-            me.canvas.width - padding*2,
-            me.canvas.height - padding*2,
-            me.canvas.width,
-            me.canvas.height
-        );
+        let padding = me.config.padding || 0;
+        me.innerBox = new BoxInstance('top', 0, 0, me.canvas.width - padding * 2, me.canvas.height - padding * 2, me.canvas.width, me.canvas.height);
     }
 
     clear() {
@@ -165,25 +169,33 @@ export default class WxChart {
             datasets = [datasets];
         }
 
-        datasets = datasets.map(function(dataset){
+        datasets = datasets.map(function(dataset) {
             return extend({}, defaultItemOpt, dataset);
         });
         // Fill default Options
         me.clear();
         me._datasets = datasets;
+        me._visDatasets = null;
         return me._datasets;
     }
 
-    get datasets(){
+    get datasets() {
         return this._datasets;
     }
     set datasets(datasets) {
         return this.update(datasets);
     }
 
+    /**
+     * Get visible ticks
+     */
     get visDatasets() {
-        return this.datasets.filter(x => !!x.display);
+        return this._visDatasets
+            ? this._visDatasets
+            : this._visDatasets = this.datasets.filter((v) => !!v.display);
     }
+    // Can not reset
+    set visDatasets(val) {}
 
     calculateTotal() {
         let datasets = this.datasets;

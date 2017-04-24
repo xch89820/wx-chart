@@ -9,7 +9,5 @@ import {extend, is, niceNum, almostEquals} from '../util/helper'
  * TODO: Not finish yet....
  */
 export default class WxPointElement {
-    constructor() {
-
-    }
+    constructor() {}
 };

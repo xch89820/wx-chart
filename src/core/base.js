@@ -1,8 +1,15 @@
 /* global module, wx, window: false, document: false */
 'use strict';
 
-import { checkWX, is, wxConverToPx, uid, retinaScale, extend } from '../util/helper';
-import { BoxInstance } from './layout';
+import {
+    checkWX,
+    is,
+    wxConverToPx,
+    uid,
+    retinaScale,
+    extend
+} from '../util/helper';
+import {BoxInstance} from './layout';
 import WxChart from '../charts/wxChart';
 import WxCanvas from '../util/wxCanvas';
 
@@ -28,7 +35,7 @@ export default class WxBaseComponent {
      * @param {Object} [defaultOptions]
      * @returns {Array|*}
      */
-    init(datasets, defaultOptions={}) {
+    init(datasets, defaultOptions = {}) {
         let me = this;
 
         if (is.Undefined(datasets) || is.Null(datasets)) {
@@ -42,11 +49,12 @@ export default class WxBaseComponent {
             datasets = [datasets];
         }
 
-        datasets = datasets.map(function(dataset){
+        datasets = datasets.map(function(dataset) {
             return extend({}, defaultOptions, dataset);
         });
 
         me._datasets = datasets;
+        me._visDatasets = null;
         return me._datasets;
     }
 
@@ -114,21 +122,14 @@ export default class WxBaseComponent {
      * @param {BoxInstance} [box] - Current box area
      * @param {Object} [config]
      */
-    draw(datasets = this.datasets, box = this.box, config = this.config) {
-
-    }
+    draw(datasets = this.datasets, box = this.box, config = this.config) {}
     /**
      * Clear canvas in component's box
      */
     clear() {
         let me = this;
         if (me.box) {
-            me.wxChart.ctx.clearRect(
-                me.box.x,
-                me.box.y,
-                me.box.outerWidth,
-                me.box.outerHeight
-            );
+            me.wxChart.ctx.clearRect(me.box.x, me.box.y, me.box.outerWidth, me.box.outerHeight);
             me.wxChart.ctx.draw();
         }
     }
@@ -137,12 +138,23 @@ export default class WxBaseComponent {
         return !!this.config.display;
     }
 
-    get datasets(){
+    get datasets() {
         return this._datasets;
     }
     set datasets(datasets) {
         return this.update(datasets);
     }
+
+    /**
+     * Get visible ticks
+     */
+    get visDatasets() {
+        return this._visDatasets
+            ? this._visDatasets
+            : this._visDatasets = this.datasets.filter((v) => !!v.display);
+    }
+    // Can not reset
+    set visDatasets(val) {}
 
     get position() {
         return this.config.position;

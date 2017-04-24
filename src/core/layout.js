@@ -38,8 +38,8 @@ export class BoxInstance {
             let padding = opt.padding,
                 margin = opt.margin;
             if (is.Number(padding) && is.Number(margin)) {
-                outerWidth = width + padding*2 + margin*2;
-                outerHeight = height + padding*2 + margin*2;
+                outerWidth = width + padding * 2 + margin * 2;
+                outerHeight = height + padding * 2 + margin * 2;
             } else {
                 outerWidth = opt.outerWidth;
                 outerHeight = opt.outerHeight;
@@ -100,19 +100,19 @@ export class BoxInstance {
         return this.y + this.height + this.marginTB;
     }
     get marginLR() {
-        return (this.outerWidth - this.width)/2;
+        return (this.outerWidth - this.width) / 2;
     }
     set marginLR(value) {
         if (is.Number(value)) {
-            this.width -= value*2;
+            this.width -= value * 2;
         }
     }
     get marginTB() {
-        return (this.outerHeight - this.height)/2;
+        return (this.outerHeight - this.height) / 2;
     }
     set marginTB(value) {
         if (is.Number(value)) {
-            this.height -= value*2;
+            this.height -= value * 2;
         }
     }
 
@@ -177,7 +177,7 @@ export default class WxLayout {
         if (!boxInstance instanceof BoxInstance) {
             throw new Error('Please add an BoxInstance Object');
         }
-        return parseInt(me._boxs.push(boxInstance))-1;
+        return parseInt(me._boxs.push(boxInstance)) - 1;
     }
 
     /**
@@ -201,16 +201,26 @@ export default class WxLayout {
         let me = this;
         let box = me.wxChart.innerBox.clone();
         me._boxs.forEach(function(boxInstance) {
-            let { position, x, y, height, width, outerWidth, outerHeight } = boxInstance;
-            switch(position){
+            let {
+                position,
+                x,
+                y,
+                height,
+                width,
+                outerWidth,
+                outerHeight
+            } = boxInstance;
+            switch (position) {
                 case 'top':
-                    box.y += outerHeight; break;
+                    box.y += outerHeight;
+                    break;
                 case 'bottom':
                     box.outerHeight -= outerHeight;
                     box.height -= outerHeight;
                     break;
                 case 'left':
-                    box.x += outerWidth; break;
+                    box.x += outerWidth;
+                    break;
                 case 'right':
                     box.outerWidth -= outerWidth;
                     box.width -= outerWidth;

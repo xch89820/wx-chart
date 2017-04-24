@@ -31,7 +31,9 @@ let randomColor = function(options) {
         seed = null;
     }
 
-    let H, S, B;
+    let H,
+        S,
+        B;
 
     // Check if we need to generate multiple colors
     if (options.count !== null && options.count !== undefined) {
@@ -46,7 +48,8 @@ let randomColor = function(options) {
             // Since we're generating multiple colors,
             // incremement the seed. Otherwise we'd just
             // generate the same color each time...
-            if (seed && options.seed) options.seed += 1;
+            if (seed && options.seed)
+                options.seed += 1;
 
             colors.push(randomColor(options));
         }
@@ -66,7 +69,9 @@ let randomColor = function(options) {
     B = pickBrightness(H, S, options);
 
     // Then we return the HSB color in the desired format
-    return setFormat([H, S, B], options);
+    return setFormat([
+        H, S, B
+    ], options);
 };
 
 function pickHue(options) {
@@ -243,9 +248,7 @@ function getColorInfo(hue) {
 
     for (let colorName in colorDictionary) {
         let color = colorDictionary[colorName];
-        if (color.hueRange &&
-            hue >= color.hueRange[0] &&
-            hue <= color.hueRange[1]) {
+        if (color.hueRange && hue >= color.hueRange[0] && hue <= color.hueRange[1]) {
             return colorDictionary[colorName];
         }
     }
@@ -271,7 +274,9 @@ function HSVtoHex(hsv) {
 
     function componentToHex(c) {
         var hex = c.toString(16);
-        return hex.length == 1 ? '0' + hex : hex;
+        return hex.length == 1
+            ? '0' + hex
+            : hex;
     }
 
     var hex = '#' + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
@@ -291,7 +296,9 @@ function defineColor(name, hueRange, lowerBounds) {
     colorDictionary[name] = {
         hueRange: hueRange,
         lowerBounds: lowerBounds,
-        saturationRange: [sMin, sMax],
+        saturationRange: [
+            sMin, sMax
+        ],
         brightnessRange: [bMin, bMax]
     };
 
@@ -299,53 +306,204 @@ function defineColor(name, hueRange, lowerBounds) {
 
 function loadColorBounds() {
 
-    defineColor(
-        'monochrome',
-        null,
-        [[0, 0], [100, 0]]
-    );
+    defineColor('monochrome', null, [
+        [
+            0, 0
+        ],
+        [100, 0]
+    ]);
 
-    defineColor(
-        'red',
-        [-26, 18],
-        [[20, 100], [30, 92], [40, 89], [50, 85], [60, 78], [70, 70], [80, 60], [90, 55], [100, 50]]
-    );
+    defineColor('red', [
+        -26, 18
+    ], [
+        [
+            20, 100
+        ],
+        [
+            30, 92
+        ],
+        [
+            40, 89
+        ],
+        [
+            50, 85
+        ],
+        [
+            60, 78
+        ],
+        [
+            70, 70
+        ],
+        [
+            80, 60
+        ],
+        [
+            90, 55
+        ],
+        [100, 50]
+    ]);
 
-    defineColor(
-        'orange',
-        [19, 46],
-        [[20, 100], [30, 93], [40, 88], [50, 86], [60, 85], [70, 70], [100, 70]]
-    );
+    defineColor('orange', [
+        19, 46
+    ], [
+        [
+            20, 100
+        ],
+        [
+            30, 93
+        ],
+        [
+            40, 88
+        ],
+        [
+            50, 86
+        ],
+        [
+            60, 85
+        ],
+        [
+            70, 70
+        ],
+        [100, 70]
+    ]);
 
-    defineColor(
-        'yellow',
-        [47, 62],
-        [[25, 100], [40, 94], [50, 89], [60, 86], [70, 84], [80, 82], [90, 80], [100, 75]]
-    );
+    defineColor('yellow', [
+        47, 62
+    ], [
+        [
+            25, 100
+        ],
+        [
+            40, 94
+        ],
+        [
+            50, 89
+        ],
+        [
+            60, 86
+        ],
+        [
+            70, 84
+        ],
+        [
+            80, 82
+        ],
+        [
+            90, 80
+        ],
+        [100, 75]
+    ]);
 
-    defineColor(
-        'green',
-        [63, 178],
-        [[30, 100], [40, 90], [50, 85], [60, 81], [70, 74], [80, 64], [90, 50], [100, 40]]
-    );
+    defineColor('green', [
+        63, 178
+    ], [
+        [
+            30, 100
+        ],
+        [
+            40, 90
+        ],
+        [
+            50, 85
+        ],
+        [
+            60, 81
+        ],
+        [
+            70, 74
+        ],
+        [
+            80, 64
+        ],
+        [
+            90, 50
+        ],
+        [100, 40]
+    ]);
 
-    defineColor(
-        'blue',
-        [179, 257],
-        [[20, 100], [30, 86], [40, 80], [50, 74], [60, 60], [70, 52], [80, 44], [90, 39], [100, 35]]
-    );
+    defineColor('blue', [
+        179, 257
+    ], [
+        [
+            20, 100
+        ],
+        [
+            30, 86
+        ],
+        [
+            40, 80
+        ],
+        [
+            50, 74
+        ],
+        [
+            60, 60
+        ],
+        [
+            70, 52
+        ],
+        [
+            80, 44
+        ],
+        [
+            90, 39
+        ],
+        [100, 35]
+    ]);
 
-    defineColor(
-        'purple',
-        [258, 282],
-        [[20, 100], [30, 87], [40, 79], [50, 70], [60, 65], [70, 59], [80, 52], [90, 45], [100, 42]]
-    );
+    defineColor('purple', [
+        258, 282
+    ], [
+        [
+            20, 100
+        ],
+        [
+            30, 87
+        ],
+        [
+            40, 79
+        ],
+        [
+            50, 70
+        ],
+        [
+            60, 65
+        ],
+        [
+            70, 59
+        ],
+        [
+            80, 52
+        ],
+        [
+            90, 45
+        ],
+        [100, 42]
+    ]);
 
-    defineColor(
-        'pink',
-        [283, 334],
-        [[20, 100], [30, 90], [40, 86], [60, 84], [80, 80], [90, 75], [100, 73]]
-    );
+    defineColor('pink', [
+        283, 334
+    ], [
+        [
+            20, 100
+        ],
+        [
+            30, 90
+        ],
+        [
+            40, 86
+        ],
+        [
+            60, 84
+        ],
+        [
+            80, 80
+        ],
+        [
+            90, 75
+        ],
+        [100, 73]
+    ]);
 
 }
 
@@ -408,7 +566,11 @@ function HSVtoRGB(hsv) {
             break;
     }
 
-    let result = [Math.floor(r * 255), Math.floor(g * 255), Math.floor(b * 255)];
+    let result = [
+        Math.floor(r * 255),
+        Math.floor(g * 255),
+        Math.floor(b * 255)
+    ];
     return result;
 }
 
@@ -420,7 +582,9 @@ function HSVtoHSL(hsv) {
 
     return [
         h,
-        Math.round(s * v / (k < 1 ? k : 2 - k) * 10000) / 100,
+        Math.round(s * v / (k < 1
+            ? k
+            : 2 - k) * 10000) / 100,
         k / 2 * 100
     ];
 }
@@ -428,7 +592,8 @@ function HSVtoHSL(hsv) {
 function stringToInteger(string) {
     let total = 0;
     for (let i = 0; i !== string.length; i++) {
-        if (total >= Number.MAX_SAFE_INTEGER) break;
+        if (total >= Number.MAX_SAFE_INTEGER)
+            break;
         total += string.charCodeAt(i)
     }
     return total

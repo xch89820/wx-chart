@@ -6,20 +6,33 @@ const ObjProto = Object.prototype;
 // IS function, check variable's type
 export let is = {};
 
-['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error', 'Symbol', 'Map', 'WeakMap', 'Set', 'WeakSet'].forEach(function (name) {
-    is[name] = function (obj) {
+[
+    'Arguments',
+    'Function',
+    'String',
+    'Number',
+    'Date',
+    'RegExp',
+    'Error',
+    'Symbol',
+    'Map',
+    'WeakMap',
+    'Set',
+    'WeakSet'
+].forEach(function(name) {
+    is[name] = function(obj) {
         return ObjProto.toString.call(obj) === '[object ' + name + ']';
     };
 });
 
 // Is a given value an array?
 // Delegates to ECMA5's native Array.isArray
-is['Array'] = Array.isArray || function (obj) {
-        return ObjProto.toString.call(obj) === '[object Array]';
-    };
+is['Array'] = Array.isArray || function(obj) {
+    return ObjProto.toString.call(obj) === '[object Array]';
+};
 
 // Is a given variable an object?
-is['Object'] = function (obj) {
+is['Object'] = function(obj) {
     let type = typeof obj;
     return type === 'function' || type === 'object' && !!obj;
 };
@@ -28,25 +41,26 @@ let class2type = {};
 let toString = class2type.toString;
 let hasOwn = class2type.hasOwnProperty;
 let fnToString = hasOwn.toString;
-let ObjectFunctionString = fnToString.call( Object );
+let ObjectFunctionString = fnToString.call(Object);
 // Is a given variable an object?
 is['PureObject'] = function(obj) {
-    let proto, Ctor;
+    let proto,
+        Ctor;
 
     // Detect obvious negatives
     // Use toString instead of jQuery.type to catch host objects
-    if ( !obj || ObjProto.toString.call( obj ) !== "[object Object]" ) {
+    if (!obj || ObjProto.toString.call(obj) !== "[object Object]") {
         return false;
     }
 
-    proto = Object.getPrototypeOf( obj );
+    proto = Object.getPrototypeOf(obj);
     // Objects with no prototype (e.g., `Object.create( null )`) are plain
-    if ( !proto ) {
+    if (!proto) {
         return true;
     }
     // Objects with prototype are plain iff they were constructed by a global Object function
-    Ctor = hasOwn.call( proto, "constructor" ) && proto.constructor;
-    return typeof Ctor === "function" && fnToString.call( Ctor ) === ObjectFunctionString;
+    Ctor = hasOwn.call(proto, "constructor") && proto.constructor;
+    return typeof Ctor === "function" && fnToString.call(Ctor) === ObjectFunctionString;
 };
 
 is['Boolean'] = function(obj) {
@@ -65,7 +79,7 @@ is['Undefined'] = function(obj) {
 
 // Is the given value `NaN`? (NaN is the only number which does not equal itself).
 is['NaN'] = function(obj) {
-    return is.Number(obj) && obj !== +obj;
+    return is.Number(obj) && obj !== + obj;
 };
 
 // Some helper function
@@ -85,26 +99,38 @@ export const REG_ALPHABET_NUMBER = /[0-9a-zA-Z]/;
 
 // Assign function generator
 function _assignGenerator(own) {
-    let _copy = function (target, ...source) {
+    let _copy = function(target, ...source) {
         let deep = true;
         if (is.Boolean(target)) {
             deep = target;
-            target = 0 in source ? source.shift() : null;
+            target = 0 in source
+                ? source.shift()
+                : null;
         }
 
         if (is.Array(target)) {
-            source.forEach( sc => {
+            source.forEach(sc => {
                 target.push(...sc);
             });
         } else if (is.Object(target)) {
-            source.forEach( sc => {
+            source.forEach(sc => {
                 for (let key in sc) {
-                    if (own && !sc.hasOwnProperty(key)) continue;
-                    let so = sc[key], to = target[key];
+                    if (own && !sc.hasOwnProperty(key))
+                        continue;
+                    let so = sc[key],
+                        to = target[key];
                     if (is.PureObject(so)) {
-                        target[key] = deep? extend(true, is.PureObject(to) ? to : {} , so) : so;
+                        target[key] = deep
+                            ? extend(true, is.PureObject(to)
+                                ? to
+                                : {}, so)
+                            : so;
                     } else if (is.Array(so)) {
-                        target[key] = deep? extend(true, is.Array(to) ? to : [], so) : so;
+                        target[key] = deep
+                            ? extend(true, is.Array(to)
+                                ? to
+                                : [], so)
+                            : so;
                     } else {
                         target[key] = so;
                     }
@@ -142,19 +168,19 @@ const rpxReg = /([\d.]+)rpx/,
     remReg = /([\d.]+)rem/;
 export function wxConverToPx(val) {
     if (!isWeiXinAPP) {
-	    return Number.parseInt(val);
+        return Number.parseInt(val);
     }
 
     let windowSize = getWindowSize();
     if (is.String(val)) {
         let m = val.match(rpxReg);
         if (!!m) {
-            return +m[1] * windowSize.windowWidth / 750;
+            return + m[1] * windowSize.windowWidth / 750;
         }
 
         m = val.match(remReg);
         if (!!m) {
-            return +m[1] * windowSize.windowWidth / 20;
+            return + m[1] * windowSize.windowWidth / 20;
         }
 
         return Number.parseInt(val);
@@ -176,7 +202,8 @@ export function toDegrees(radians) {
  * @returns {*}
  */
 export function getWindowSize() {
-    let windowHeight, windowWidth;
+    let windowHeight,
+        windowWidth;
     if (isWeiXinAPP) {
         let ret = wx.getSystemInfoSync();
         windowWidth = ret.windowWidth;
@@ -200,9 +227,9 @@ export function getDPR() {
     }
 };
 
-export let uid = (function () {
+export let uid = (function() {
     let id = 0;
-    return function () {
+    return function() {
         id++;
         return 'u' + id;
     };
@@ -246,9 +273,13 @@ export function splineCurve(firstPoint, middlePoint, afterPoint, t = 0.4) {
 
     // This function must also respect "skipped" points
 
-    let previous = !firstPoint ? middlePoint : firstPoint,
+    let previous = !firstPoint
+            ? middlePoint
+            : firstPoint,
         current = middlePoint,
-        next = !afterPoint ? middlePoint : afterPoint;
+        next = !afterPoint
+            ? middlePoint
+            : afterPoint;
 
     let d01 = Math.sqrt(Math.pow(current.x - previous.x, 2) + Math.pow(current.y - previous.y, 2));
     let d12 = Math.sqrt(Math.pow(next.x - current.x, 2) + Math.pow(next.y - current.y, 2));
@@ -257,8 +288,12 @@ export function splineCurve(firstPoint, middlePoint, afterPoint, t = 0.4) {
     let s12 = d12 / (d01 + d12);
 
     // If all points are the same, s01 & s02 will be inf
-    s01 = isNaN(s01) ? 0 : s01;
-    s12 = isNaN(s12) ? 0 : s12;
+    s01 = isNaN(s01)
+        ? 0
+        : s01;
+    s12 = isNaN(s12)
+        ? 0
+        : s12;
 
     let fa = t * s01; // scaling factor for triangle Ta
     let fb = t * s12;
@@ -280,9 +315,9 @@ export function splineCurve(firstPoint, middlePoint, afterPoint, t = 0.4) {
  * @param element
  */
 export function getStyle(element, property) {
-    return element.currentStyle ?
-        element.currentStyle[property] :
-        document.defaultView.getComputedStyle(element, null).getPropertyValue(property);
+    return element.currentStyle
+        ? element.currentStyle[property]
+        : document.defaultView.getComputedStyle(element, null).getPropertyValue(property);
 }
 /**
  * The 'used' size is the final value of a dimension property after all calculations have
@@ -298,7 +333,9 @@ export function getStyle(element, property) {
 export function readUsedSize(element, property) {
     let value = getStyle(element, property);
     let matches = value && value.match(/(\d+)px/);
-    return matches ? Number(matches[1]) : undefined;
+    return matches
+        ? Number(matches[1])
+        : undefined;
 }
 /**
  * For retina screen

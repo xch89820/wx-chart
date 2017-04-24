@@ -3,20 +3,20 @@
 
 import WxChart from './base'
 import {extend, is} from '../util/helper'
-import { BoxInstance } from './layout';
+import {BoxInstance} from './layout';
 import WxBaseComponent from './base';
 
 // Legend default config
 const WX_TITLE_DEFAULT_CONFIG = {
-    'display': true,
-    'position': 'top', // top, bottom
-    'fullWidth': true, // if the fullWidth is false, the 'width' property should be existed.
-    'fontSize': 20,
-    'fontColor': "#666",
-    'padding': 10
+    display: true,
+    position: 'top', // top, bottom
+    fullWidth: true, // if the fullWidth is false, the 'width' property should be existed.
+    fontSize: 20,
+    fontColor: '#666',
+    padding: 10
 };
 
-export default class WxTitle extends WxBaseComponent{
+export default class WxTitle extends WxBaseComponent {
     constructor(wxChart, config) {
         super(wxChart, config);
         this.config = extend(true, {}, WX_TITLE_DEFAULT_CONFIG, config);
@@ -32,7 +32,9 @@ export default class WxTitle extends WxBaseComponent{
         let me = this;
         let config = me.config;
 
-        text = text ? text : config.text;
+        text = text
+            ? text
+            : config.text;
         if (is.Undefined(text) || is.Null(text)) {
             throw new Error('Text is null');
         }
@@ -45,26 +47,49 @@ export default class WxTitle extends WxBaseComponent{
         let me = this;
         let wxChart = me.wxChart,
             ctx = wxChart.ctx,
-            fontSize = config.fontSize||20;
-        let x = area.x, y = area.y;
+            fontSize = config.fontSize || 20;
+        let x = area.x,
+            y = area.y;
         let padding = config.padding || 10;
 
-        let width = !!config.fullWidth ? (area.width - padding * 2) : config.width,
-            outerWidth = !!config.fullWidth ? area.width : config.width,
+        let width = !!config.fullWidth
+                ? (area.width - padding * 2)
+                : config.width,
+            outerWidth = !!config.fullWidth
+                ? area.width
+                : config.width,
             height = fontSize,
             outerHeight = height + padding * 2;
 
         if (config.position == 'bottom') {
             y = area.ry - outerHeight;
-            y = y < area.y ? area.y : y;
+            y = y < area.y
+                ? area.y
+                : y;
         }
 
-        return new BoxInstance({position: config.position, x, y, width, height, outerWidth, outerHeight});
+        return new BoxInstance({
+            position: config.position,
+            x,
+            y,
+            width,
+            height,
+            outerWidth,
+            outerHeight
+        });
     }
 
     draw(text = this.config.text, box = this.box, config = this.config) {
-        let me = this, ctx = me.wxChart.ctx;
-        let {x, y, width, outerWidth, height, outerHeight} = box;
+        let me = this,
+            ctx = me.wxChart.ctx;
+        let {
+            x,
+            y,
+            width,
+            outerWidth,
+            height,
+            outerHeight
+        } = box;
 
         if (is.Undefined(text) || is.Null(text)) {
             throw new Error('Text is null');

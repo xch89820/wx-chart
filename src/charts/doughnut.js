@@ -4,33 +4,36 @@
 import WxCanvas from '../util/wxCanvas';
 import WxChart from './wxChart';
 import WxTitle from '../core/title';
-import WxLayout, { BoxInstance } from '../core/layout';
+import WxLayout, {BoxInstance} from '../core/layout';
 import WxLegend from '../core/legend';
 import randomColor from '../util/randomColor';
-import {extend, is} from '../util/helper'
+import {extend, is} from '../util/helper';
 
 // Doughut default config
 const WX_DOUGHUT_DEFAULT_CONFIG = {
     // The percentage of the chart that we cut out of the middle.
-    'cutoutPercentage': 50,
+    cutoutPercentage: 50,
 
     // The rotation of the chart, where the first data arc begins.
-    'rotation': Math.PI * -0.5,
+    rotation: Math.PI * -0.5,
 
     // The randomColor scheme
     // See https://github.com/davidmerfield/randomColor
-    'color': {hue: 'red', luminosity: 'light'},
+    color: {
+        hue: 'red',
+        luminosity: 'light'
+    },
 
     // The title text or a title config object
-    'title': undefined,
+    title: undefined,
 
     // The borderWidth
-    'borderWidth': 2,
+    borderWidth: 2,
 
     // Chart padding, default auto set
-    'padding': undefined,
+    padding: undefined,
 
-    'labelDistancePercentage': 0.15,
+    labelDistancePercentage: 0.15
 };
 
 /**
@@ -43,8 +46,8 @@ const WX_DOUGHUT_DEFAULT_CONFIG = {
  * legend: [Object] legend options
  */
 const WX_DOUGHUT_ITEM_DEFAULT_CONFIG = {
-    'display': true,
-    'percentage': 100
+    display: true,
+    percentage: 100
 };
 
 export default class WxDoughnut extends WxChart {
@@ -72,8 +75,12 @@ export default class WxDoughnut extends WxChart {
         me.title = null;
         // Initialize title and legend
         if (me.chartConfig.title) {
-            me.title = new WxTitle(me, is.PureObject(me.chartConfig.title) ? me.chartConfig.title : null);
-            me.titleText = is.String(me.chartConfig.title) ? me.chartConfig.title : me.chartConfig.title.text;
+            me.title = new WxTitle(me, is.PureObject(me.chartConfig.title)
+                ? me.chartConfig.title
+                : null);
+            me.titleText = is.String(me.chartConfig.title)
+                ? me.chartConfig.title
+                : me.chartConfig.title.text;
         }
 
         me.legend = new WxLegend(me, me.chartConfig.legendOptions);
@@ -103,71 +110,100 @@ export default class WxDoughnut extends WxChart {
      * Draw chart
      */
     draw() {
-        let box, me = this,
+        let box,
+            me = this,
             wxLayout = me.wxLayout;
-        let { cutoutPercentage, rotation, color, title, borderWidth, padding } = me.chartConfig;
+        let {
+            cutoutPercentage,
+            rotation,
+            color,
+            title,
+            borderWidth,
+            padding
+        } = me.chartConfig;
 
         box = wxLayout.adjustBox();
         // First, we draw title
         if (me.title) {
-           me.title.update(me.titleText, box);
-           wxLayout.addBox(me.title.box);
+            me.title.update(me.titleText, box);
+            wxLayout.addBox(me.title.box);
         }
 
         box = wxLayout.adjustBox();
         // Second, random color and get legend datasets
-        let rColors = randomColor(
-            extend(true, {}, color, {count: me.visDatasets.length})
-        );
-        let rBorderColor = randomColor({hue: color.hue || 'black', luminosity: 'dark', count: 1});
+        let rColors = randomColor(extend(true, {}, color, {count: me.visDatasets.length}));
+        let rBorderColor = randomColor({
+            hue: color.hue || 'black',
+            luminosity: 'dark',
+            count: 1
+        });
         let legendDatasets = [];
-        me.visDatasets.forEach(function(dataset, index){
+        me.visDatasets.forEach(function(dataset, index) {
             if (!dataset.color) {
                 dataset.color = rColors[index];
             }
             if (!dataset.borderColor) {
-                dataset.borderColor = me.config.backgroundColor||"#ffffff";
+                dataset.borderColor = me.config.backgroundColor || "#ffffff";
             }
 
             let legend = dataset.legend;
             if (!legend || is.String(legend)) {
                 legendDatasets.push({
                     hidden: dataset.hidden || false,
-                    text: is.String(legend) ? legend: dataset.label,
+                    text: is.String(legend)
+                        ? legend
+                        : dataset.label,
                     fillStyle: dataset.color,
                     strokeStyle: rBorderColor[0]
                 });
-            } else if (is.PureObject(legend)){
-                legendDatasets.push(
-                    extend({hidden: dataset.hidden}, legend)
-                );
+            } else if (is.PureObject(legend)) {
+                legendDatasets.push(extend({
+                    hidden: dataset.hidden
+                }, legend));
             }
         });
         me.legend.update(legendDatasets, box);
         wxLayout.addBox(me.legend.box);
 
-
         box = wxLayout.adjustBox();
-        padding = padding || box.width*0.1;
+        padding = padding || box.width * 0.1;
         box.width -= padding;
         box.height -= padding;
         me.box = box;
 
-        let { x, y, width, height, outerWidth, outerHeight } = box;
+        let {
+            x,
+            y,
+            width,
+            height,
+            outerWidth,
+            outerHeight
+        } = box;
         let minSize = Math.min(width, height);
-        let outerRadius = Math.max((minSize - borderWidth*2) / 2, 0);
-        let innerRadius = cutoutPercentage ? (outerRadius/100)*cutoutPercentage : 0,
-            innerRadiusColor = me.config.backgroundColor||"#ffffff";
+        let outerRadius = Math.max((minSize - borderWidth * 2) / 2, 0);
+        let innerRadius = cutoutPercentage
+                ? (outerRadius / 100) * cutoutPercentage
+                : 0,
+            innerRadiusColor = me.config.backgroundColor || "#ffffff";
         let totalValue = me.calculateTotal();
         let pointX = x + (outerWidth / 2),
             pointY = y + (outerHeight / 2);
 
         let drawAngle = rotation;
         me.initAvoidCollision();
-        me.visDatasets.forEach(function(dataset, index){
+        me.visDatasets.forEach(function(dataset, index) {
             let startAngle = drawAngle,
                 endAngle = startAngle + (Math.PI * 2.0) * (dataset.value / totalValue);
-            let opt = {pointX, pointY, startAngle, endAngle, innerRadius, outerRadius, totalValue, borderWidth};
+            let opt = {
+                pointX,
+                pointY,
+                startAngle,
+                endAngle,
+                innerRadius,
+                outerRadius,
+                totalValue,
+                borderWidth
+            };
             me.drawData(dataset, opt);
             me.drawLabel(dataset, opt);
 
@@ -177,10 +213,27 @@ export default class WxDoughnut extends WxChart {
     }
 
     drawData(dataset, options) {
-        let me = this, ctx = me.ctx;
-        let { pointX, pointY, startAngle, endAngle, outerRadius, innerRadius, totalValue, borderWidth } = options;
-        let { label, value, color, borderColor, percentage, hidden} = dataset;
-        let currentRadius = (outerRadius - innerRadius)/100 * percentage;
+        let me = this,
+            ctx = me.ctx;
+        let {
+            pointX,
+            pointY,
+            startAngle,
+            endAngle,
+            outerRadius,
+            innerRadius,
+            totalValue,
+            borderWidth
+        } = options;
+        let {
+            label,
+            value,
+            color,
+            borderColor,
+            percentage,
+            hidden
+        } = dataset;
+        let currentRadius = (outerRadius - innerRadius) / 100 * percentage;
 
         if (!!hidden) {
             return endAngle;
@@ -209,17 +262,37 @@ export default class WxDoughnut extends WxChart {
     };
 
     drawLabel(dataset, options) {
-        let me = this, ctx = me.ctx;
-        let labelDistancePercentage = me.chartConfig.labelDistancePercentage||0.2;
-        let { pointX, pointY, startAngle, endAngle, outerRadius, innerRadius, totalValue, borderWidth } = options;
-        let { label, value, color, borderColor, percentage, format, hidden} = dataset;
-        let currentRadius = (outerRadius - innerRadius)/100 * percentage;
-        label = is.Function(format) ? format.call(me, label, value, totalValue, currentRadius, dataset, options) : label;
+        let me = this,
+            ctx = me.ctx;
+        let labelDistancePercentage = me.chartConfig.labelDistancePercentage || 0.2;
+        let {
+            pointX,
+            pointY,
+            startAngle,
+            endAngle,
+            outerRadius,
+            innerRadius,
+            totalValue,
+            borderWidth
+        } = options;
+        let {
+            label,
+            value,
+            color,
+            borderColor,
+            percentage,
+            format,
+            hidden
+        } = dataset;
+        let currentRadius = (outerRadius - innerRadius) / 100 * percentage;
+        label = is.Function(format)
+            ? format.call(me, label, value, totalValue, currentRadius, dataset, options)
+            : label;
 
         if (!!hidden) {
             return;
         }
-        let centerAngle = startAngle + (endAngle - startAngle)/2;
+        let centerAngle = startAngle + (endAngle - startAngle) / 2;
 
         // Line start point
         let startX = Math.cos(centerAngle) * currentRadius + pointX;
@@ -232,14 +305,25 @@ export default class WxDoughnut extends WxChart {
         let turnY = Math.sin(centerAngle) * turnRadius + pointY;
 
         // Avoid Collision
-        let adjustPoint = me.avoidCollision({x:turnX, y:turnY}, {x:pointX,y:pointY});
+        let adjustPoint = me.avoidCollision({
+            x: turnX,
+            y: turnY
+        }, {
+            x: pointX,
+            y: pointY
+        });
         turnX = adjustPoint.x;
         turnY = adjustPoint.y;
 
         let textLen = ctx.measureText(label).width;
-        let endX = turnX + ((turnX-pointX)>0 ? offsetRadius: -offsetRadius), endY = turnY;
-        let textX = turnX-pointX > 0 ? endX + 4 : endX - 4 - textLen,
-            textY = endY + ctx.fontSize/2;
+        let endX = turnX + ((turnX - pointX) > 0
+                ? offsetRadius
+                : -offsetRadius),
+            endY = turnY;
+        let textX = turnX - pointX > 0
+                ? endX + 4
+                : endX - 4 - textLen,
+            textY = endY + ctx.fontSize / 2;
 
         ctx.save();
         ctx.beginPath();
@@ -258,14 +342,20 @@ export default class WxDoughnut extends WxChart {
     initAvoidCollision() {
         this._lastPoint = null;
     }
-    avoidCollision(newPoint, centerPoint, avoidUnit = this.ctx.fontSize + 4){
-        let me = this, box = me.box;
-        let cpx = centerPoint.x, cpy = centerPoint.y;
+    avoidCollision(newPoint, centerPoint, avoidUnit = this.ctx.fontSize + 4) {
+        let me = this,
+            box = me.box;
+        let cpx = centerPoint.x,
+            cpy = centerPoint.y;
         if (me._lastPoint) {
-            let lpx = me._lastPoint.x, lpy = me._lastPoint.y;
-            let npx = newPoint.x, npy = newPoint.y;
-            if ((npx-cpx) * (lpx-cpx) > 0 && Math.abs(lpy - npy) < avoidUnit) {
-                let ny = (npx-cpx) > 0 ? lpy + avoidUnit : lpy - avoidUnit;
+            let lpx = me._lastPoint.x,
+                lpy = me._lastPoint.y;
+            let npx = newPoint.x,
+                npy = newPoint.y;
+            if ((npx - cpx) * (lpx - cpx) > 0 && Math.abs(lpy - npy) < avoidUnit) {
+                let ny = (npx - cpx) > 0
+                    ? lpy + avoidUnit
+                    : lpy - avoidUnit;
                 newPoint.y = ny;
             }
         }

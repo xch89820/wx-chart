@@ -4,10 +4,7 @@ export class EmitEvent {
     on(name, callback, ctx) {
         let e = this.e || (this.e = {});
 
-        (e[name] || (e[name] = [])).push({
-            fn: callback,
-            ctx: ctx
-        });
+        (e[name] || (e[name] = [])).push({fn: callback, ctx: ctx});
 
         return this;
     }
@@ -46,8 +43,8 @@ export class EmitEvent {
             for (let i = 0, len = evts.length; i < len; i++) {
                 if (evts[i].fn !== callback && evts[i].fn._ !== callback)
                     liveEvents.push(evts[i]);
+                }
             }
-        }
 
         // Remove event from queue to prevent memory leak
         // Suggested by https://github.com/lazd
