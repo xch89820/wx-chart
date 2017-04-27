@@ -186,7 +186,7 @@ export default class WxBar extends WxChart {
      * @param {Object} datasets - data sets
      * @param {string} [datasets[].display] - Disaply the bar or not
      * @param {string} [datasets[].borderWidth=2] - Bar's border width
-     * @param {string} [datasets[].strokeStyle=2] - Bar's border color
+     * @param {string} [datasets[].strokeStyle] - Bar's border color
      * @param {number} [datasets[].fillArea=true] - Fill color or not
      * @param {number} [datasets[].fillAlpha=0.6] - Fill color Alpha
      * @param {number} [datasets[].fillStyle] - Fill color. The default color will randomly assigned by 'color' option.
@@ -237,7 +237,39 @@ export default class WxBar extends WxChart {
         me._drawScale();
 
         // Finally, draw bar
-        
+        let barConfigs = me.legends.map(function(legend) {
+            let config = {
+                legend: legend
+            };
+            let key = legend.key;
+            // config.dataset = me.visDatasets.map(data => {return {value: data[key], data: data}});
+            config.dataset = me.visDatasets.map((data, index) => {
+                let value = data[key],
+                    point;
+
+                if (value) {
+                    let xAxisPoint = me.xAxis.getPoint(index);
+                    let yAxisPoint = me.yAxis.getPoint(value);
+                    point = {
+                        x: xAxisPoint.x,
+                        y: yAxisPoint.y
+                    };
+                }
+
+                return {value, point, data};
+            });
+            return config;
+        });
+
+        barConfigs.forEach(line => me._drawLine(line));
+    }
+
+    /**
+     * Calculate the bar width
+     */
+    calculateBarPixel(legends, pointPercentage) {
+        let legends = me.legends;
+
     }
 
     /**

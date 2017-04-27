@@ -222,7 +222,7 @@ export default class WxLiner extends WxChart {
 
         me.legends = me.legends.map(function(legend, index) {
             if (!legend.strokeStyle) {
-                legend.strokeStyle = me.chartConfig.backgroundColor || legend.borderColor || "#ffffff";
+                legend.strokeStyle = me.chartConfig.backgroundColor || legend.borderColor || rColors[index];
             }
 
             return extend(true, {

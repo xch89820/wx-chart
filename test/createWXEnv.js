@@ -78,7 +78,8 @@ export function createWXEnv() {
 }
 
 export let initCanvasElement = function(height = 500, width = 800) {
-    let canvasHTML = '<canvas id="myCanvas" canvas-id="myCanvas" style="width:' + width + 'px; height:' + height + 'px; border: 1px solid #ffffff;"/>';
+    let canvasHTML = `<canvas id="myCanvas" canvas-id="myCanvas" width="${width}px" height="${height}px" style="width:${width}px; height:${height}px; border: 1px solid #ffffff;"/>`;
+    console.log(canvasHTML);
     document.body.insertAdjacentHTML(
         'afterbegin',
         canvasHTML
