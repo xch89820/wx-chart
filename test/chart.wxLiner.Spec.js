@@ -66,7 +66,7 @@ describe('WxLiner component test', () => {
         });
 
         wxLiner.update([{
-            test1: 1,
+            test1: 10,
             test2: 20,
             label: '一月'
         }, {
@@ -89,7 +89,7 @@ describe('WxLiner component test', () => {
     });
 
     afterEach(() => {
-        // wxLiner.destroy();
-        // destoryCanvasElement();
+        wxLiner.destroy();
+        destoryCanvasElement();
     });
 });

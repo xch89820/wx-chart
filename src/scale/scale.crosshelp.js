@@ -6,6 +6,7 @@ import WxLayout, {BoxInstance} from '../core/layout'
 import {extend, is, niceNum, almostEquals} from '../util/helper'
 
 const WX_CROSSSCALE_CONFIG = {
+    xMargin: undefined, // undefined, a number or a function
     xFirstPointSpace: 'auto', // The interval of fixed-point distance y-Axix
 };
 /**
@@ -34,7 +35,7 @@ export default class WxCrossScale {
      * Draw a cross scale
      */
     draw(area, xScaleDatasets, yScaleDatasets) {
-        let me = this, {xFirstPointSpace} = me.config;
+        let me = this, {xMargin, xFirstPointSpace} = me.config;
 
         me.yScale.init(yScaleDatasets);
         let yBox = me.yScale.calculateBox(area, yScaleDatasets);
@@ -48,7 +49,7 @@ export default class WxCrossScale {
 
         // Adjust X-BOX
         let xMWidth = yBox.outerWidth - yBox.marginLR - me.yScale.lineSpace;
-        let xOffset = xMWidth - me.xScale.fixPadding / 2 - (me.xScale.config.ticks.lineWidth || 1);
+        let xOffset = xMWidth - me.xScale.fixPadding / 2;
         let xExtendLeft;
         if (xFirstPointSpace === 'auto') {
             xExtendLeft = me.xScale.config.extendLeft || Math.min(xBox.width / 10, me.xScale.calculateTickWidth(xScaleDatasets, xBox) / xScaleDatasets.length);
@@ -56,13 +57,24 @@ export default class WxCrossScale {
             // Zero y-space; The first point of Y will overlap the last point of X, so remove the last point of X
             yScaleDatasets[yScaleDatasets.length - 1].text = '';
             xExtendLeft = 0;
+        } else if (is.Function(xFirstPointSpace)) {
+            xExtendLeft = xFirstPointSpace(xBox, yBox, area, me.xScale, me.yScale, xScaleDatasets, yScaleDatasets);
         } else {
             xExtendLeft = parseFloat(xFirstPointSpace);
+        }
+        if (xExtendLeft) {
+            xOffset -= (me.xScale.config.ticks.lineWidth || 1);
         }
         xOffset += xExtendLeft;
 
         let xAxisXPoint = area.x + xOffset;
-        let calXbox = new BoxInstance(xBox.position, xAxisXPoint, xBox.y, xBox.width - xOffset, xBox.height, xBox.outerWidth - xOffset, xBox.outerHeight);
+        if (is.Function(xMargin)) {
+            xMargin = xMargin(xBox, yBox, area, me.xScale, me.yScale, xScaleDatasets, yScaleDatasets);
+        } else if (!xMargin || !is.Number(xMargin)) {
+            xMargin = 0;
+        }
+
+        let calXbox = new BoxInstance(xBox.position, xAxisXPoint, xBox.y, xBox.width - xOffset - xMargin, xBox.height, xBox.outerWidth - xOffset, xBox.outerHeight);
 
         me.yScale.setBox(yBox, false);
         me.yScale.update(yScaleDatasets);

@@ -47,6 +47,7 @@ const WX_DOUGHUT_DEFAULT_CONFIG = {
  */
 const WX_DOUGHUT_ITEM_DEFAULT_CONFIG = {
     display: true,
+    fontSize: 10,
     percentage: 100
 };
 
@@ -280,6 +281,7 @@ export default class WxDoughnut extends WxChart {
             value,
             color,
             borderColor,
+            fontSize,
             percentage,
             format,
             hidden
@@ -330,6 +332,8 @@ export default class WxDoughnut extends WxChart {
         ctx.lineWidth = 1;
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
+        ctx.fontSize = fontSize;
+        ctx.fontSize =
         ctx.moveTo(startX, startY);
         ctx.lineTo(turnX, turnY);
         ctx.lineTo(endX, endY);

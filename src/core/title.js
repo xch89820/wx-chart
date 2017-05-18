@@ -12,7 +12,7 @@ const WX_TITLE_DEFAULT_CONFIG = {
     position: 'top', // top, bottom
     fullWidth: true, // if the fullWidth is false, the 'width' property should be existed.
     fontSize: 20,
-    fontColor: '#666',
+    fontColor: '#666666',
     padding: 10
 };
 

@@ -27,6 +27,7 @@ const WX_SCALE_DEFAULT_CONFIG = {
     titleFontColor: '#cccccc',
     //'lineSpace' = fontSize * 0.5'
     color: '#000000', // Line color
+    lineWidth: 1,
 
     gridLines: {
         display: true,
@@ -39,7 +40,7 @@ const WX_SCALE_DEFAULT_CONFIG = {
         autoSkip: true,
         lineWidth: 1,
         fontColor: '#000000',
-        //'fontSize': 10,
+        fontSize: 10,
         minRotation: 0,
         maxRotation: 90
 
@@ -436,6 +437,7 @@ export default class WxScale extends WxBaseComponent {
         let {x: currX, y: currY, x: baseX, y: baseY} = me.getTicksPosition(-1, tickWidth);
         ctx.save();
         ctx.fillStyle = tickConfig.fontColor;
+        ctx.fontSize = tickConfig.fontSize;
         ctx.lineWidth = tickConfig.lineWidth;
         let titleWidth = me.calculateTitleWidth();
 
@@ -462,7 +464,7 @@ export default class WxScale extends WxBaseComponent {
             }
 
             ctx.fillStyle = tickConfig.fontColor;
-            ctx.lineWidth = tickConfig.lineWidth;
+            ctx.lineWidth = config.lineWidth;
             // draw axis line
             ctx.beginPath();
             ctx.moveTo(baseX, currY);
@@ -513,7 +515,7 @@ export default class WxScale extends WxBaseComponent {
             }
 
             ctx.fillStyle = tickConfig.fontColor;
-            ctx.lineWidth = tickConfig.lineWidth;
+            ctx.lineWidth = config.lineWidth;
             // draw axis line
             ctx.beginPath();
             ctx.moveTo(currX, baseY + titleWidth);
@@ -522,5 +524,14 @@ export default class WxScale extends WxBaseComponent {
         }
         ctx.draw();
         ctx.restore();
+    }
+
+    // Empty interface
+    /**
+     * Get one point by a value
+     * @param {number} index - The index of category
+     */
+    getPoint(index) {
+        return null;
     }
 }

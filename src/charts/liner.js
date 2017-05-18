@@ -220,13 +220,13 @@ export default class WxLiner extends WxChart {
         box = wxLayout.adjustBox();
         let rColors = randomColor(extend(true, {}, color, {count: me.legends.length}));
 
-        me.legends = me.legends.map(function(legend, index) {
+        me.legends = me.legends.map(function (legend, index) {
             if (!legend.strokeStyle) {
                 legend.strokeStyle = me.chartConfig.backgroundColor || legend.borderColor || rColors[index];
             }
 
             return extend(true, {
-              fillStyle: rColors[index]
+                fillStyle: rColors[index]
             }, WX_LINE_LEGEND_DEFAULT_CONFIG, legend);
         });
         me.legend.update(me.legends, box);
@@ -236,7 +236,7 @@ export default class WxLiner extends WxChart {
         me._drawScale();
 
         // Finally, draw line
-        let lineConfigs = me.legends.map(function(legend) {
+        let lineConfigs = me.legends.map(function (legend) {
             let config = {
                 legend: legend
             };
@@ -311,7 +311,7 @@ export default class WxLiner extends WxChart {
         }
 
         ctx.save();
-        let lineToPoint = function(pre, p, next) {
+        let lineToPoint = function (pre, p, next) {
             if (!tension || tension === 0) {
                 ctx.lineTo(p.x, p.y);
             } else {
@@ -324,7 +324,7 @@ export default class WxLiner extends WxChart {
                 p.controlPoints = controlPoints;
             }
         };
-        let getNextPoint = function(dataset, index, spanGaps) {
+        let getNextPoint = function (dataset, index, spanGaps) {
             // The end
             if (index >= dataset.length - 1) {
                 return;
@@ -335,7 +335,7 @@ export default class WxLiner extends WxChart {
                     return getNextPoint(dataset, index + 1, spanGaps);
                 else
                     return;
-                }
+            }
             return nextDate.point;
         };
         // Draw fill area
@@ -343,7 +343,7 @@ export default class WxLiner extends WxChart {
             let firstPoint,
                 currPoint,
                 xAxisY = me.xAxis.getPoint(0).y;
-            let fillInHere = function() {
+            let fillInHere = function () {
                 ctx.globalAlpha = fillAlpha;
                 ctx.fill();
                 ctx.globalAlpha = 1;
@@ -449,7 +449,7 @@ export default class WxLiner extends WxChart {
         let yScaleItemOptions = me.chartConfig.yScaleItemOptions;
 
         // First, get all available values and calculate the max/min value
-        let {max, min} = this.datasets.reduce((pre, cur) => {
+        let {max, min} = this.visDatasets.reduce((pre, cur) => {
             let {max, min} = pre;
             if (cur.display) {
                 let curValue = me.legends.map((legend) => {

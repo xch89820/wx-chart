@@ -27,6 +27,7 @@ const WX_LEGEND_DEFAULT_CONFIG = {
 // Format
 // {
 //    text: 'Displayed Text String',
+//    fillAlpha: 1, // Global fill alpha
 //    fillStyle: 'Color', // Fill style of the legend box
 //    display: Boolean, // If true, this item represents a hidden datasets. Label will be rendered with a strike-through effect,
 //    strokeStyle: 'Color'
@@ -35,7 +36,7 @@ const WX_LEGEND_DEFAULT_CONFIG = {
 //    lineWidth: Number
 // }
 const WX_LEGEND_DEFAULT_ITEM_CONFIG = {
-    'lineWidth': 2,
+    'lineWidth': 1,
     'display': true
 };
 
@@ -244,6 +245,7 @@ export default class WxLegend extends WxBaseComponent {
                 text,
                 display,
                 fillStyle,
+                fillAlpha,
                 strokeStyle,
                 lineCap,
                 lineJoin,
@@ -269,6 +271,7 @@ export default class WxLegend extends WxBaseComponent {
             ctx.textBaseline = 'top';
             ctx.textAlign = 'start';
             ctx.fillStyle = fillStyle;
+            ctx.fontSize = fontSize;
             ctx.strokeStyle = strokeStyle;
             ctx.lineCap = lineCap;
             ctx.lineJoin = lineJoin;
@@ -284,7 +287,9 @@ export default class WxLegend extends WxBaseComponent {
             if (ctx.lineWidth != 0) {
                 ctx.strokeRect(currentX, currentY, boxWidth, boxHeight);
             }
+            ctx.globalAlpha = fillAlpha;
             ctx.fillRect(currentX, currentY, boxWidth, boxHeight);
+            ctx.globalAlpha = 1;
 
             // draw text
             currentX += boxWidth + (fontSize / 2);

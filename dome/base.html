@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>test</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+        <script type="text/javascript" src="../dist/wx-chart.js"></script>
+        <script type="text/javascript" src="./base.js"></script>
+        <style>
+            canvas {
+                -moz-user-select: none;
+                -webkit-user-select: none;
+                -ms-user-select: none;
+            }
+        </style>
+        <style>
+
+            .aside {
+                 width: 100px;
+                 height: 150px;
+                 float: left;
+                 background: #f66;
+             }
+            .aside2 {
+                width: 100px;
+                height: 150px;
+                float: right;
+                background: #f66;
+            }
+
+            .main {
+                height: 200px;
+                background: #fcc;
+                overflow: hidden;
+            }
+
+            header {
+                height: 50px;
+                overflow: hidden;
+                background: red;
+                margin-bottom: 10px;
+            }
+            aside {
+                width: 200px;
+                float: right;
+                height: 360px;
+                background: red;
+                margin: 0 0 0 10px;
+            }
+            article {
+                height: 300px;
+                overflow: hidden;
+                background: red;
+            }
+
+            @keyframes do {
+                0% {
+                    top:0;
+                    left:0;
+                }
+                20% {
+                    top:15px;
+                    left:30px;
+                }
+                100% {
+                    top:0;
+                    left:100px;
+                }
+            }
+            .do {
+                position: relative;
+                width: 30px;
+                height: 30px;
+                background: #ffffff;
+                animation: do 5s infinite;
+            }
+        </style>
+    </head>
+    <body>
+        <aside>
+        </aside>
+        <header>
+            <hgroup>
+                <h1>测试</h1>
+            </hgroup>
+        </header>
+        <article>
+            <img alt="知乎" src="http://www.w3school.com.cn/i/compatible_ie.gif"/>
+        </article>
+        <!--<div class="aside"></div>-->
+        <!--<div class="aside2"></div>-->
+        <!--<div class="main">-->
+            <!--<div class="do">-->
+
+            <!--</div>-->
+        <!--</div>-->
+
+        <script>
+            createWXEnv();
+            initCanvasElement(400, 500);
+            let wxDoughnut = new wxChart.WxDoughnut('myCanvas', {
+                'width': 600,
+                'height': 350,
+                'cutoutPercentage': 0,
+                'title': '测试饼图',
+                'legendOptions':{
+                    'position': 'bottom'
+                }
+            });
+
+            wxDoughnut.update([{
+                label: '测试',
+                value: 100,
+                percentage: 50
+            },{
+                label: '测试2',
+                value: 100,
+                percentage: 60
+            },{
+                label: '测试3',
+                value: 50,
+                percentage: 70
+            },{
+                label: '测试4',
+                value: 30,
+                percentage: 80
+            },{
+                label: '测试5',
+                value: 30,
+                percentage: 100
+            }]);
+        </script>
+    </body>
+</html>

@@ -13,7 +13,7 @@ import {extend, is} from '../util/helper'
  * @property {number} outerWidth - Outer width
  * @property {number} outerHeight - Outer height
  *
- *
+ * @description
  * (x,y) -------------------------- (ex, y)
  *   |                                 |
  *   |    (lx,ly)-------------(rx,ly)  |
