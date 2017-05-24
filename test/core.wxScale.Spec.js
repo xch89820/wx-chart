@@ -195,17 +195,17 @@ describe('WxScale component test', () => {
         let box = wxChart.innerBox.clone();
         scale.update(datasets, box);
         assert.deepEqual({
-            x: 14.5,
+            x: 13.25,
             y: 334
         }, scale.getTicksPosition(0), 'Position tick: 1');
 
         assert.deepEqual({
-            x: 129.1,
+            x: 128.35,
             y: 334
         }, scale.getTicksPosition(1), 'Position tick: 2');
 
         assert.deepEqual({
-            x: 587.5,
+            x: 588.75,
             y: 334
         }, scale.getTicksPosition(datasets.length-1), 'End tick');
     });
@@ -236,12 +236,12 @@ describe('WxScale component test', () => {
         scale.update(datasets, box);
 
         assert.deepEqual({
-            x: -16.5,
+            x: -17.75,
             y: 334
         }, scale.getTicksPosition(-1), 'Position tick: 1');
 
         assert.deepEqual({
-            x: 14.5,
+            x: 13.25,
             y: 334
         }, scale.getTicksPosition(0), 'Position tick: 1');
     });

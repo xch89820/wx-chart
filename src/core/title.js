@@ -11,7 +11,7 @@ const WX_TITLE_DEFAULT_CONFIG = {
     display: true,
     position: 'top', // top, bottom
     fullWidth: true, // if the fullWidth is false, the 'width' property should be existed.
-    fontSize: 20,
+    fontSize: 16,
     fontColor: '#666666',
     padding: 10
 };
@@ -47,7 +47,7 @@ export default class WxTitle extends WxBaseComponent {
         let me = this;
         let wxChart = me.wxChart,
             ctx = wxChart.ctx,
-            fontSize = config.fontSize || 20;
+            fontSize = config.fontSize || 16;
         let x = area.x,
             y = area.y;
         let padding = config.padding || 10;

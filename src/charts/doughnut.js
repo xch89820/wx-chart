@@ -11,6 +11,9 @@ import {extend, is} from '../util/helper';
 
 // Doughut default config
 const WX_DOUGHUT_DEFAULT_CONFIG = {
+    legendOptions:{
+        'position': 'bottom'
+    },
     // The percentage of the chart that we cut out of the middle.
     cutoutPercentage: 50,
 
@@ -47,7 +50,7 @@ const WX_DOUGHUT_DEFAULT_CONFIG = {
  */
 const WX_DOUGHUT_ITEM_DEFAULT_CONFIG = {
     display: true,
-    fontSize: 10,
+    fontSize: 11,
     percentage: 100
 };
 
@@ -104,6 +107,7 @@ export default class WxDoughnut extends WxChart {
     update(datasets) {
         let me = this;
         super.update(datasets, WX_DOUGHUT_ITEM_DEFAULT_CONFIG);
+        me.wxLayout.removeAllBox();
         return me.draw();
     }
 
@@ -113,6 +117,7 @@ export default class WxDoughnut extends WxChart {
     draw() {
         let box,
             me = this,
+            labelDistancePercentage = me.chartConfig.labelDistancePercentage,
             wxLayout = me.wxLayout;
         let {
             cutoutPercentage,
@@ -180,13 +185,24 @@ export default class WxDoughnut extends WxChart {
             outerWidth,
             outerHeight
         } = box;
+
         let minSize = Math.min(width, height);
-        let outerRadius = Math.max((minSize - borderWidth * 2) / 2, 0);
+        let outerRadius = Math.max((minSize - borderWidth * 2) / 2, 0) - 10;
+        let totalValue = me.calculateTotal(),
+            longestLabelWidth = me._longestLabel(totalValue),
+            maximalFontSize = me._maximalLabelFontSize(),
+            shouldSpace = longestLabelWidth + maximalFontSize + outerRadius * labelDistancePercentage;
+
+        // Calculate the space between pie's border and margin of chart
+        let widthSpace = (width - (outerRadius+borderWidth)*2)/2;
+        if (widthSpace < shouldSpace) {
+            outerRadius -= (shouldSpace - widthSpace);
+        }
+
         let innerRadius = cutoutPercentage
                 ? (outerRadius / 100) * cutoutPercentage
                 : 0,
             innerRadiusColor = me.config.backgroundColor || "#ffffff";
-        let totalValue = me.calculateTotal();
         let pointX = x + (outerWidth / 2),
             pointY = y + (outerHeight / 2);
 
@@ -234,11 +250,13 @@ export default class WxDoughnut extends WxChart {
             percentage,
             hidden
         } = dataset;
-        let currentRadius = (outerRadius - innerRadius) / 100 * percentage;
 
         if (!!hidden) {
             return endAngle;
         }
+
+        let centerAngle = startAngle + (endAngle - startAngle) / 2;
+        let currentRadius = outerRadius  / 100 * percentage;
 
         ctx.save();
         ctx.beginPath();
@@ -286,15 +304,16 @@ export default class WxDoughnut extends WxChart {
             format,
             hidden
         } = dataset;
-        let currentRadius = (outerRadius - innerRadius) / 100 * percentage;
-        label = is.Function(format)
-            ? format.call(me, label, value, totalValue, currentRadius, dataset, options)
-            : label;
 
         if (!!hidden) {
             return;
         }
+
         let centerAngle = startAngle + (endAngle - startAngle) / 2;
+        let currentRadius = outerRadius / 100 * percentage;
+        label = is.Function(format)
+            ? format.call(me, label, value, totalValue, currentRadius, dataset, options)
+            : label;
 
         // Line start point
         let startX = Math.cos(centerAngle) * currentRadius + pointX;
@@ -343,6 +362,42 @@ export default class WxDoughnut extends WxChart {
         ctx.restore();
     };
 
+    // Get longest label
+    _longestLabel(totalValue) {
+        let me = this,
+            visDatasets = me.visDatasets,
+            ctx = me.ctx;
+        let maxLabelWidth = 0;
+        visDatasets.forEach(dataset => {
+            let {
+                label,
+                value,
+                format
+            } = dataset;
+
+            label = is.Function(format)
+                ? format.call(me, label, value, totalValue, 0, dataset)
+                : label;
+            let textLen = ctx.measureText(label).width;
+
+            maxLabelWidth = textLen > maxLabelWidth ? textLen : maxLabelWidth;
+        });
+        return maxLabelWidth;
+    }
+    // Get maximal font size of label
+    _maximalLabelFontSize() {
+        let me = this,
+            visDatasets = me.visDatasets;
+        let max= 0;
+        visDatasets.forEach(dataset => {
+            let {
+                fontSize
+            } = dataset;
+            max = fontSize > max ? fontSize : max;
+        });
+        return max;
+    }
+    // Avoid Collision
     initAvoidCollision() {
         this._lastPoint = null;
     }

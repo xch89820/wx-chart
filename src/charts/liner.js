@@ -197,6 +197,7 @@ export default class WxLiner extends WxChart {
         me._labels = null;
         me._legends = null;
         super.update(datasets, WX_LINER_ITEM_DEFAULT_CONFIG);
+        me.wxLayout.removeAllBox();
         return me.draw();
     }
 

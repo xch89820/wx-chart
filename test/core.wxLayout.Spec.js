@@ -64,7 +64,7 @@ describe('Util wxChart', () => {
             leftHeight -= titleHeight;
         box = wxLayout.adjustBox();
         assert.deepEqual(box.toObject(),
-            {position: 'top', x: 0, y: 40, ex:600, ey: ey, lx: 0, ly: 40, rx: 600, ry: ey, width: 600, height: leftHeight, outerHeight: leftHeight, outerWidth: 600});
+            {position: 'top', x: 0, y: titleHeight, ex:600, ey: ey, lx: 0, ly: titleHeight, rx: 600, ry: ey, width: 600, height: leftHeight, outerHeight: leftHeight, outerWidth: 600});
     });
 
     it('Create left legend layout', () => {

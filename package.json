@@ -1,8 +1,8 @@
 {
   "name": "wx-chart",
-  "version": "1.0.0",
-  "description": "适用于微信小程序的图形库",
-  "main": "wxchart.js",
+  "version": "0.1.1",
+  "description": "跨平台微信小程序图形库",
+  "main": "dist/wx-chart.min.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

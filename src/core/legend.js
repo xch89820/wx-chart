@@ -16,7 +16,7 @@ const WX_LEGEND_DEFAULT_CONFIG = {
     fullWidth: true, // if the fullWidth is false, the 'width' property should be existed.
     labels: {
         boxWidth: 30,
-        fontSize: 10,
+        fontSize: 11,
         padding: 10 // Padding width between legend items
     }
 };

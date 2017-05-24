@@ -24,7 +24,7 @@ const WX_SCALE_DEFAULT_CONFIG = {
     extendTop: 0,
     title: undefined,
     titleFontSize: 12,
-    titleFontColor: '#cccccc',
+    titleFontColor: '#4c4d4d',
     //'lineSpace' = fontSize * 0.5'
     color: '#000000', // Line color
     lineWidth: 1,
@@ -40,7 +40,7 @@ const WX_SCALE_DEFAULT_CONFIG = {
         autoSkip: true,
         lineWidth: 1,
         fontColor: '#000000',
-        fontSize: 10,
+        fontSize: 11,
         minRotation: 0,
         maxRotation: 90
 
@@ -180,7 +180,12 @@ export default class WxScale extends WxBaseComponent {
             maxWidth = area.outerWidth;
             maxHeight = minHeight;
         } else {
+            let titleWidth = 0;
+            if (config.title) {
+                titleWidth = ctx.measureText(config.title, config.titleFontSize).width - lineWidth - lineSpace - fontSize / 2;
+            }
             minWidth = longestText + lineWidth + lineSpace + fontSize / 2;
+            minWidth = minWidth > titleWidth ? minWidth : titleWidth;
             if (minWidth > area.width) {
                 minWidth = area.width;
                 fontRadians = Math.acos((minWidth - lineWidth - lineSpace - fontSize / 2) / longestText);

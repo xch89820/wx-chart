@@ -120,7 +120,7 @@ describe('WxBar component test', () => {
         }]);
     });
     afterEach(() => {
-        // wxBar.destroy();
-        // destoryCanvasElement();
+        wxBar.destroy();
+        destoryCanvasElement();
     });
 });

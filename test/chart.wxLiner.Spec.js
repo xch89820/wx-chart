@@ -16,14 +16,18 @@ describe('WxLiner component test', () => {
 
     it('Draw an WxLiner', () => {
         wxLiner = new WxLiner('myCanvas', {
-            'width': 700,
-            'height': 400,
-            'title': '测试线状图',
-            'fillArea': true,
-            'legends':[{
-                'text': '测试图1',
-                'fillStyle': '#3385ff',
-                'strokeStyle': '#3385ff'
+            width: 700,
+            height: 400,
+            title: '测试线状图',
+            fillArea: true,
+            yScaleOptions: {
+                position: 'left',
+                title: '销量(万)'
+            },
+            legends:[{
+                text: '测试图1',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff'
             }]
         });
 
@@ -50,17 +54,22 @@ describe('WxLiner component test', () => {
             'width': 700,
             'height': 400,
             'title': '测试线状图',
-            'fillArea': true,
             'crossScaleOptions': {
                 'xFirstPointSpace': 0
+            },
+            yScaleOptions: {
+                position: 'left',
+                title: '销量(万)'
             },
             'legends':[{
                 'text': '测试图1',
                 'key': 'test1',
+                'fillArea': true,
                 'fillStyle': '#3385ff',
                 'strokeStyle': '#3385ff'
             }, {
                 'text': '测试图2',
+                'fillArea': true,
                 'key': 'test2',
             }]
         });

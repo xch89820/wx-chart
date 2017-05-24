@@ -11,18 +11,16 @@ describe('WxDoughnut component test', () => {
         createWXEnv();
         initCanvasElement(350, 600);
 
+    });
+
+    it('Draw an Pie', () => {
         wxDoughnut = new WxDoughnut('myCanvas', {
             'width': 600,
             'height': 350,
             'cutoutPercentage': 0,
-            'title': '测试饼图',
-            'legendOptions':{
-                'position': 'bottom'
-            }
+            'title': '测试饼图'
         });
-    });
 
-    it('Draw an wxDoughnut', () => {
         let formatLabel = function(label, value, totalValue) {
             return label + ' (' + (value/totalValue*100).toFixed(2) + '%)';
         };
@@ -49,23 +47,55 @@ describe('WxDoughnut component test', () => {
         }]);
     });
 
-    it('Draw an wxDoughnut percentage', () => {
+    it('Draw an wxDoughnut', () => {
+        wxDoughnut = new WxDoughnut('myCanvas', {
+            'width': 600,
+            'height': 350,
+            'title': '测试多纳圈图'
+        });
+
+        wxDoughnut.update([{
+            label: '测试',
+            value: 100
+        },{
+            label: '测试2',
+            value: 100
+        },{
+            label: '测试3',
+            value: 50
+        },{
+            label: '测试4',
+            value: 30
+        },{
+            label: '测试5',
+            value: 30
+        }])
+    });
+
+    it('Draw an wxDoughnut with percentage options', () => {
+        wxDoughnut = new WxDoughnut('myCanvas', {
+            'width': 600,
+            'height': 350,
+            'cutoutPercentage': 30,
+            'title': '测试多纳圈图'
+        });
+
         wxDoughnut.update([{
             label: '测试',
             value: 100,
-            percentage: 50
+            percentage: 60
         },{
             label: '测试2',
             value: 100,
-            percentage: 60
+            percentage: 70
         },{
             label: '测试3',
             value: 50,
-            percentage: 70
+            percentage: 80
         },{
             label: '测试4',
             value: 30,
-            percentage: 80
+            percentage: 90
         },{
             label: '测试5',
             value: 30,
@@ -74,7 +104,7 @@ describe('WxDoughnut component test', () => {
     });
 
     afterEach(() => {
-        wxDoughnut.destroy();
-        destoryCanvasElement();
+        // wxDoughnut.destroy();
+        // destoryCanvasElement();
     })
 });

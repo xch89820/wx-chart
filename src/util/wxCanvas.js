@@ -444,7 +444,7 @@ export class WxCanvasRenderingContext2D {
             let otherNum = textLen - hanziNum;
 
             return {
-                'width': fontSize * (otherNum + hanziNum * 2) / 2 + fontSize / 2
+                'width': fontSize * (otherNum + hanziNum * 2) / 2 + fontSize / 4
             };
         } else {
             return me._ctx.measureText(text);

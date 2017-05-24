@@ -206,6 +206,7 @@ export default class WxBar extends WxChart {
         me._labels = null;
         me._legends = null;
         super.update(datasets, WX_BAR_ITEM_DEFAULT_CONFIG);
+        me.wxLayout.removeAllBox();
         return me.draw();
     }
     /**

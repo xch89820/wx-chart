@@ -96,7 +96,7 @@ describe('Util wxCanvas', () => {
 
         // The browser minimum font size is 12
         assert.equal(wxCanvasContext.measureText('text').width,
-            wxCanvasContext.fontSize*2+wxCanvasContext.fontSize/2,
+            wxCanvasContext.fontSize*2+wxCanvasContext.fontSize/4,
             'measureText equal in normal text');
 
         // fontSize = 10, textBaseline = alphabetic
@@ -120,13 +120,13 @@ describe('Util wxCanvas', () => {
         // Set textAlign = end
         wxCanvasContext.textAlign = 'end';
         expect(realContext.textAlign).to.equal('start');
-        assert.equal(wxCanvasContext._calculateXFortextAlign(0, 'text'), -25,
+        assert.equal(wxCanvasContext._calculateXFortextAlign(0, 'text'), -22.5,
             'calculate X at fontSize = 10, textAlign = end');
 
         // Set textAlign = middle
         wxCanvasContext.textAlign = 'center';
         expect(realContext.textAlign).to.equal('start');
-        assert.equal(wxCanvasContext._calculateXFortextAlign(0, 'text'), -12.5,
+        assert.equal(wxCanvasContext._calculateXFortextAlign(0, 'text'), -11.25,
             'calculate X at fontSize = 10, textAlign = end');
 
         wxCanvasContext.fillText('text', 0, 12);
