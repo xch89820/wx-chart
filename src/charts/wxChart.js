@@ -83,6 +83,8 @@ export default class WxChart {
         let canvas = me.canvas,
             cvWidth = canvas.width,
             cvHeight = canvas.height;
+        config.width = cvWidth;
+        config.height = cvHeight;
         config.aspectRatio = config.aspectRatio
             ? config.aspectRatio
             : !is.Undefined(cvHeight) && !is.Undefined(cvWidth)
@@ -108,7 +110,7 @@ export default class WxChart {
 
         // calculate box
         let padding = me.config.padding || 0;
-        me.innerBox = new BoxInstance('top', 0, 0, me.canvas.width - padding * 2, me.canvas.height - padding * 2, me.canvas.width, me.canvas.height);
+        me.innerBox = new BoxInstance('top', 0, 0, me.config.width - padding * 2, me.config.height - padding * 2, me.config.width, me.config.height);
     }
 
     clear() {

@@ -29,7 +29,7 @@ let header = "/*!\n" +
 
 gulp.task('build',function(){
     // Bundled library
-    let bundled = browserify('./src/wx-chart.js', { standalone: 'wxChart' })
+    let bundled = browserify('./src/wx-chart.js', { standalone: 'WxChart' })
         //.plugin(collapse)
         .bundle()
         .pipe(source('wx-chart.js'))

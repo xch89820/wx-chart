@@ -81,7 +81,7 @@ export default class WxCanvas {
         if (is.String(id)) {
             canvas = me.isWeiXinAPP
                 ? context = wx.createCanvasContext(id)
-                : (document.getElementById(id)).canvas;
+                : document.getElementById(id);
         } else if (me.isWeiXinAPP) {
             throw new Error('Should set an id');
         }
@@ -94,16 +94,15 @@ export default class WxCanvas {
             console.error("Failed to create WxCanvas: can't acquire context!");
         }
 
-        this.initCanvas();
+        this.initCanvas(canvas);
         return {canvas, context};
     }
 
     /**
      * Initializes the HTMLCanvasElement style and render size without modifying the canvas display size
      */
-    initCanvas() {
-        let canvas = this._canvas,
-            config = this._config,
+    initCanvas(canvas) {
+        let config = this._config,
             renderHeight,
             renderWidth,
             display,
@@ -130,6 +129,7 @@ export default class WxCanvas {
                 var displayWidth = readUsedSize(canvas, 'width');
                 if (displayWidth !== undefined) {
                     canvas.width = displayWidth;
+                    width = displayWidth;
                 }
             }
 
@@ -138,11 +138,12 @@ export default class WxCanvas {
                     // If no explicit render height and style height, let's apply the aspect ratio,
                     // which one can be specified by the user but also by charts as default option
                     // (i.e. options.aspectRatio). If not specified, use canvas aspect ratio of 2.
-                    canvas.height = canvas.width / (config.options.aspectRatio || 2);
+                    canvas.height = height = canvas.width / (config.options.aspectRatio || 2);
                 } else {
                     let displayHeight = readUsedSize(canvas, 'height');
                     if (displayWidth !== undefined) {
                         canvas.height = displayHeight;
+                        height = displayHeight;
                     }
                 }
             }
@@ -216,6 +217,7 @@ export default class WxCanvas {
             if (renderHeight === null || renderHeight === '') {
                 return readUsedSize(canvas, 'height');
             }
+            return renderHeight;
         }
     }
 
@@ -235,6 +237,7 @@ export default class WxCanvas {
             if (renderWidth === null || renderWidth === '') {
                 return readUsedSize(canvas, 'width');
             }
+            return renderWidth;
         }
     }
 

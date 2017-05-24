@@ -9,8 +9,8 @@ import WxLegend from '../core/legend';
 import randomColor from '../util/randomColor';
 import {extend, is} from '../util/helper';
 
-// Doughut default config
-const WX_DOUGHUT_DEFAULT_CONFIG = {
+// Doughnut default config
+const WX_DOUGHNUT_DEFAULT_CONFIG = {
     legendOptions:{
         'position': 'bottom'
     },
@@ -40,7 +40,7 @@ const WX_DOUGHUT_DEFAULT_CONFIG = {
 };
 
 /**
- * Doughut item config
+ * Doughnut item config
  *
  * value: The value of chart
  * label: The legend text
@@ -48,7 +48,7 @@ const WX_DOUGHUT_DEFAULT_CONFIG = {
  * radius: The percentage of radius, default is '100'
  * legend: [Object] legend options
  */
-const WX_DOUGHUT_ITEM_DEFAULT_CONFIG = {
+const WX_DOUGHNUT_ITEM_DEFAULT_CONFIG = {
     display: true,
     fontSize: 11,
     percentage: 100
@@ -74,7 +74,7 @@ export default class WxDoughnut extends WxChart {
     constructor(id, config) {
         super(id, config);
         let me = this;
-        me.chartConfig = extend({}, WX_DOUGHUT_DEFAULT_CONFIG, config);
+        me.chartConfig = extend({}, WX_DOUGHNUT_DEFAULT_CONFIG, config);
 
         me.title = null;
         // Initialize title and legend
@@ -106,7 +106,7 @@ export default class WxDoughnut extends WxChart {
      */
     update(datasets) {
         let me = this;
-        super.update(datasets, WX_DOUGHUT_ITEM_DEFAULT_CONFIG);
+        super.update(datasets, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG);
         me.wxLayout.removeAllBox();
         return me.draw();
     }
