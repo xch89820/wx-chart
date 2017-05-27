@@ -76,12 +76,11 @@ var wxDoughnut = new WxChart.WxDoughnut('youCanvasId', { //... });
 可参见dome文件夹中的```base.html```文件
 
 ## 实际效果以及Demo
-![alt tag](https://cloud.githubusercontent.com/assets/4920540/16495890/e6c3aaee-3f21-11e6-868a-40c796613d3c.jpg)
-![line](https://cloud.githubusercontent.com/assets/4920540/26517907/da0a1a32-42d5-11e7-8bbb-160f028365d1.JPG)
-![doughnut](https://cloud.githubusercontent.com/assets/4920540/26517908/da47256c-42d5-11e7-8142-991b7f1e009b.JPG)
-![pie](https://cloud.githubusercontent.com/assets/4920540/26517909/da4cce7c-42d5-11e7-9972-689f0b56304a.JPG)
-![bar](https://cloud.githubusercontent.com/assets/4920540/26517910/da50146a-42d5-11e7-8c14-f23721e869e5.JPG)
-![stacked](https://cloud.githubusercontent.com/assets/4920540/26517911/da69b956-42d5-11e7-9dd4-bf9dd44d4a48.JPG)
+![pie](https://cloud.githubusercontent.com/assets/4920540/26517971/893602c2-42d7-11e7-9009-3cdfebf16f63.JPG)
+![bar](https://cloud.githubusercontent.com/assets/4920540/26517970/8933f522-42d7-11e7-8e78-a93c567f3bc0.JPG)
+![stacked](https://cloud.githubusercontent.com/assets/4920540/26517972/8937459c-42d7-11e7-9fe9-eaf8acc2e852.JPG)
+![line](https://cloud.githubusercontent.com/assets/4920540/26517973/89460140-42d7-11e7-8576-e1503e7cf4df.JPG)
+![doughnut](https://cloud.githubusercontent.com/assets/4920540/26517974/894c57a2-42d7-11e7-9856-a300fa72a2c8.JPG)
 
 微信小程序实例，请参见：
 https://github.com/xch89820/wx-chart-demo
