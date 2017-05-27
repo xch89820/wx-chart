@@ -2,7 +2,7 @@
   "name": "wx-chart",
   "version": "0.1.1",
   "description": "跨平台微信小程序图形库",
-  "main": "dist/wx-chart.js",
+  "main": "src/wx-chart.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
