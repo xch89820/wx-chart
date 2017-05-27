@@ -2,7 +2,7 @@
   "name": "wx-chart",
   "version": "0.1.1",
   "description": "跨平台微信小程序图形库",
-  "main": "dist/wx-chart.min.js",
+  "main": "dist/wx-chart.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,6 +11,8 @@
     "url": "git+https://github.com/xch89820/wx-chart.git"
   },
   "keywords": [
+    "chart",
+    "图形库",
     "weixin",
     "微信小程序",
     "wx"

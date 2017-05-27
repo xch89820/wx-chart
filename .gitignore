@@ -1,12 +1,10 @@
 /coverage
 /custom
-/dist
-/docs/index.md
+/docs
 /node_modules
 
 .DS_Store
 .idea
 .vscode
-bower.json
 
 *.swp

@@ -1,0 +1,24 @@
+{
+  "name": "wx-chart",
+  "description": "跨平台微信小程序图形库",
+  "main": "dist/wx-chart.js",
+  "authors": [
+    "Jone Casper"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "chart",
+    "图形库",
+    "weixin",
+    "微信小程序",
+    "wx"
+  ],
+  "homepage": "https://github.com/xch89820/wx-chart",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
