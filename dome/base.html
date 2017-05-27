@@ -7,39 +7,11 @@
         <script type="text/javascript" src="../dist/wx-chart.js"></script>
     </head>
     <body>
-        <canvas id="myCanvas" canvas-id="myCanvas" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
-
-        <script>
-//            createWXEnv();
-//            initCanvasElement(400, 500);
-            var wxDoughnut = new WxChart.WxDoughnut('myCanvas', {
-                'width': 600,
-                'height': 400,
-                'cutoutPercentage': 0,
-                'title': '测试饼图'
-            });
-
-            wxDoughnut.update([{
-                label: '测试',
-                value: 100,
-                percentage: 50
-            },{
-                label: '测试2',
-                value: 100,
-                percentage: 60
-            },{
-                label: '测试3',
-                value: 50,
-                percentage: 70
-            },{
-                label: '测试4',
-                value: 30,
-                percentage: 80
-            },{
-                label: '测试5',
-                value: 30,
-                percentage: 100
-            }]);
-        </script>
+        <canvas id="multiFillLine" canvas-id="multiFillLine" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+        <canvas id="basePie" canvas-id="basePie" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+        <canvas id="baseDoughnut" canvas-id="baseDoughnut" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+        <canvas id="multiBar" canvas-id="multiBar" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+        <canvas id="multiStackedBar" canvas-id="multiStackedBar" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+        <script type="text/javascript" src="./base.js"></script>
     </body>
 </html>

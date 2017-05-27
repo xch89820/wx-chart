@@ -1,85 +1,159 @@
-function createWXEnv() {
-    if (typeof window.wx != 'undefined') {
-        return;
-    } else {
-        window.wx = {};
-    }
-    // Defined global wx
-    let wx = window.wx || {};
-
-    // getSystemInfoSync
-    wx.getSystemInfoSync = () => ({
-        'model': 'iPhone 6',
-        'pixelRatio': 2,
-        'windowWidth': 375,
-        'windowHeight': 571,
-        'language': 'zh_CN',
-        'version': '6.3.9',
-        'system': 'iOS 10.0.1',
-        'platform': 'Android'
-    });
-
-    wx.createCanvasContext = (id) => {
-        let el = document.getElementById(id);
-        if (el) {
-            let context = el.getContext('2d');
-            return context;
-        }
+(function(){
+    // 生成数据
+    var dataGenerator = function(labels, keys , min, max){
+        keys = keys || ['value'];
+        min = min || 10;
+        max = max || 50;
+        return labels.map(label => {
+            let d = {
+                label: label
+            };
+            keys.map(key => {
+                d[key] = Math.floor(Math.random() * (max - min + 1) + min);
+            });
+            return d;
+        });
     };
 
-    // Set some function to CanvasRenderingContext2D
-    if (typeof  CanvasRenderingContext2D != 'undefined') {
-        ['fillStyle', 'lineCap', 'lineJoin', 'miterLimit', 'lineWidth', 'strokeStyle', 'globalAlpha'].forEach((v) => {
-            let fnName = 'set' + v.replace(/(\w)/, v => v.toUpperCase());
-            CanvasRenderingContext2D.prototype[fnName] = function(val) {
-                this[v] = val;
-            };
+    var labels = ['一月', '二月', '三月', '四月', '五月', '六月', '七月'];
+    var canvasWidth = 600;
+    var canvasHeight = 400;
+    var percentageFormatLabel = function (label, value, totalValue) {
+        return label + ' (' + (value / totalValue * 100).toFixed(2) + '%)';
+    };
+    // 线状图
+    var multiFillLine = function() {
+        var wxLiner = new WxChart.WxLiner('multiFillLine', {
+            width: canvasWidth,
+            height: canvasHeight,
+            title: '销售额',
+            yScaleOptions: {
+                position: 'left',
+                title: '万元'
+            },
+            crossScaleOptions: {
+                xFirstPointSpace: 0
+            },
+            legends: [{
+                text: '日用品',
+                key: 'dailyNecessities',
+                fillArea: true,
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff'
+            }, {
+                text: '水果',
+                key: 'fruit',
+                fillArea: true,
+                fillStyle: '#238456',
+                strokeStyle: '#238456'
+            }, {
+                text: '家电',
+                key: 'appliances',
+                fillStyle: '#842c05',
+                strokeStyle: '#842c05'
+            }]
         });
 
-        CanvasRenderingContext2D.prototype.setShadow = function(offsetX, offsetY, blur, color){
-            this.shadowOffsetX = offsetX;
-            this.shadowOffsetY = offsetY;
-            this.shadowBlur = blur;
-            this.shadowColor = color;
-        };
-
-        CanvasRenderingContext2D.prototype.setFontSize = function(value) {
-            this.font = "normal " + parseInt(value) + "px proxima-nova, 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
-        };
-
-        CanvasRenderingContext2D.prototype.draw = function() {
-            //do nothing;
-        };
-
-        // Disable some attribute
-        Object.defineProperty(CanvasRenderingContext2D.prototype, 'textAlign', {
-            get: function() { return 'start'; },
-            set: function(newValue) { return 'start' },
+        wxLiner.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances']));
+    };
+    // 饼图
+    var basePie = function() {
+        var wxPie = new WxChart.WxDoughnut('basePie', {
+            width: canvasWidth,
+            height: canvasHeight,
+            title: '销售量',
+            cutoutPercentage: 0
         });
-        Object.defineProperty(CanvasRenderingContext2D.prototype, 'textBaseline', {
-            get: function() { return 'alphabetic'; },
-            set: function(newValue) { return 'alphabetic' },
+
+        var datas = dataGenerator(labels);
+        datas.forEach(function(x) {
+            x.format = percentageFormatLabel;
         });
+        wxPie.update(datas);
+    };
+    // 多纳圈图
+    var baseDoughnut = function() {
+        var wxPie = new WxChart.WxDoughnut('baseDoughnut', {
+            width: canvasWidth,
+            height: canvasHeight,
+            title: '销售量'
+        });
+
+        var datas = dataGenerator(labels);
+        datas.forEach(function(x) {
+            x.format = percentageFormatLabel;
+        });
+        wxPie.update(datas);
+    };
+
+    var multiBar = function() {
+        let wxBar = new WxChart.WxBar('multiBar', {
+            width: canvasWidth,
+            height: canvasHeight,
+            title: '销售量',
+            yScaleOptions: {
+                position: 'left',
+                title: '万元'
+            },
+            legends: [{
+                text: '日用品',
+                key: 'dailyNecessities',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff'
+            }, {
+                text: '水果',
+                key: 'fruit',
+                fillStyle: '#238456',
+                strokeStyle: '#238456'
+            }, {
+                text: '家电',
+                key: 'appliances',
+                fillStyle: '#94332f',
+                strokeStyle: '#94332f'
+            }]
+        });
+
+        wxBar.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances']));
+    };
+
+    var multiStackedBar = function() {
+        let wxBar = new WxChart.WxBar('multiStackedBar', {
+            width: canvasWidth,
+            height: canvasHeight,
+            title: '销售量',
+            stacked: true,
+            yScaleOptions: {
+                position: 'left',
+                title: '万元'
+            },
+            legends: [{
+                text: '日用品',
+                key: 'dailyNecessities',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff'
+            }, {
+                text: '水果',
+                key: 'fruit',
+                fillStyle: '#238456',
+                strokeStyle: '#238456'
+            }, {
+                text: '家电',
+                key: 'appliances',
+                fillStyle: '#94332f',
+                strokeStyle: '#94332f'
+            }]
+        });
+
+        wxBar.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances'], -20, 100));
     }
-}
 
-function initCanvasElement(height = 500, width = 800) {
-    let canvasHTML = '<canvas id="myCanvas" canvas-id="myCanvas" style="width:' + width + 'px; height:' + height + 'px; border: 1px solid #ffffff;"/>';
-    document.body.insertAdjacentHTML(
-        'afterbegin',
-        canvasHTML
-    );
+    window.onload = function() {
+        multiFillLine();
+        basePie();
 
-    let canvas = document.getElementById('myCanvas');
-    let ctx = canvas.getContext('2d');
-    let pixelRatio = window.devicePixelRatio || 1;
-    if (pixelRatio === 1) {
-        return;
-    }
+        baseDoughnut();
+        multiBar();
+        multiStackedBar();
+    };
 
-    canvas.height = height*pixelRatio;
-    canvas.width = width*pixelRatio;
-    ctx.scale(pixelRatio, pixelRatio);
-    canvas.style.height = height + 'px';
-    canvas.style.width = width + 'px';
-};
+})();
