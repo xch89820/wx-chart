@@ -38,7 +38,7 @@ wx-chart是一个适用于跨平台的图形库，可在普通站点以及微信
 https://github.com/xch89820/wx-chart-demo
 
 ## 文档
-https://xch89820.gitbooks.io/wx-chart/content
+https://www.gitbook.com/book/xch89820/wx-chart/details
 
 ## License
 
