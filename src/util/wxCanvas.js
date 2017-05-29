@@ -78,16 +78,21 @@ export default class WxCanvas {
         let me = this,
             canvas,
             context;
-        if (is.String(id)) {
-            canvas = me.isWeiXinAPP
-                ? context = wx.createCanvasContext(id)
-                : document.getElementById(id);
-        } else if (me.isWeiXinAPP) {
-            throw new Error('Should set an id');
-        }
 
-        if (typeof HTMLCanvasElement != 'undefined' && canvas instanceof HTMLCanvasElement) {
-            context = canvas.getContext && canvas.getContext('2d');
+        if (me.isWeiXinAPP) {
+            if (is.String(id)) {
+                canvas = context = wx.createCanvasContext(id);
+            } else {
+                throw new Error('Should set an id');
+            }
+        } else {
+            canvas = is.String(id) ? document.getElementById(id) :
+                (typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement) ?
+                    id:
+                    null;
+            if (typeof canvas != 'undefined') {
+                context = canvas.getContext && canvas.getContext('2d');
+            }
         }
 
         if (!canvas || !context) {
@@ -188,8 +193,9 @@ export default class WxCanvas {
                 }
             });
 
-            for (let key of initial.style) {
-                canvas.style[key] = initial.style[key];
+            let style = initial.style;
+            for (let key of Object.keys(style)) {
+                canvas.style[key] = style[key];
             }
 
             // The canvas render size might have been changed (and thus the state stack discarded),

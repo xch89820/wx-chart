@@ -104,7 +104,7 @@ describe('WxDoughnut component test', () => {
     });
 
     afterEach(() => {
-        // wxDoughnut.destroy();
-        // destoryCanvasElement();
+        wxDoughnut.destroy();
+        destoryCanvasElement();
     })
 });

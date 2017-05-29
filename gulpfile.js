@@ -1,7 +1,9 @@
 'use strict'
 const gulp = require('gulp');
 const babel = require('gulp-babel');
+const babelify = require('babelify');
 const browserify = require('browserify');
+const browserifyshim = require('browserify-shim');
 const rename = require('gulp-rename');
 const jshint = require('gulp-jshint');
 const replace = require('gulp-replace');
@@ -30,11 +32,12 @@ let header = "/*!\n" +
 gulp.task('build',function(){
     // Bundled library
     let bundled = browserify('./src/wx-chart.js', { standalone: 'WxChart' })
+        .transform(browserifyshim)
         //.plugin(collapse)
         .bundle()
         .pipe(source('wx-chart.js'))
         .pipe(streamify(babel({
-            presets: ['es2015', 'stage-3']
+            presets: ['es2015', 'stage-3', 'react']
         })))
         .pipe(buffer())
         .pipe(sourcemaps.init({loadMaps: true}))
@@ -50,9 +53,7 @@ gulp.task('build',function(){
         .pipe(streamify(replace('{{ version }}', pack.version)))
         .pipe(streamify(concat('wx-chart.min.js')))
         .pipe(sourcemaps.write('./'))
-        .pipe(gulp.dest('dist'))
-
-
+        .pipe(gulp.dest('dist'));
 
     return bundled;
 });

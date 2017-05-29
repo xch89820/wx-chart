@@ -827,7 +827,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxBar;
-        }, { "../core/layout": 6, "../core/legend": 7, "../core/scale": 8, "../core/title": 9, "../scale/scale.category": 10, "../scale/scale.crosshelp": 11, "../scale/scale.liner": 12, "../util/helper": 13, "../util/randomColor": 14, "../util/tinycolor": 15, "../util/wxCanvas": 16, "./wxChart": 4 }], 2: [function (require, module, exports) {
+        }, { "../core/layout": 6, "../core/legend": 7, "../core/scale": 8, "../core/title": 9, "../scale/scale.category": 14, "../scale/scale.crosshelp": 15, "../scale/scale.liner": 16, "../util/helper": 17, "../util/randomColor": 18, "../util/tinycolor": 19, "../util/wxCanvas": 20, "./wxChart": 4 }], 2: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -1321,7 +1321,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxDoughnut;
-        }, { "../core/layout": 6, "../core/legend": 7, "../core/title": 9, "../util/helper": 13, "../util/randomColor": 14, "../util/wxCanvas": 16, "./wxChart": 4 }], 3: [function (require, module, exports) {
+        }, { "../core/layout": 6, "../core/legend": 7, "../core/title": 9, "../util/helper": 17, "../util/randomColor": 18, "../util/wxCanvas": 20, "./wxChart": 4 }], 3: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -1965,7 +1965,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxLiner;
-        }, { "../core/layout": 6, "../core/legend": 7, "../core/scale": 8, "../core/title": 9, "../scale/scale.category": 10, "../scale/scale.crosshelp": 11, "../scale/scale.liner": 12, "../util/helper": 13, "../util/randomColor": 14, "../util/wxCanvas": 16, "./wxChart": 4 }], 4: [function (require, module, exports) {
+        }, { "../core/layout": 6, "../core/legend": 7, "../core/scale": 8, "../core/title": 9, "../scale/scale.category": 14, "../scale/scale.crosshelp": 15, "../scale/scale.liner": 16, "../util/helper": 17, "../util/randomColor": 18, "../util/wxCanvas": 20, "./wxChart": 4 }], 4: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2221,7 +2221,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxChart;
-        }, { "../core/layout": 6, "../util/helper": 13, "../util/wxCanvas": 16 }], 5: [function (require, module, exports) {
+        }, { "../core/layout": 6, "../util/helper": 17, "../util/wxCanvas": 20 }], 5: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2462,7 +2462,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxBaseComponent;
-        }, { "../charts/wxChart": 4, "../util/helper": 13, "../util/wxCanvas": 16, "./layout": 6 }], 6: [function (require, module, exports) {
+        }, { "../charts/wxChart": 4, "../util/helper": 17, "../util/wxCanvas": 20, "./layout": 6 }], 6: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2768,7 +2768,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxLayout;
-        }, { "../util/helper": 13, "./base": 5 }], 7: [function (require, module, exports) {
+        }, { "../util/helper": 17, "./base": 5 }], 7: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3155,7 +3155,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxLegend;
-        }, { "../util/helper": 13, "./base": 5, "./layout": 6 }], 8: [function (require, module, exports) {
+        }, { "../util/helper": 17, "./base": 5, "./layout": 6 }], 8: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3785,7 +3785,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxScale;
-        }, { "../util/helper": 13, "../util/wxCanvas": 16, "./base": 5, "./layout": 6 }], 9: [function (require, module, exports) {
+        }, { "../util/helper": 17, "../util/wxCanvas": 20, "./base": 5, "./layout": 6 }], 9: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3959,7 +3959,354 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             exports.default = WxTitle;
             ;
-        }, { "../util/helper": 13, "./base": 5, "./layout": 6 }], 10: [function (require, module, exports) {
+        }, { "../util/helper": 17, "./base": 5, "./layout": 6 }], 10: [function (require, module, exports) {
+            (function (global) {
+                'use strict';
+
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+
+                var _createClass = function () {
+                    function defineProperties(target, props) {
+                        for (var i = 0; i < props.length; i++) {
+                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                        }
+                    }return function (Constructor, protoProps, staticProps) {
+                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                    };
+                }();
+
+                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
+
+                var _react2 = _interopRequireDefault(_react);
+
+                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
+
+                var _reactDom2 = _interopRequireDefault(_reactDom);
+
+                var _wxChartReact = require('./wxChartReact.jsx');
+
+                var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
+
+                var _bar = require('../charts/bar');
+
+                var _bar2 = _interopRequireDefault(_bar);
+
+                function _interopRequireDefault(obj) {
+                    return obj && obj.__esModule ? obj : { default: obj };
+                }
+
+                function _classCallCheck(instance, Constructor) {
+                    if (!(instance instanceof Constructor)) {
+                        throw new TypeError("Cannot call a class as a function");
+                    }
+                }
+
+                function _possibleConstructorReturn(self, call) {
+                    if (!self) {
+                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
+                }
+
+                function _inherits(subClass, superClass) {
+                    if (typeof superClass !== "function" && superClass !== null) {
+                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
+                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+                }
+
+                var WxBarReact = function (_WxChartReact) {
+                    _inherits(WxBarReact, _WxChartReact);
+
+                    function WxBarReact() {
+                        _classCallCheck(this, WxBarReact);
+
+                        return _possibleConstructorReturn(this, (WxBarReact.__proto__ || Object.getPrototypeOf(WxBarReact)).apply(this, arguments));
+                    }
+
+                    _createClass(WxBarReact, [{
+                        key: 'initChart',
+                        value: function initChart(el) {
+                            return new _bar2.default(el, this.props);
+                        }
+                    }]);
+
+                    return WxBarReact;
+                }(_wxChartReact2.default);
+
+                exports.default = WxBarReact;
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
+        }, { "../charts/bar": 1, "./wxChartReact.jsx": 13 }], 11: [function (require, module, exports) {
+            (function (global) {
+                'use strict';
+
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+
+                var _createClass = function () {
+                    function defineProperties(target, props) {
+                        for (var i = 0; i < props.length; i++) {
+                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                        }
+                    }return function (Constructor, protoProps, staticProps) {
+                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                    };
+                }();
+
+                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
+
+                var _react2 = _interopRequireDefault(_react);
+
+                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
+
+                var _reactDom2 = _interopRequireDefault(_reactDom);
+
+                var _wxChartReact = require('./wxChartReact.jsx');
+
+                var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
+
+                var _doughnut = require('../charts/doughnut');
+
+                var _doughnut2 = _interopRequireDefault(_doughnut);
+
+                function _interopRequireDefault(obj) {
+                    return obj && obj.__esModule ? obj : { default: obj };
+                }
+
+                function _classCallCheck(instance, Constructor) {
+                    if (!(instance instanceof Constructor)) {
+                        throw new TypeError("Cannot call a class as a function");
+                    }
+                }
+
+                function _possibleConstructorReturn(self, call) {
+                    if (!self) {
+                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
+                }
+
+                function _inherits(subClass, superClass) {
+                    if (typeof superClass !== "function" && superClass !== null) {
+                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
+                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+                }
+
+                var WxDoughnutReact = function (_WxChartReact) {
+                    _inherits(WxDoughnutReact, _WxChartReact);
+
+                    function WxDoughnutReact() {
+                        _classCallCheck(this, WxDoughnutReact);
+
+                        return _possibleConstructorReturn(this, (WxDoughnutReact.__proto__ || Object.getPrototypeOf(WxDoughnutReact)).apply(this, arguments));
+                    }
+
+                    _createClass(WxDoughnutReact, [{
+                        key: 'initChart',
+                        value: function initChart(el) {
+                            return new _doughnut2.default(el, this.props);
+                        }
+                    }]);
+
+                    return WxDoughnutReact;
+                }(_wxChartReact2.default);
+
+                exports.default = WxDoughnutReact;
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
+        }, { "../charts/doughnut": 2, "./wxChartReact.jsx": 13 }], 12: [function (require, module, exports) {
+            (function (global) {
+                'use strict';
+
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+
+                var _createClass = function () {
+                    function defineProperties(target, props) {
+                        for (var i = 0; i < props.length; i++) {
+                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                        }
+                    }return function (Constructor, protoProps, staticProps) {
+                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                    };
+                }();
+
+                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
+
+                var _react2 = _interopRequireDefault(_react);
+
+                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
+
+                var _reactDom2 = _interopRequireDefault(_reactDom);
+
+                var _wxChartReact = require('./wxChartReact.jsx');
+
+                var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
+
+                var _liner = require('../charts/liner');
+
+                var _liner2 = _interopRequireDefault(_liner);
+
+                function _interopRequireDefault(obj) {
+                    return obj && obj.__esModule ? obj : { default: obj };
+                }
+
+                function _classCallCheck(instance, Constructor) {
+                    if (!(instance instanceof Constructor)) {
+                        throw new TypeError("Cannot call a class as a function");
+                    }
+                }
+
+                function _possibleConstructorReturn(self, call) {
+                    if (!self) {
+                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
+                }
+
+                function _inherits(subClass, superClass) {
+                    if (typeof superClass !== "function" && superClass !== null) {
+                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
+                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+                }
+
+                var WxLinerReact = function (_WxChartReact) {
+                    _inherits(WxLinerReact, _WxChartReact);
+
+                    function WxLinerReact() {
+                        _classCallCheck(this, WxLinerReact);
+
+                        return _possibleConstructorReturn(this, (WxLinerReact.__proto__ || Object.getPrototypeOf(WxLinerReact)).apply(this, arguments));
+                    }
+
+                    _createClass(WxLinerReact, [{
+                        key: 'initChart',
+                        value: function initChart(el) {
+                            return new _liner2.default(el, this.props);
+                        }
+                    }]);
+
+                    return WxLinerReact;
+                }(_wxChartReact2.default);
+
+                exports.default = WxLinerReact;
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
+        }, { "../charts/liner": 3, "./wxChartReact.jsx": 13 }], 13: [function (require, module, exports) {
+            (function (global) {
+                'use strict';
+
+                Object.defineProperty(exports, "__esModule", {
+                    value: true
+                });
+
+                var _createClass = function () {
+                    function defineProperties(target, props) {
+                        for (var i = 0; i < props.length; i++) {
+                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                        }
+                    }return function (Constructor, protoProps, staticProps) {
+                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                    };
+                }();
+
+                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
+
+                var _react2 = _interopRequireDefault(_react);
+
+                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
+
+                var _reactDom2 = _interopRequireDefault(_reactDom);
+
+                function _interopRequireDefault(obj) {
+                    return obj && obj.__esModule ? obj : { default: obj };
+                }
+
+                function _classCallCheck(instance, Constructor) {
+                    if (!(instance instanceof Constructor)) {
+                        throw new TypeError("Cannot call a class as a function");
+                    }
+                }
+
+                function _possibleConstructorReturn(self, call) {
+                    if (!self) {
+                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
+                }
+
+                function _inherits(subClass, superClass) {
+                    if (typeof superClass !== "function" && superClass !== null) {
+                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
+                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+                }
+
+                var WxChartReact = function (_React$Component) {
+                    _inherits(WxChartReact, _React$Component);
+
+                    function WxChartReact(props) {
+                        _classCallCheck(this, WxChartReact);
+
+                        var _this = _possibleConstructorReturn(this, (WxChartReact.__proto__ || Object.getPrototypeOf(WxChartReact)).call(this, props));
+
+                        _this._wxChart = null;
+                        _this.state = {
+                            datasets: []
+                        };
+                        return _this;
+                    }
+
+                    _createClass(WxChartReact, [{
+                        key: 'initChart',
+                        value: function initChart() {
+                            throw new Error('Should be override!');
+                        }
+                    }, {
+                        key: 'render',
+                        value: function render() {
+                            var _this2 = this;
+
+                            return _react2.default.createElement('canvas', { id: this.props.id, 'canvas-id': this.props.id,
+                                style: { width: this.props.width, height: this.props.height, border: '1px solid #ffffff' },
+                                ref: function ref(el) {
+                                    return _this2.el = el;
+                                } });
+                        }
+                    }, {
+                        key: 'componentDidMount',
+                        value: function componentDidMount() {
+                            var el = this.el;
+                            this._wxChart = this.initChart(el);
+                        }
+                    }, {
+                        key: 'componentWillUnmount',
+                        value: function componentWillUnmount() {
+                            this._wxChart.destroy();
+                            this._wxChart = null;
+                        }
+                    }, {
+                        key: 'componentDidUpdate',
+                        value: function componentDidUpdate(prevProps, prevState) {
+                            var datasets = this.state.datasets;
+                            var wxChart = this._wxChart;
+                            wxChart.update(datasets);
+                        }
+                    }, {
+                        key: 'update',
+                        value: function update(datasets) {
+                            this.setState({ datasets: datasets });
+                        }
+                    }, {
+                        key: 'clear',
+                        value: function clear() {
+                            var wxChart = this._wxChart;
+                            wxChart.clear();
+                        }
+                    }]);
+
+                    return WxChartReact;
+                }(_react2.default.Component);
+
+                exports.default = WxChartReact;
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
+        }, {}], 14: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4061,7 +4408,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxCategoryScale;
-        }, { "../core/scale": 8, "../util/helper": 13 }], 11: [function (require, module, exports) {
+        }, { "../core/scale": 8, "../util/helper": 17 }], 15: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4193,7 +4540,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxCrossScale;
-        }, { "../core/layout": 6, "../core/scale": 8, "../util/helper": 13 }], 12: [function (require, module, exports) {
+        }, { "../core/layout": 6, "../core/scale": 8, "../util/helper": 17 }], 16: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4385,7 +4732,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxLinerScale;
-        }, { "../core/scale": 8, "../util/helper": 13 }], 13: [function (require, module, exports) {
+        }, { "../core/scale": 8, "../util/helper": 17 }], 17: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4759,7 +5106,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     canvas.style.width = width + 'px';
                 }
             }
-        }, {}], 14: [function (require, module, exports) {
+        }, {}], 18: [function (require, module, exports) {
             'use strict';
 
             Object.defineProperty(exports, "__esModule", {
@@ -5156,7 +5503,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = randomColor;
-        }, {}], 15: [function (require, module, exports) {
+        }, {}], 19: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
@@ -6346,7 +6693,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = tinycolor;
-        }, {}], 16: [function (require, module, exports) {
+        }, {}], 20: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -6469,14 +6816,18 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var me = this,
                             canvas = void 0,
                             context = void 0;
-                        if (_helper.is.String(id)) {
-                            canvas = me.isWeiXinAPP ? context = wx.createCanvasContext(id) : document.getElementById(id);
-                        } else if (me.isWeiXinAPP) {
-                            throw new Error('Should set an id');
-                        }
 
-                        if (typeof HTMLCanvasElement != 'undefined' && canvas instanceof HTMLCanvasElement) {
-                            context = canvas.getContext && canvas.getContext('2d');
+                        if (me.isWeiXinAPP) {
+                            if (_helper.is.String(id)) {
+                                canvas = context = wx.createCanvasContext(id);
+                            } else {
+                                throw new Error('Should set an id');
+                            }
+                        } else {
+                            canvas = _helper.is.String(id) ? document.getElementById(id) : typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement ? id : null;
+                            if (typeof canvas != 'undefined') {
+                                context = canvas.getContext && canvas.getContext('2d');
+                            }
                         }
 
                         if (!canvas || !context) {
@@ -6583,15 +6934,16 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 }
                             });
 
+                            var style = initial.style;
                             var _iteratorNormalCompletion = true;
                             var _didIteratorError = false;
                             var _iteratorError = undefined;
 
                             try {
-                                for (var _iterator = initial.style[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                                for (var _iterator = Object.keys(style)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
                                     var key = _step.value;
 
-                                    canvas.style[key] = initial.style[key];
+                                    canvas.style[key] = style[key];
                                 }
 
                                 // The canvas render size might have been changed (and thus the state stack discarded),
@@ -7174,37 +7526,57 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                 return WxCanvasRenderingContext2D;
             }();
-        }, { "./helper": 13 }], 17: [function (require, module, exports) {
+        }, { "./helper": 17 }], 21: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            exports.WxBar = exports.WxLiner = exports.WxDoughnut = exports.WxChart = undefined;
+            exports.WxBarReact = exports.WxBar = exports.WxLinerReact = exports.WxLiner = exports.WxDoughnutReact = exports.WxDoughnut = exports.WxChartReact = exports.WxChart = undefined;
 
             var _wxChart = require('./charts/wxChart');
 
             var _wxChart2 = _interopRequireDefault(_wxChart);
 
-            var _doughnut = require('../src/charts/doughnut');
+            var _doughnut = require('./charts/doughnut');
 
             var _doughnut2 = _interopRequireDefault(_doughnut);
 
-            var _liner = require('../src/charts/liner');
+            var _liner = require('./charts/liner');
 
             var _liner2 = _interopRequireDefault(_liner);
 
-            var _bar = require('../src/charts/bar');
+            var _bar = require('./charts/bar');
 
             var _bar2 = _interopRequireDefault(_bar);
+
+            var _wxChartReact = require('./react/wxChartReact.jsx');
+
+            var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
+
+            var _doughnut3 = require('./react/doughnut.jsx');
+
+            var _doughnut4 = _interopRequireDefault(_doughnut3);
+
+            var _liner3 = require('./react/liner.jsx');
+
+            var _liner4 = _interopRequireDefault(_liner3);
+
+            var _bar3 = require('./react/bar.jsx');
+
+            var _bar4 = _interopRequireDefault(_bar3);
 
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
             }
 
             exports.WxChart = _wxChart2.default;
+            exports.WxChartReact = _wxChartReact2.default;
             exports.WxDoughnut = _doughnut2.default;
+            exports.WxDoughnutReact = _doughnut4.default;
             exports.WxLiner = _liner2.default;
+            exports.WxLinerReact = _liner4.default;
             exports.WxBar = _bar2.default;
-        }, { "../src/charts/bar": 1, "../src/charts/doughnut": 2, "../src/charts/liner": 3, "./charts/wxChart": 4 }] }, {}, [17])(17);
+            exports.WxBarReact = _bar4.default;
+        }, { "./charts/bar": 1, "./charts/doughnut": 2, "./charts/liner": 3, "./charts/wxChart": 4, "./react/bar.jsx": 10, "./react/doughnut.jsx": 11, "./react/liner.jsx": 12, "./react/wxChartReact.jsx": 13 }] }, {}, [21])(21);
 });
