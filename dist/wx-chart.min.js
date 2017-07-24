@@ -1,7 +1,7 @@
 /*!
  * wx-chart.js
  * Chart for WeiXin application
- * Version: 0.1.1
+ * Version: 0.2.1
  *
  * Copyright 2016 Jone Casper
  * Released under the MIT license
