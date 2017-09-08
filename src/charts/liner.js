@@ -1,17 +1,21 @@
 /* global module, wx, window: false, document: false */
 'use strict';
 
+import mixins from 'es6-mixins';
+import {extend, is, splineCurve} from '../util/helper'
+import randomColor from '../util/randomColor';
+
 import WxCanvas from '../util/wxCanvas';
 import WxChart from './wxChart';
 import WxTitle from '../core/title';
 import WxScale from '../core/scale';
 import WxLinerScale from '../scale/scale.liner';
 import WxCrossScale from '../scale/scale.crosshelp';
+import WxStackMixin from '../scale/scale.stackhelp';
 import WxCategoryScale from '../scale/scale.category';
 import WxLegend from '../core/legend';
 import WxLayout, {BoxInstance} from '../core/layout';
-import {extend, is, splineCurve} from '../util/helper'
-import randomColor from '../util/randomColor';
+
 
 // Line legend's default config
 const WX_LINE_LEGEND_DEFAULT_CONFIG = {
@@ -39,11 +43,17 @@ const WX_LINER_DEFAULT_CONFIG = {
     // The title text or a title config object
     title: undefined,
 
+    stacked: false, // If true, line are stacked on the x-axis
+    discardNeg: false,
+
     // The legend of line chart
     legends: [], // lineWidth, lineJoin, fillStyle, strokeStyle, fillArea can be set in here
     legendOptions: {
         'position': 'bottom'
     },
+
+    // Point global options
+    point : {},
 
     // The randomColor scheme
     // See https://github.com/davidmerfield/randomColor
@@ -61,7 +71,6 @@ const WX_LINER_ITEM_DEFAULT_CONFIG = {
     pointStyle: 'circle', // Support triangle, rect and Image object
     pointBorderWidth: 1.5,
     pointBorderColor: '#ffffff',
-    tension: 0.4,
     display: true
 };
 
@@ -101,6 +110,11 @@ export default class WxLiner extends WxChart {
      */
     constructor(id, config) {
         super(id, config);
+
+        mixins([WxStackMixin], this, {
+            // Mixins will create a new method to nested call all duplicate method
+            mergeDuplicates: false
+        });
 
         let me = this;
         me.chartConfig = extend({}, WX_LINER_DEFAULT_CONFIG, config);
@@ -196,7 +210,7 @@ export default class WxLiner extends WxChart {
         let me = this;
         me._labels = null;
         me._legends = null;
-        super.update(datasets, WX_LINER_ITEM_DEFAULT_CONFIG);
+        super.update(datasets, extend({}, WX_LINER_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
         me.wxLayout.removeAllBox();
         return me.draw();
     }
@@ -207,6 +221,8 @@ export default class WxLiner extends WxChart {
     draw() {
         let box,
             me = this,
+            stacked = me.chartConfig.stacked,
+            discardNeg = me.chartConfig.discardNeg,
             wxLayout = me.wxLayout;
         let {cutoutPercentage, rotation, color, borderWidth, padding} = me.chartConfig;
 
@@ -237,7 +253,7 @@ export default class WxLiner extends WxChart {
         me._drawScale();
 
         // Finally, draw line
-        let lineConfigs = me.legends.map(function (legend) {
+        let lineConfigs = me.legends.map((legend, legendIndex) => {
             let config = {
                 legend: legend
             };
@@ -248,8 +264,19 @@ export default class WxLiner extends WxChart {
                     point;
 
                 if (value) {
-                    let xAxisPoint = me.xAxis.getPoint(index);
-                    let yAxisPoint = me.yAxis.getPoint(value);
+                    let yAxisPoint,
+                        xAxisPoint = me.xAxis.getPoint(index);
+                    if (stacked) {
+                        if (discardNeg) {
+                            let { sumPos } = me._getStackValue(index, legendIndex);
+                            yAxisPoint = value < 0 ? me.yAxis.getPoint(sumPos) : me.yAxis.getPoint(sumPos + value);
+                        } else {
+                            yAxisPoint = me._getStackPoint(index, legendIndex);
+                        }
+                    } else {
+                        yAxisPoint = me.yAxis.getPoint(value);
+                    }
+
                     point = {
                         x: xAxisPoint.x,
                         y: yAxisPoint.y
@@ -261,7 +288,11 @@ export default class WxLiner extends WxChart {
             return config;
         });
 
-        lineConfigs.forEach(line => me._drawLine(line));
+        lineConfigs.reduce((pre, curr) => {
+            me._drawLine(curr, pre);
+            return curr;
+        }, null);
+        // lineConfigs.forEach(line => me._drawLine(line));
     }
 
     /**
@@ -282,6 +313,7 @@ export default class WxLiner extends WxChart {
         wxLayout.addBox(yBox);
     }
 
+
     /**
      * Draw one line
      * @param {Object} lineData - Line dataset
@@ -289,9 +321,10 @@ export default class WxLiner extends WxChart {
      * @param {Object[]} lineData[].value - Data of each line point
      * @param {Object[]} lineData[].data - The data object
      * @param {Object[]} lineData[].point - The point for rending.
+     *  @param {Object} preData - Previous line dataset
      * @private
      */
-    _drawLine(lineData) {
+    _drawLine(lineData, preData) {
         let me = this,
             ctx = me.ctx;
         let {legend, dataset} = lineData;
@@ -343,7 +376,7 @@ export default class WxLiner extends WxChart {
         if (fillArea) {
             let firstPoint,
                 currPoint,
-                xAxisY = me.xAxis.getPoint(0).y;
+                xAxisY = me.xAxis.getPoint(0).y - me.xAxis.config.lineWidth/2;
             let fillInHere = function () {
                 ctx.globalAlpha = fillAlpha;
                 ctx.fill();
@@ -446,29 +479,37 @@ export default class WxLiner extends WxChart {
      */
     yScaleAxisDatas(area) {
         let me = this,
+            stacked = me.chartConfig.stacked,
+            discardNeg = me.chartConfig.discardNeg,
             ctx = me.ctx;
         let yScaleItemOptions = me.chartConfig.yScaleItemOptions;
-
-        // First, get all available values and calculate the max/min value
-        let {max, min} = this.visDatasets.reduce((pre, cur) => {
-            let {max, min} = pre;
-            if (cur.display) {
-                let curValue = me.legends.map((legend) => {
-                    if (legend.key) {
-                        return cur[legend.key] || 0
-                    }
-                }).concat(max, min);
-                max = Math.max(...curValue);
-                min = Math.min(...curValue);
-            }
-            return {max, min};
-        }, {
-            max: 0,
-            min: 0
-        });
-
         let tickLimits = me.yAxis.calculateTickLimit(area, ctx);
-        return me.yAxis.buildDatasets(max, min, tickLimits);
+
+        if (stacked) {
+            let {max, min} = me.stackYScaleAxisLimit();
+            return me.yAxis.buildDatasets(max, min < 0 && discardNeg ? 0 : min, tickLimits, undefined, yScaleItemOptions);
+        } else {
+            // First, get all available values and calculate the max/min value
+            let {max, min} = this.visDatasets.reduce((pre, cur) => {
+                let {max, min} = pre;
+                if (cur.display) {
+                    let curValue = me.legends.map((legend) => {
+                        if (legend.key) {
+                            return cur[legend.key] || 0
+                        }
+                    }).concat(max, min);
+                    max = Math.max(...curValue);
+                    min = Math.min(...curValue);
+                }
+                return {max, min};
+            }, {
+                max: 0,
+                min: 0
+            });
+
+            return me.yAxis.buildDatasets(max, min, tickLimits, undefined, yScaleItemOptions);
+        }
+
     }
 
     /**

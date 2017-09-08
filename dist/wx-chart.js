@@ -41,18 +41,172 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             s(r[o]);
         }return s;
     }({ 1: [function (require, module, exports) {
+            'use strict';
+
+            var _classCallCheck = function _classCallCheck(instance, Constructor) {
+                if (!(instance instanceof Constructor)) {
+                    throw new TypeError('Cannot call a class as a function');
+                }
+            };
+
+            var _createClass = function () {
+                function defineProperties(target, props) {
+                    for (var i = 0; i < props.length; i++) {
+                        var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ('value' in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                    }
+                }return function (Constructor, protoProps, staticProps) {
+                    if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                };
+            }();
+
+            /**
+             * Remember mixins? Until facebook and various react utilities figure out a new solution this will
+             * make mixins work how they used to, by adding mixin methods directly to your react component.
+             *
+             * @param {function/array} mixins A reference to your mixin class
+             * @param {object} context A reference to the react component class. Usually just "this".
+             * @param {object} options An object of optional settings".
+             * @returns undefined
+             *
+             * use it like this in your constructor:
+             * mixins([mixin1, mixin2], this, {options});
+             */
+
+            var Mixins = function () {
+                function Mixins() {
+                    _classCallCheck(this, Mixins);
+                }
+
+                _createClass(Mixins, [{
+                    key: 'init',
+                    value: function init(mixins, context, options) {
+                        this.mixins = mixins;
+                        this.context = context;
+
+                        this.opt = {
+                            warn: true,
+                            mergeDuplicates: true
+                        };
+
+                        this.contextMethods = Object.getOwnPropertyNames(this.context.constructor.prototype);
+                        this.reactMethods = ['componentWillMount', 'componentDidMount', 'componentWillReceiveProps', 'shouldComponentUpdate', 'componentWillUpdate', 'componentDidUpdate', 'componentWillUnmount'];
+
+                        if (options) {
+                            this.opt.warn = options.warn !== undefined ? options.warn : this.opt.warn;
+                            this.opt.mergeDuplicates = options.mergeDuplicates !== undefined ? options.mergeDuplicates : this.opt.mergeDuplicates;
+                        }
+
+                        if (this.mixins.constructor === Array) {
+                            mixins.map(function (mixin) {
+                                this.grabMethods(mixin);
+                            }, this);
+                        } else if (typeof mixins === 'function' || (typeof mixins === "undefined" ? "undefined" : _typeof2(mixins)) === 'object') {
+                            this.grabMethods(mixins);
+                        } else {
+                            throw 'mixins expects a function, an array, or an object. Please and thank you';
+                        }
+                    }
+                }, {
+                    key: 'addNewMethod',
+
+                    /**
+                     * If the method doesn't already exist on the react component, simply add this to it.
+                     *
+                     * @param {string} mm The name of a single mixin method
+                     * @param {function} currentMixin A reference to the mixin you are adding to the react component
+                     */
+                    value: function addNewMethod(mm, currentMixin) {
+                        if (this.mixins.prototype) {
+                            this.context.constructor.prototype[mm] = this.mixins.prototype[mm];
+                        } else {
+                            this.context.constructor.prototype[mm] = (typeof currentMixin === "undefined" ? "undefined" : _typeof2(currentMixin)) === 'object' ? currentMixin[mm] : currentMixin.prototype[mm];
+                        }
+                        this.contextMethods = Object.getOwnPropertyNames(this.context.constructor.prototype);
+                    }
+                }, {
+                    key: 'extendMethod',
+
+                    /**
+                     * If there is already a method on your react component that matches the mixin method create a new function that
+                     * calls both methods so they can live in harmony.
+                     *
+                     * @param {string} mm The name of a single mixin method
+                     * @param {string} cm The name of the matched react method to extend
+                     * @param {function} currentMixin A reference to the mixin being added to the react method.
+                     */
+                    value: function extendMethod(mm, cm, currentMixin) {
+                        var orig = this.context[cm];
+                        var newMethod = (typeof currentMixin === "undefined" ? "undefined" : _typeof2(currentMixin)) === 'object' ? currentMixin[mm] : currentMixin.prototype[mm];
+                        this.context[mm] = function () {
+                            newMethod.call(this, arguments);
+                            orig.call(this, arguments);
+                        };
+                    }
+                }, {
+                    key: 'grabMethods',
+
+                    /**
+                     * Takes a mixin method and sends it along the pipe
+                     * @param {function} mixin A single method from your mixin
+                     *
+                     */
+                    value: function grabMethods(mixin) {
+                        var _this = this;
+
+                        var currentMixin = mixin;
+                        var mixinMethods = (typeof mixin === "undefined" ? "undefined" : _typeof2(mixin)) === 'object' ? Object.getOwnPropertyNames(mixin) : Object.getOwnPropertyNames(mixin.prototype);
+
+                        mixinMethods.map(function (method) {
+                            if (method !== 'constructor' && method !== 'render') {
+                                _this.checkForMatch(method, currentMixin);
+                            }
+                        }, this);
+                    }
+                }, {
+                    key: 'checkForMatch',
+
+                    /**
+                     * Checks the react component to see if the method we want to add is already there.
+                     * If it is a duplicate and a React lifecycle method it silently extends the React method.
+                     * If it is a duplicate and not a React lifecycle method it warns you before extending the React method.
+                     *
+                     * @param {string} mm the mixin method to check against the react methods
+                     * @param {function} currentMixin A reference to the mixin being added to the React Component.
+                     */
+                    value: function checkForMatch(mm, currentMixin) {
+                        var _this2 = this;
+
+                        this.contextMethods.map(function (ctxMethod) {
+                            if (mm === ctxMethod) {
+                                if (_this2.reactMethods.indexOf(mm) > -1) {
+                                    _this2.extendMethod(mm, ctxMethod, currentMixin);
+                                } else {
+                                    if (_this2.opt.warn) {
+                                        console.warn(mm + ' method already exists within the ' + _this2.context.constructor.name + ' component.');
+                                    }
+                                    if (_this2.opt.mergeDuplicates) {
+                                        _this2.extendMethod(mm, ctxMethod, currentMixin);
+                                    }
+                                }
+                            }
+                        });
+                        this.addNewMethod(mm, currentMixin);
+                    }
+                }]);
+
+                return Mixins;
+            }();
+
+            var mix = new Mixins();
+
+            module.exports = mix.init.bind(mix);
+        }, {}], 2: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-
-            var _typeof = typeof Symbol === "function" && _typeof2(Symbol.iterator) === "symbol" ? function (obj) {
-                return typeof obj === "undefined" ? "undefined" : _typeof2(obj);
-            } : function (obj) {
-                return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj === "undefined" ? "undefined" : _typeof2(obj);
-            };
 
             var _createClass = function () {
                 function defineProperties(target, props) {
@@ -80,6 +234,20 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 }
             };
 
+            var _es6Mixins = require('es6-mixins');
+
+            var _es6Mixins2 = _interopRequireDefault(_es6Mixins);
+
+            var _helper = require('../util/helper');
+
+            var _tinycolor = require('../util/tinycolor');
+
+            var _tinycolor2 = _interopRequireDefault(_tinycolor);
+
+            var _randomColor = require('../util/randomColor');
+
+            var _randomColor2 = _interopRequireDefault(_randomColor);
+
             var _wxCanvas = require('../util/wxCanvas');
 
             var _wxCanvas2 = _interopRequireDefault(_wxCanvas);
@@ -104,9 +272,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             var _scale6 = _interopRequireDefault(_scale5);
 
-            var _scale7 = require('../scale/scale.category');
+            var _scale7 = require('../scale/scale.stackhelp');
 
             var _scale8 = _interopRequireDefault(_scale7);
+
+            var _scale9 = require('../scale/scale.category');
+
+            var _scale10 = _interopRequireDefault(_scale9);
 
             var _legend = require('../core/legend');
 
@@ -115,16 +287,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             var _layout = require('../core/layout');
 
             var _layout2 = _interopRequireDefault(_layout);
-
-            var _helper = require('../util/helper');
-
-            var _tinycolor = require('../util/tinycolor');
-
-            var _tinycolor2 = _interopRequireDefault(_tinycolor);
-
-            var _randomColor = require('../util/randomColor');
-
-            var _randomColor2 = _interopRequireDefault(_randomColor);
 
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
@@ -200,6 +362,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     'position': 'bottom'
                 },
 
+                point: {},
+
                 // The randomColor scheme
                 // See https://github.com/davidmerfield/randomColor
                 color: {
@@ -261,6 +425,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     var _this = _possibleConstructorReturn(this, (WxBar.__proto__ || Object.getPrototypeOf(WxBar)).call(this, id, config));
 
+                    (0, _es6Mixins2.default)([_scale8.default], _this, {
+                        // Mixins will create a new method to nested call all duplicate method
+                        mergeDuplicates: false
+                    });
+
                     var me = _this;
                     me.chartConfig = (0, _helper.extend)({}, WX_BAR_DEFAULT_CONFIG, config);
 
@@ -276,7 +445,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     // Initialize x,y Scale
                     me.yAxis = new _scale4.default(me, me.chartConfig.yScaleOptions);
-                    me.xAxis = new _scale8.default(me, me.chartConfig.xScaleOptions);
+                    me.xAxis = new _scale10.default(me, me.chartConfig.xScaleOptions);
                     me.wxCrossScale = new _scale6.default(me.xAxis, me.yAxis, me.chartConfig.crossScaleOptions);
                     me.wxLayout = new _layout2.default(me);
                     return _this;
@@ -331,7 +500,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var me = this;
                         me._labels = null;
                         me._legends = null;
-                        _get(WxBar.prototype.__proto__ || Object.getPrototypeOf(WxBar.prototype), 'update', this).call(this, datasets, WX_BAR_ITEM_DEFAULT_CONFIG);
+                        _get(WxBar.prototype.__proto__ || Object.getPrototypeOf(WxBar.prototype), 'update', this).call(this, datasets, (0, _helper.extend)({}, WX_BAR_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
                         me.wxLayout.removeAllBox();
                         return me.draw();
                     }
@@ -461,6 +630,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 data = d.data,
                                 point = d.point;
 
+                            if (!point) {
+                                return;
+                            }
                             if (stacked && hasNeg) {
                                 ctx.rect(point.x, point.y, point.barWidth, point.barHeight);
                                 if (borderWidth) {
@@ -604,8 +776,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var frontBarWidth = me.legends.slice(0, legendIndex).reduce(function (acc, cur) {
                             return acc + cur.barWidth;
                         }, 0);
-                        var datas = me.visDatasets[index];
-                        var value = legendOpt.key && typeof datas[legendOpt.key] !== 'undefined' ? datas[legendOpt.key] : null;
+                        var data = me.visDatasets[index];
+                        var value = legendOpt.key && typeof data[legendOpt.key] !== 'undefined' ? data[legendOpt.key] : null;
                         if (_helper.is.Null(value) || _helper.is.Undefined(value)) {
                             return;
                         }
@@ -617,11 +789,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var xPointInstance = xScale.getPoint(index);
                         if (stacked) {
                             xPoint = xPointInstance.x - barRuler.pointWidth / 2 + barRuler.barIntervalWidth / 2;
-                            yPoint = me._getStackPoint(index, legendIndex, barRuler).y;
+                            yPoint = me._getStackPoint(index, legendIndex).y;
                             barWidth = legendOpt.barWidth;
 
+                            // TODO: Find another way to replace this variable :__sumNeg __sumPos
                             var baseY = yScale.getPoint(0).y;
-                            barHeight = value < 0 ? value / legendOpt.sumNeg * (yScale.getPoint(legendOpt.sumNeg).y - baseY) : value / legendOpt.sumPos * (baseY - yScale.getPoint(legendOpt.sumPos).y);
+                            barHeight = value < 0 ? value / data.__sumNeg * (yScale.getPoint(data.__sumNeg).y - baseY) : value / data.__sumPos * (baseY - yScale.getPoint(data.__sumPos).y);
+
+                            yPoint = value < 0 ? yPoint - barHeight : yPoint;
                         } else {
                             xPoint = xPointInstance.x - barRuler.pointWidth / 2 + frontBarWidth + barRuler.barIntervalWidth / 2 * (legendIndex + 1);
                             yPoint = yScale.getPoint(value).y;
@@ -630,52 +805,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         }
 
                         return { x: xPoint, y: yPoint, barWidth: barWidth, barHeight: barHeight };
-                    }
-
-                    /**
-                     * Calculate the stack bar
-                     * @param {number} index - The index of item
-                     * @param {Object} legendIndex - The index of legend
-                     * @param {BarRuler} barRuler
-                     * @param {WxScale} [yScale=this.yAxis] - Y-Axis instance
-                     * @retrun {Object}
-                     * @private
-                     */
-
-                }, {
-                    key: '_getStackPoint',
-                    value: function _getStackPoint(index, legendIndex, barRuler) {
-                        var yScale = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : this.yAxis;
-
-                        var me = this,
-                            data = me.visDatasets[index],
-                            value = data[me.legends[legendIndex].key];
-
-                        var stackedVal = void 0,
-                            sumNeg = 0,
-                            sumPos = 0;
-                        for (var j = 0; j < legendIndex; j++) {
-                            stackedVal = data[me.legends[j].key];
-                            if (stackedVal < 0) {
-                                sumNeg += stackedVal || 0;
-                            } else {
-                                sumPos += stackedVal || 0;
-                            }
-                        }
-                        // let stackedVal, sumNeg = 0, sumPos = 0;
-                        // for (let i = 0; i < index; i++) {
-                        //     let data = me.visDatasets[i];
-                        //     for (let j = 0; j < legendIndex; j++) {
-                        //         stackedVal = data[me.legends[j].key];
-                        //         if (stackedVal < 0) {
-                        //             sumNeg += stackedVal || 0;
-                        //         } else {
-                        //             sumPos += stackedVal || 0;
-                        //         }
-                        //     }
-                        // }
-
-                        return value < 0 ? yScale.getPoint(sumNeg) : yScale.getPoint(sumPos + value);
                     }
 
                     /**
@@ -718,32 +847,12 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var tickLimits = me.yAxis.calculateTickLimit(area, ctx);
 
                         if (stacked) {
-                            var _ret = function () {
-                                var min = 0,
-                                    max = 0;
-                                me.legends.forEach(function (legend) {
-                                    var key = legend.key;
-                                    var sumNeg = 0,
-                                        sumPos = 0;
-                                    me.visDatasets.forEach(function (data) {
-                                        var stackedVal = data[key];
-                                        if (stackedVal < 0) {
-                                            sumNeg += stackedVal || 0;
-                                        } else {
-                                            sumPos += stackedVal || 0;
-                                        }
-                                    });
-                                    if (sumNeg < min) min = sumNeg;
-                                    if (sumPos > max) max = sumPos;
-                                    legend.sumNeg = sumNeg;
-                                    legend.sumPos = sumPos;
-                                });
-                                return {
-                                    v: me.yAxis.buildDatasets(max, min, tickLimits, undefined, yScaleItemOptions)
-                                };
-                            }();
+                            //let {max, min}  = me.stackYScaleAxisLimit();
+                            var _me$stackYScaleAxisLi = me.stackYScaleAxisLimit(),
+                                max = _me$stackYScaleAxisLi.max,
+                                min = _me$stackYScaleAxisLi.min;
 
-                            if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
+                            return me.yAxis.buildDatasets(max, min, tickLimits, undefined, yScaleItemOptions);
                         } else {
                             // First, get all available values and calculate the max/min value
                             var _visDatasets$reduce = this.visDatasets.reduce(function (pre, cur) {
@@ -764,10 +873,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 max: 0,
                                 min: 0
                             }),
-                                max = _visDatasets$reduce.max,
-                                min = _visDatasets$reduce.min;
+                                _max = _visDatasets$reduce.max,
+                                _min = _visDatasets$reduce.min;
 
-                            return me.yAxis.buildDatasets(max, min, tickLimits, undefined, yScaleItemOptions);
+                            return me.yAxis.buildDatasets(_max, _min, tickLimits, undefined, yScaleItemOptions);
                         }
                     }
 
@@ -827,7 +936,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxBar;
-        }, { "../core/layout": 6, "../core/legend": 7, "../core/scale": 8, "../core/title": 9, "../scale/scale.category": 14, "../scale/scale.crosshelp": 15, "../scale/scale.liner": 16, "../util/helper": 17, "../util/randomColor": 18, "../util/tinycolor": 19, "../util/wxCanvas": 20, "./wxChart": 4 }], 2: [function (require, module, exports) {
+        }, { "../core/layout": 7, "../core/legend": 8, "../core/scale": 9, "../core/title": 10, "../scale/scale.category": 11, "../scale/scale.crosshelp": 12, "../scale/scale.liner": 13, "../scale/scale.stackhelp": 14, "../util/helper": 15, "../util/randomColor": 16, "../util/tinycolor": 17, "../util/wxCanvas": 18, "./wxChart": 5, "es6-mixins": 1 }], 3: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -927,6 +1036,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     luminosity: 'light'
                 },
 
+                point: {},
+
                 // The title text or a title config object
                 title: undefined,
 
@@ -1011,7 +1122,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     key: 'update',
                     value: function update(datasets) {
                         var me = this;
-                        _get(WxDoughnut.prototype.__proto__ || Object.getPrototypeOf(WxDoughnut.prototype), 'update', this).call(this, datasets, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG);
+                        _get(WxDoughnut.prototype.__proto__ || Object.getPrototypeOf(WxDoughnut.prototype), 'update', this).call(this, datasets, (0, _helper.extend)({}, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
                         me.wxLayout.removeAllBox();
                         return me.draw();
                     }
@@ -1321,7 +1432,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxDoughnut;
-        }, { "../core/layout": 6, "../core/legend": 7, "../core/title": 9, "../util/helper": 17, "../util/randomColor": 18, "../util/wxCanvas": 20, "./wxChart": 4 }], 3: [function (require, module, exports) {
+        }, { "../core/layout": 7, "../core/legend": 8, "../core/title": 10, "../util/helper": 15, "../util/randomColor": 16, "../util/wxCanvas": 18, "./wxChart": 5 }], 4: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -1355,6 +1466,16 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 }
             };
 
+            var _es6Mixins = require('es6-mixins');
+
+            var _es6Mixins2 = _interopRequireDefault(_es6Mixins);
+
+            var _helper = require('../util/helper');
+
+            var _randomColor = require('../util/randomColor');
+
+            var _randomColor2 = _interopRequireDefault(_randomColor);
+
             var _wxCanvas = require('../util/wxCanvas');
 
             var _wxCanvas2 = _interopRequireDefault(_wxCanvas);
@@ -1379,9 +1500,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             var _scale6 = _interopRequireDefault(_scale5);
 
-            var _scale7 = require('../scale/scale.category');
+            var _scale7 = require('../scale/scale.stackhelp');
 
             var _scale8 = _interopRequireDefault(_scale7);
+
+            var _scale9 = require('../scale/scale.category');
+
+            var _scale10 = _interopRequireDefault(_scale9);
 
             var _legend = require('../core/legend');
 
@@ -1390,12 +1515,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             var _layout = require('../core/layout');
 
             var _layout2 = _interopRequireDefault(_layout);
-
-            var _helper = require('../util/helper');
-
-            var _randomColor = require('../util/randomColor');
-
-            var _randomColor2 = _interopRequireDefault(_randomColor);
 
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
@@ -1455,11 +1574,17 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 // The title text or a title config object
                 title: undefined,
 
+                stacked: false, // If true, line are stacked on the x-axis
+                discardNeg: false,
+
                 // The legend of line chart
                 legends: [], // lineWidth, lineJoin, fillStyle, strokeStyle, fillArea can be set in here
                 legendOptions: {
                     'position': 'bottom'
                 },
+
+                // Point global options
+                point: {},
 
                 // The randomColor scheme
                 // See https://github.com/davidmerfield/randomColor
@@ -1477,7 +1602,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 pointStyle: 'circle', // Support triangle, rect and Image object
                 pointBorderWidth: 1.5,
                 pointBorderColor: '#ffffff',
-                tension: 0.4,
                 display: true
             };
 
@@ -1522,6 +1646,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     var _this = _possibleConstructorReturn(this, (WxLiner.__proto__ || Object.getPrototypeOf(WxLiner)).call(this, id, config));
 
+                    (0, _es6Mixins2.default)([_scale8.default], _this, {
+                        // Mixins will create a new method to nested call all duplicate method
+                        mergeDuplicates: false
+                    });
+
                     var me = _this;
                     me.chartConfig = (0, _helper.extend)({}, WX_LINER_DEFAULT_CONFIG, config);
 
@@ -1537,7 +1666,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     // Initialize x,y Scale
                     me.yAxis = new _scale4.default(me, me.chartConfig.yScaleOptions);
-                    me.xAxis = new _scale8.default(me, me.chartConfig.xScaleOptions);
+                    me.xAxis = new _scale10.default(me, me.chartConfig.xScaleOptions);
                     me.wxCrossScale = new _scale6.default(me.xAxis, me.yAxis, me.chartConfig.crossScaleOptions);
                     me.wxLayout = new _layout2.default(me);
                     return _this;
@@ -1595,7 +1724,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var me = this;
                         me._labels = null;
                         me._legends = null;
-                        _get(WxLiner.prototype.__proto__ || Object.getPrototypeOf(WxLiner.prototype), 'update', this).call(this, datasets, WX_LINER_ITEM_DEFAULT_CONFIG);
+                        _get(WxLiner.prototype.__proto__ || Object.getPrototypeOf(WxLiner.prototype), 'update', this).call(this, datasets, (0, _helper.extend)({}, WX_LINER_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
                         me.wxLayout.removeAllBox();
                         return me.draw();
                     }
@@ -1609,6 +1738,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     value: function draw() {
                         var box = void 0,
                             me = this,
+                            stacked = me.chartConfig.stacked,
+                            discardNeg = me.chartConfig.discardNeg,
                             wxLayout = me.wxLayout;
                         var _me$chartConfig = me.chartConfig,
                             cutoutPercentage = _me$chartConfig.cutoutPercentage,
@@ -1645,7 +1776,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         me._drawScale();
 
                         // Finally, draw line
-                        var lineConfigs = me.legends.map(function (legend) {
+                        var lineConfigs = me.legends.map(function (legend, legendIndex) {
                             var config = {
                                 legend: legend
                             };
@@ -1656,8 +1787,21 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                     point = void 0;
 
                                 if (value) {
-                                    var xAxisPoint = me.xAxis.getPoint(index);
-                                    var yAxisPoint = me.yAxis.getPoint(value);
+                                    var yAxisPoint = void 0,
+                                        xAxisPoint = me.xAxis.getPoint(index);
+                                    if (stacked) {
+                                        if (discardNeg) {
+                                            var _me$_getStackValue = me._getStackValue(index, legendIndex),
+                                                sumPos = _me$_getStackValue.sumPos;
+
+                                            yAxisPoint = value < 0 ? me.yAxis.getPoint(sumPos) : me.yAxis.getPoint(sumPos + value);
+                                        } else {
+                                            yAxisPoint = me._getStackPoint(index, legendIndex);
+                                        }
+                                    } else {
+                                        yAxisPoint = me.yAxis.getPoint(value);
+                                    }
+
                                     point = {
                                         x: xAxisPoint.x,
                                         y: yAxisPoint.y
@@ -1669,9 +1813,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             return config;
                         });
 
-                        lineConfigs.forEach(function (line) {
-                            return me._drawLine(line);
-                        });
+                        lineConfigs.reduce(function (pre, curr) {
+                            me._drawLine(curr, pre);
+                            return curr;
+                        }, null);
+                        // lineConfigs.forEach(line => me._drawLine(line));
                     }
 
                     /**
@@ -1706,12 +1852,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                      * @param {Object[]} lineData[].value - Data of each line point
                      * @param {Object[]} lineData[].data - The data object
                      * @param {Object[]} lineData[].point - The point for rending.
+                     *  @param {Object} preData - Previous line dataset
                      * @private
                      */
 
                 }, {
                     key: '_drawLine',
-                    value: function _drawLine(lineData) {
+                    value: function _drawLine(lineData, preData) {
                         var me = this,
                             ctx = me.ctx;
                         var legend = lineData.legend,
@@ -1760,7 +1907,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             (function () {
                                 var firstPoint = void 0,
                                     currPoint = void 0,
-                                    xAxisY = me.xAxis.getPoint(0).y;
+                                    xAxisY = me.xAxis.getPoint(0).y - me.xAxis.config.lineWidth / 2;
                                 var fillInHere = function fillInHere() {
                                     ctx.globalAlpha = fillAlpha;
                                     ctx.fill();
@@ -1879,34 +2026,43 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     key: 'yScaleAxisDatas',
                     value: function yScaleAxisDatas(area) {
                         var me = this,
+                            stacked = me.chartConfig.stacked,
+                            discardNeg = me.chartConfig.discardNeg,
                             ctx = me.ctx;
                         var yScaleItemOptions = me.chartConfig.yScaleItemOptions;
-
-                        // First, get all available values and calculate the max/min value
-
-                        var _visDatasets$reduce = this.visDatasets.reduce(function (pre, cur) {
-                            var max = pre.max,
-                                min = pre.min;
-
-                            if (cur.display) {
-                                var curValue = me.legends.map(function (legend) {
-                                    if (legend.key) {
-                                        return cur[legend.key] || 0;
-                                    }
-                                }).concat(max, min);
-                                max = Math.max.apply(Math, _toConsumableArray(curValue));
-                                min = Math.min.apply(Math, _toConsumableArray(curValue));
-                            }
-                            return { max: max, min: min };
-                        }, {
-                            max: 0,
-                            min: 0
-                        }),
-                            max = _visDatasets$reduce.max,
-                            min = _visDatasets$reduce.min;
-
                         var tickLimits = me.yAxis.calculateTickLimit(area, ctx);
-                        return me.yAxis.buildDatasets(max, min, tickLimits);
+
+                        if (stacked) {
+                            var _me$stackYScaleAxisLi = me.stackYScaleAxisLimit(),
+                                max = _me$stackYScaleAxisLi.max,
+                                min = _me$stackYScaleAxisLi.min;
+
+                            return me.yAxis.buildDatasets(max, min < 0 && discardNeg ? 0 : min, tickLimits, undefined, yScaleItemOptions);
+                        } else {
+                            // First, get all available values and calculate the max/min value
+                            var _visDatasets$reduce = this.visDatasets.reduce(function (pre, cur) {
+                                var max = pre.max,
+                                    min = pre.min;
+
+                                if (cur.display) {
+                                    var curValue = me.legends.map(function (legend) {
+                                        if (legend.key) {
+                                            return cur[legend.key] || 0;
+                                        }
+                                    }).concat(max, min);
+                                    max = Math.max.apply(Math, _toConsumableArray(curValue));
+                                    min = Math.min.apply(Math, _toConsumableArray(curValue));
+                                }
+                                return { max: max, min: min };
+                            }, {
+                                max: 0,
+                                min: 0
+                            }),
+                                _max = _visDatasets$reduce.max,
+                                _min = _visDatasets$reduce.min;
+
+                            return me.yAxis.buildDatasets(_max, _min, tickLimits, undefined, yScaleItemOptions);
+                        }
                     }
 
                     /**
@@ -1965,7 +2121,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxLiner;
-        }, { "../core/layout": 6, "../core/legend": 7, "../core/scale": 8, "../core/title": 9, "../scale/scale.category": 14, "../scale/scale.crosshelp": 15, "../scale/scale.liner": 16, "../util/helper": 17, "../util/randomColor": 18, "../util/wxCanvas": 20, "./wxChart": 4 }], 4: [function (require, module, exports) {
+        }, { "../core/layout": 7, "../core/legend": 8, "../core/scale": 9, "../core/title": 10, "../scale/scale.category": 11, "../scale/scale.crosshelp": 12, "../scale/scale.liner": 13, "../scale/scale.stackhelp": 14, "../util/helper": 15, "../util/randomColor": 16, "../util/wxCanvas": 18, "./wxChart": 5, "es6-mixins": 1 }], 5: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2221,7 +2377,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxChart;
-        }, { "../core/layout": 6, "../util/helper": 17, "../util/wxCanvas": 20 }], 5: [function (require, module, exports) {
+        }, { "../core/layout": 7, "../util/helper": 15, "../util/wxCanvas": 18 }], 6: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2462,7 +2618,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxBaseComponent;
-        }, { "../charts/wxChart": 4, "../util/helper": 17, "../util/wxCanvas": 20, "./layout": 6 }], 6: [function (require, module, exports) {
+        }, { "../charts/wxChart": 5, "../util/helper": 15, "../util/wxCanvas": 18, "./layout": 7 }], 7: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2768,7 +2924,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxLayout;
-        }, { "../util/helper": 17, "./base": 5 }], 7: [function (require, module, exports) {
+        }, { "../util/helper": 15, "./base": 6 }], 8: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3155,7 +3311,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxLegend;
-        }, { "../util/helper": 17, "./base": 5, "./layout": 6 }], 8: [function (require, module, exports) {
+        }, { "../util/helper": 15, "./base": 6, "./layout": 7 }], 9: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3677,6 +3833,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         if (me.isHorizontal()) {
                             // Draw the first point
                             if (me.box.marginLR || config.extendLeft) {
+                                currX += tickConfig.lineWidth;
                                 me._drawATickLine(currX, currY, fontSize);
                             }
                             // Move to first tick
@@ -3785,7 +3942,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxScale;
-        }, { "../util/helper": 17, "../util/wxCanvas": 20, "./base": 5, "./layout": 6 }], 9: [function (require, module, exports) {
+        }, { "../util/helper": 15, "../util/wxCanvas": 18, "./base": 6, "./layout": 7 }], 10: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3959,354 +4116,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             exports.default = WxTitle;
             ;
-        }, { "../util/helper": 17, "./base": 5, "./layout": 6 }], 10: [function (require, module, exports) {
-            (function (global) {
-                'use strict';
-
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-
-                var _createClass = function () {
-                    function defineProperties(target, props) {
-                        for (var i = 0; i < props.length; i++) {
-                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
-                        }
-                    }return function (Constructor, protoProps, staticProps) {
-                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
-                    };
-                }();
-
-                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
-
-                var _react2 = _interopRequireDefault(_react);
-
-                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
-
-                var _reactDom2 = _interopRequireDefault(_reactDom);
-
-                var _wxChartReact = require('./wxChartReact.jsx');
-
-                var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
-
-                var _bar = require('../charts/bar');
-
-                var _bar2 = _interopRequireDefault(_bar);
-
-                function _interopRequireDefault(obj) {
-                    return obj && obj.__esModule ? obj : { default: obj };
-                }
-
-                function _classCallCheck(instance, Constructor) {
-                    if (!(instance instanceof Constructor)) {
-                        throw new TypeError("Cannot call a class as a function");
-                    }
-                }
-
-                function _possibleConstructorReturn(self, call) {
-                    if (!self) {
-                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
-                }
-
-                function _inherits(subClass, superClass) {
-                    if (typeof superClass !== "function" && superClass !== null) {
-                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
-                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
-                }
-
-                var WxBarReact = function (_WxChartReact) {
-                    _inherits(WxBarReact, _WxChartReact);
-
-                    function WxBarReact() {
-                        _classCallCheck(this, WxBarReact);
-
-                        return _possibleConstructorReturn(this, (WxBarReact.__proto__ || Object.getPrototypeOf(WxBarReact)).apply(this, arguments));
-                    }
-
-                    _createClass(WxBarReact, [{
-                        key: 'initChart',
-                        value: function initChart(el) {
-                            return new _bar2.default(el, this.props);
-                        }
-                    }]);
-
-                    return WxBarReact;
-                }(_wxChartReact2.default);
-
-                exports.default = WxBarReact;
-            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
-        }, { "../charts/bar": 1, "./wxChartReact.jsx": 13 }], 11: [function (require, module, exports) {
-            (function (global) {
-                'use strict';
-
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-
-                var _createClass = function () {
-                    function defineProperties(target, props) {
-                        for (var i = 0; i < props.length; i++) {
-                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
-                        }
-                    }return function (Constructor, protoProps, staticProps) {
-                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
-                    };
-                }();
-
-                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
-
-                var _react2 = _interopRequireDefault(_react);
-
-                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
-
-                var _reactDom2 = _interopRequireDefault(_reactDom);
-
-                var _wxChartReact = require('./wxChartReact.jsx');
-
-                var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
-
-                var _doughnut = require('../charts/doughnut');
-
-                var _doughnut2 = _interopRequireDefault(_doughnut);
-
-                function _interopRequireDefault(obj) {
-                    return obj && obj.__esModule ? obj : { default: obj };
-                }
-
-                function _classCallCheck(instance, Constructor) {
-                    if (!(instance instanceof Constructor)) {
-                        throw new TypeError("Cannot call a class as a function");
-                    }
-                }
-
-                function _possibleConstructorReturn(self, call) {
-                    if (!self) {
-                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
-                }
-
-                function _inherits(subClass, superClass) {
-                    if (typeof superClass !== "function" && superClass !== null) {
-                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
-                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
-                }
-
-                var WxDoughnutReact = function (_WxChartReact) {
-                    _inherits(WxDoughnutReact, _WxChartReact);
-
-                    function WxDoughnutReact() {
-                        _classCallCheck(this, WxDoughnutReact);
-
-                        return _possibleConstructorReturn(this, (WxDoughnutReact.__proto__ || Object.getPrototypeOf(WxDoughnutReact)).apply(this, arguments));
-                    }
-
-                    _createClass(WxDoughnutReact, [{
-                        key: 'initChart',
-                        value: function initChart(el) {
-                            return new _doughnut2.default(el, this.props);
-                        }
-                    }]);
-
-                    return WxDoughnutReact;
-                }(_wxChartReact2.default);
-
-                exports.default = WxDoughnutReact;
-            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
-        }, { "../charts/doughnut": 2, "./wxChartReact.jsx": 13 }], 12: [function (require, module, exports) {
-            (function (global) {
-                'use strict';
-
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-
-                var _createClass = function () {
-                    function defineProperties(target, props) {
-                        for (var i = 0; i < props.length; i++) {
-                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
-                        }
-                    }return function (Constructor, protoProps, staticProps) {
-                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
-                    };
-                }();
-
-                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
-
-                var _react2 = _interopRequireDefault(_react);
-
-                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
-
-                var _reactDom2 = _interopRequireDefault(_reactDom);
-
-                var _wxChartReact = require('./wxChartReact.jsx');
-
-                var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
-
-                var _liner = require('../charts/liner');
-
-                var _liner2 = _interopRequireDefault(_liner);
-
-                function _interopRequireDefault(obj) {
-                    return obj && obj.__esModule ? obj : { default: obj };
-                }
-
-                function _classCallCheck(instance, Constructor) {
-                    if (!(instance instanceof Constructor)) {
-                        throw new TypeError("Cannot call a class as a function");
-                    }
-                }
-
-                function _possibleConstructorReturn(self, call) {
-                    if (!self) {
-                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
-                }
-
-                function _inherits(subClass, superClass) {
-                    if (typeof superClass !== "function" && superClass !== null) {
-                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
-                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
-                }
-
-                var WxLinerReact = function (_WxChartReact) {
-                    _inherits(WxLinerReact, _WxChartReact);
-
-                    function WxLinerReact() {
-                        _classCallCheck(this, WxLinerReact);
-
-                        return _possibleConstructorReturn(this, (WxLinerReact.__proto__ || Object.getPrototypeOf(WxLinerReact)).apply(this, arguments));
-                    }
-
-                    _createClass(WxLinerReact, [{
-                        key: 'initChart',
-                        value: function initChart(el) {
-                            return new _liner2.default(el, this.props);
-                        }
-                    }]);
-
-                    return WxLinerReact;
-                }(_wxChartReact2.default);
-
-                exports.default = WxLinerReact;
-            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
-        }, { "../charts/liner": 3, "./wxChartReact.jsx": 13 }], 13: [function (require, module, exports) {
-            (function (global) {
-                'use strict';
-
-                Object.defineProperty(exports, "__esModule", {
-                    value: true
-                });
-
-                var _createClass = function () {
-                    function defineProperties(target, props) {
-                        for (var i = 0; i < props.length; i++) {
-                            var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
-                        }
-                    }return function (Constructor, protoProps, staticProps) {
-                        if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
-                    };
-                }();
-
-                var _react = typeof window !== "undefined" ? window['React'] : typeof global !== "undefined" ? global['React'] : null;
-
-                var _react2 = _interopRequireDefault(_react);
-
-                var _reactDom = typeof window !== "undefined" ? window['ReactDOM'] : typeof global !== "undefined" ? global['ReactDOM'] : null;
-
-                var _reactDom2 = _interopRequireDefault(_reactDom);
-
-                function _interopRequireDefault(obj) {
-                    return obj && obj.__esModule ? obj : { default: obj };
-                }
-
-                function _classCallCheck(instance, Constructor) {
-                    if (!(instance instanceof Constructor)) {
-                        throw new TypeError("Cannot call a class as a function");
-                    }
-                }
-
-                function _possibleConstructorReturn(self, call) {
-                    if (!self) {
-                        throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-                    }return call && ((typeof call === "undefined" ? "undefined" : _typeof2(call)) === "object" || typeof call === "function") ? call : self;
-                }
-
-                function _inherits(subClass, superClass) {
-                    if (typeof superClass !== "function" && superClass !== null) {
-                        throw new TypeError("Super expression must either be null or a function, not " + (typeof superClass === "undefined" ? "undefined" : _typeof2(superClass)));
-                    }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
-                }
-
-                var WxChartReact = function (_React$Component) {
-                    _inherits(WxChartReact, _React$Component);
-
-                    function WxChartReact(props) {
-                        _classCallCheck(this, WxChartReact);
-
-                        var _this = _possibleConstructorReturn(this, (WxChartReact.__proto__ || Object.getPrototypeOf(WxChartReact)).call(this, props));
-
-                        _this._wxChart = null;
-                        _this.state = {
-                            datasets: []
-                        };
-                        return _this;
-                    }
-
-                    _createClass(WxChartReact, [{
-                        key: 'initChart',
-                        value: function initChart() {
-                            throw new Error('Should be override!');
-                        }
-                    }, {
-                        key: 'render',
-                        value: function render() {
-                            var _this2 = this;
-
-                            return _react2.default.createElement('canvas', { id: this.props.id, 'canvas-id': this.props.id,
-                                style: { width: this.props.width, height: this.props.height, border: '1px solid #ffffff' },
-                                ref: function ref(el) {
-                                    return _this2.el = el;
-                                } });
-                        }
-                    }, {
-                        key: 'componentDidMount',
-                        value: function componentDidMount() {
-                            var el = this.el;
-                            this._wxChart = this.initChart(el);
-                        }
-                    }, {
-                        key: 'componentWillUnmount',
-                        value: function componentWillUnmount() {
-                            this._wxChart.destroy();
-                            this._wxChart = null;
-                        }
-                    }, {
-                        key: 'componentDidUpdate',
-                        value: function componentDidUpdate(prevProps, prevState) {
-                            var datasets = this.state.datasets;
-                            var wxChart = this._wxChart;
-                            wxChart.update(datasets);
-                        }
-                    }, {
-                        key: 'update',
-                        value: function update(datasets) {
-                            this.setState({ datasets: datasets });
-                        }
-                    }, {
-                        key: 'clear',
-                        value: function clear() {
-                            var wxChart = this._wxChart;
-                            wxChart.clear();
-                        }
-                    }]);
-
-                    return WxChartReact;
-                }(_react2.default.Component);
-
-                exports.default = WxChartReact;
-            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
-        }, {}], 14: [function (require, module, exports) {
+        }, { "../util/helper": 15, "./base": 6, "./layout": 7 }], 11: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4408,7 +4218,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxCategoryScale;
-        }, { "../core/scale": 8, "../util/helper": 17 }], 15: [function (require, module, exports) {
+        }, { "../core/scale": 9, "../util/helper": 15 }], 12: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4498,7 +4308,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                         // Adjust X-BOX
                         var xMWidth = yBox.outerWidth - yBox.marginLR - me.yScale.lineSpace;
+
                         var xOffset = xMWidth - me.xScale.fixPadding / 2;
+
                         var xExtendLeft = void 0;
                         if (xFirstPointSpace === 'auto') {
                             xExtendLeft = me.xScale.config.extendLeft || Math.min(xBox.width / 10, me.xScale.calculateTickWidth(xScaleDatasets, xBox) / xScaleDatasets.length);
@@ -4511,9 +4323,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         } else {
                             xExtendLeft = parseFloat(xFirstPointSpace);
                         }
-                        if (xExtendLeft) {
-                            xOffset -= me.xScale.config.ticks.lineWidth || 1;
-                        }
+
+                        xOffset -= me.xScale.config.ticks.lineWidth || 1;
                         xOffset += xExtendLeft;
 
                         var xAxisXPoint = area.x + xOffset;
@@ -4524,7 +4335,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         }
 
                         var calXbox = new _layout.BoxInstance(xBox.position, xAxisXPoint, xBox.y, xBox.width - xOffset - xMargin, xBox.height, xBox.outerWidth - xOffset, xBox.outerHeight);
-
                         me.yScale.setBox(yBox, false);
                         me.yScale.update(yScaleDatasets);
 
@@ -4540,7 +4350,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxCrossScale;
-        }, { "../core/layout": 6, "../core/scale": 8, "../util/helper": 17 }], 16: [function (require, module, exports) {
+        }, { "../core/layout": 7, "../core/scale": 9, "../util/helper": 15 }], 13: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4732,7 +4542,138 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxLinerScale;
-        }, { "../core/scale": 8, "../util/helper": 17 }], 17: [function (require, module, exports) {
+        }, { "../core/scale": 9, "../util/helper": 15 }], 14: [function (require, module, exports) {
+            /* global module, wx, window: false, document: false */
+            'use strict';
+
+            /**
+             * An mixin class(implement by es6-mixins) for stacked point
+             */
+
+            Object.defineProperty(exports, "__esModule", {
+                value: true
+            });
+
+            var _createClass = function () {
+                function defineProperties(target, props) {
+                    for (var i = 0; i < props.length; i++) {
+                        var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                    }
+                }return function (Constructor, protoProps, staticProps) {
+                    if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                };
+            }();
+
+            function _classCallCheck(instance, Constructor) {
+                if (!(instance instanceof Constructor)) {
+                    throw new TypeError("Cannot call a class as a function");
+                }
+            }
+
+            var WxStackMixin = function () {
+                function WxStackMixin() {
+                    _classCallCheck(this, WxStackMixin);
+                }
+
+                _createClass(WxStackMixin, [{
+                    key: 'stackYScaleAxisLimit',
+
+                    /**
+                     * Calculate the yAxis data for *WxLinerScale*
+                     */
+                    value: function stackYScaleAxisLimit() {
+                        var me = this;
+                        var min = 0,
+                            max = 0;
+                        me.visDatasets.forEach(function (data) {
+                            var sumNeg = 0,
+                                sumPos = 0;
+                            me.legends.forEach(function (legend) {
+                                var key = legend.key;
+                                var stackedVal = data[key];
+                                if (stackedVal < 0) {
+                                    sumNeg += stackedVal || 0;
+                                } else {
+                                    sumPos += stackedVal || 0;
+                                }
+                            });
+                            data.__sumNeg = sumNeg;
+                            data.__sumPos = sumPos;
+                            if (sumNeg < min) min = sumNeg;
+                            if (sumPos > max) max = sumPos;
+                        });
+
+                        return { max: max, min: min };
+                    }
+                    /**
+                     * Calculate the stack value
+                     * @param {number} index - The index of item
+                     * @param {Object} legendIndex - The index of legend
+                     * @param {number} [offset=0] - The offset value of stack
+                     * @param {WxScale} [yScale=this.yAxis] - Y-Axis instance
+                     * @return {{sumNeg: number, sumPos: number}}
+                     * @private
+                     */
+
+                }, {
+                    key: '_getStackValue',
+                    value: function _getStackValue(index, legendIndex) {
+                        var offset = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+                        var yScale = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : this.yAxis;
+
+                        var me = this,
+                            data = me.visDatasets[index];
+
+                        var stackedVal = void 0,
+                            sumNeg = 0,
+                            sumPos = 0;
+                        for (var j = 0; j < legendIndex; j++) {
+                            stackedVal = data[me.legends[j].key];
+                            if (stackedVal < 0) {
+                                sumNeg += stackedVal || 0;
+                            } else {
+                                sumPos += stackedVal || 0;
+                            }
+                        }
+                        return {
+                            sumNeg: sumNeg,
+                            sumPos: sumPos
+                        };
+                    }
+
+                    /**
+                     * Calculate the stack bar
+                     * @param {number} index - The index of item
+                     * @param {Object} legendIndex - The index of legend
+                     * @param {number} [offsetValue=0] - The offset value of stack
+                     * @param {WxScale} [yScale=this.yAxis] - Y-Axis instance
+                     * @return {Object}
+                     * @private
+                     */
+
+                }, {
+                    key: '_getStackPoint',
+                    value: function _getStackPoint(index, legendIndex) {
+                        var offsetValue = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+                        var yScale = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : this.yAxis;
+
+                        var me = this,
+                            data = me.visDatasets[index],
+                            value = data[me.legends[legendIndex].key];
+
+                        var _me$_getStackValue = me._getStackValue(index, legendIndex, offsetValue, yScale),
+                            sumNeg = _me$_getStackValue.sumNeg,
+                            sumPos = _me$_getStackValue.sumPos;
+
+                        return value < 0 ? yScale.getPoint(sumNeg + value + offsetValue) : yScale.getPoint(sumPos + value + offsetValue);
+                    }
+                }]);
+
+                return WxStackMixin;
+            }();
+
+            exports.default = WxStackMixin;
+        }, {}], 15: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -5106,7 +5047,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     canvas.style.width = width + 'px';
                 }
             }
-        }, {}], 18: [function (require, module, exports) {
+        }, {}], 16: [function (require, module, exports) {
             'use strict';
 
             Object.defineProperty(exports, "__esModule", {
@@ -5503,7 +5444,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = randomColor;
-        }, {}], 19: [function (require, module, exports) {
+        }, {}], 17: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
@@ -6693,7 +6634,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = tinycolor;
-        }, {}], 20: [function (require, module, exports) {
+        }, {}], 18: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -6816,6 +6757,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var me = this,
                             canvas = void 0,
                             context = void 0;
+                        // Outer canvas config
+                        var handlerCanvas = config.canvas;
 
                         if (me.isWeiXinAPP) {
                             if (_helper.is.String(id)) {
@@ -6824,7 +6767,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 throw new Error('Should set an id');
                             }
                         } else {
-                            canvas = _helper.is.String(id) ? document.getElementById(id) : typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement ? id : null;
+                            if (handlerCanvas) canvas = handlerCanvas;else canvas = _helper.is.String(id) ? document.getElementById(id) : typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement ? id : null;
                             if (typeof canvas != 'undefined') {
                                 context = canvas.getContext && canvas.getContext('2d');
                             }
@@ -7526,13 +7469,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                 return WxCanvasRenderingContext2D;
             }();
-        }, { "./helper": 17 }], 21: [function (require, module, exports) {
+        }, { "./helper": 15 }], 19: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            exports.WxBarReact = exports.WxBar = exports.WxLinerReact = exports.WxLiner = exports.WxDoughnutReact = exports.WxDoughnut = exports.WxChartReact = exports.WxChart = undefined;
+            exports.WxBar = exports.WxLiner = exports.WxDoughnut = exports.WxChart = undefined;
 
             var _wxChart = require('./charts/wxChart');
 
@@ -7550,33 +7493,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             var _bar2 = _interopRequireDefault(_bar);
 
-            var _wxChartReact = require('./react/wxChartReact.jsx');
-
-            var _wxChartReact2 = _interopRequireDefault(_wxChartReact);
-
-            var _doughnut3 = require('./react/doughnut.jsx');
-
-            var _doughnut4 = _interopRequireDefault(_doughnut3);
-
-            var _liner3 = require('./react/liner.jsx');
-
-            var _liner4 = _interopRequireDefault(_liner3);
-
-            var _bar3 = require('./react/bar.jsx');
-
-            var _bar4 = _interopRequireDefault(_bar3);
-
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
             }
 
             exports.WxChart = _wxChart2.default;
-            exports.WxChartReact = _wxChartReact2.default;
             exports.WxDoughnut = _doughnut2.default;
-            exports.WxDoughnutReact = _doughnut4.default;
             exports.WxLiner = _liner2.default;
-            exports.WxLinerReact = _liner4.default;
             exports.WxBar = _bar2.default;
-            exports.WxBarReact = _bar4.default;
-        }, { "./charts/bar": 1, "./charts/doughnut": 2, "./charts/liner": 3, "./charts/wxChart": 4, "./react/bar.jsx": 10, "./react/doughnut.jsx": 11, "./react/liner.jsx": 12, "./react/wxChartReact.jsx": 13 }] }, {}, [21])(21);
+        }, { "./charts/bar": 2, "./charts/doughnut": 3, "./charts/liner": 4, "./charts/wxChart": 5 }] }, {}, [19])(19);
 });

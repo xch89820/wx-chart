@@ -10,24 +10,22 @@ describe('WxLiner component test', () => {
     beforeEach(() => {
         createWXEnv();
         initCanvasElement(400, 700);
-
-
     });
 
     it('Draw an WxLiner', () => {
         wxLiner = new WxLiner('myCanvas', {
             width: 700,
             height: 400,
-            title: '测试线状图',
-            fillArea: true,
+            title: '北京分公司业务销量趋势图',
             yScaleOptions: {
                 position: 'left',
-                title: '销量(万)'
+                title: '人民币(万)'
+            },
+            legendOptions:{
+              display: false
             },
             legends:[{
-                text: '测试图1',
-                fillStyle: '#3385ff',
-                strokeStyle: '#3385ff'
+                text: '销售额'
             }]
         });
 
@@ -51,48 +49,100 @@ describe('WxLiner component test', () => {
 
     it('Draw multi-WxLiner', () => {
         wxLiner = new WxLiner('myCanvas', {
-            'width': 700,
-            'height': 400,
-            'title': '测试线状图',
-            'crossScaleOptions': {
-                'xFirstPointSpace': 0
+            width: 700,
+            height: 400,
+            title: '北京-上海分公司业务销量对比',
+            crossScaleOptions: {
+                xFirstPointSpace: 0
             },
             yScaleOptions: {
                 position: 'left',
-                title: '销量(万)'
+                title: '人民币(万)'
             },
-            'legends':[{
-                'text': '测试图1',
-                'key': 'test1',
-                'fillArea': true,
-                'fillStyle': '#3385ff',
-                'strokeStyle': '#3385ff'
+            legends:[{
+                text: '北京',
+                key: 'bj',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff',
+                fillArea: true
             }, {
-                'text': '测试图2',
-                'fillArea': true,
-                'key': 'test2',
+                text: '上海',
+                key: 'sh',
+                fillArea: true
             }]
         });
 
         wxLiner.update([{
-            test1: 10,
-            test2: 20,
+            bj: 10,
+            sh: 20,
             label: '一月'
         }, {
-            test1: 40,
-            test2: 115,
+            bj: 40,
+            sh: 115,
             label: '二月'
         }, {
-            test1: 35,
-            test2: 34.5,
+            bj: 35,
+            sh: 34.5,
             label: '三月'
         }, {
-            test1: 56,
-            test2: 22,
+            bj: 56,
+            sh: 22,
             label: '四月'
         }, {
-            test1: 71,
-            test2: 56,
+            bj: 71,
+            sh: 56,
+            label: '五月'
+        }]);
+    });
+
+    it('Draw stacked multi-WxLiner', () => {
+        wxLiner = new WxLiner('myCanvas', {
+            width: 700,
+            height: 400,
+            title: '北京-上海分公司业务销量对比',
+            stacked: true,
+            crossScaleOptions: {
+                xFirstPointSpace: 0
+            },
+            yScaleOptions: {
+                position: 'left',
+                title: '人民币(万)'
+            },
+            point:{
+                pointRadius: 0
+            },
+            legends:[{
+                text: '北京',
+                key: 'bj',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff',
+                fillArea: true
+            }, {
+                text: '上海',
+                key: 'sh',
+                fillArea: true
+            }]
+        });
+
+        wxLiner.update([{
+            bj: -20,
+            sh: 20,
+            label: '一月'
+        }, {
+            bj: 40,
+            sh: 115,
+            label: '二月'
+        }, {
+            bj: 35,
+            sh: 34.5,
+            label: '三月'
+        }, {
+            bj: 56,
+            sh: 22,
+            label: '四月'
+        }, {
+            bj: 71,
+            sh: 56,
             label: '五月'
         }]);
     });
@@ -102,3 +152,7 @@ describe('WxLiner component test', () => {
         destoryCanvasElement();
     });
 });
+
+
+
+

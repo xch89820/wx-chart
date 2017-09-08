@@ -449,6 +449,7 @@ export default class WxScale extends WxBaseComponent {
         if (me.isHorizontal()) {
             // Draw the first point
             if (me.box.marginLR || config.extendLeft) {
+                currX += tickConfig.lineWidth;
                 me._drawATickLine(currX, currY, fontSize);
             }
             // Move to first tick

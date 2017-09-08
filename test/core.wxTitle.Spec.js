@@ -19,7 +19,10 @@ describe('WxTitle component test', () => {
     });
 
     it('Create wxLegend object', () => {
-        let title = new WxTitle(wxChart);
+        let title = new WxTitle(wxChart, {
+            fontSize: 23,
+            fontColor: '#840004',
+        });
 
         title.update('Title', wxChart.innerBox);
 

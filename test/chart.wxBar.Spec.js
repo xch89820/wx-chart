@@ -14,11 +14,11 @@ describe('WxBar component test', () => {
 
     it('Draw an WxBar', () => {
         wxBar = new WxBar('myCanvas', {
-            'width': 700,
-            'height': 400,
-            'title': '测试柱状图',
-            'legends':[{
-                'text': '测试1'
+            width: 700,
+            height: 400,
+            title: '北京分公司业务销量对比',
+            legends:[{
+                text: '北京'
             }]
         });
 
@@ -42,85 +42,104 @@ describe('WxBar component test', () => {
 
     it('Draw an mutil-data WxBar', () => {
         wxBar = new WxBar('myCanvas', {
-            'width': 700,
-            'height': 400,
-            'title': '测试柱状图',
-            'legends':[{
-                'text': '测试图1',
-                'key': 'test1',
-                'fillStyle': '#3385ff',
-                'strokeStyle': '#3385ff'
+            width: 700,
+            height: 400,
+            title: '北京-上海分公司业务销量对比',
+            legends:[{
+                text: '北京',
+                key: 'bj',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff'
             }, {
-                'text': '测试图2',
-                'key': 'test2',
-            }]
+                text: '上海',
+                key: 'sh',
+            }],
+            yScaleOptions: {
+                position: 'left',
+                title: '人民币(万)'
+            },
         });
 
         wxBar.update([{
-            test1: -10,
-            test2: 20,
+            bj: 10,
+            sh: 20,
             label: '一月'
         }, {
-            test1: -42,
-            test2: 115,
+            bj: 42,
+            sh: 115,
             label: '二月'
         }, {
-            test1: -38,
-            test2: 34.5,
+            bj: 38,
+            sh: 34.5,
             label: '三月'
         }, {
-            test1: 56,
-            test2: 22,
+            bj: 56,
+            sh: 22,
             label: '四月'
         }, {
-            test1: 71,
-            test2: 56,
+            bj: 71,
+            sh: 56,
             label: '五月'
         }]);
     });
 
     it('Draw an mutil-data stacked WxBar', () => {
         wxBar = new WxBar('myCanvas', {
-            'width': 700,
-            'height': 400,
-            'title': '测试柱状图',
-            'stacked': true,
+            width: 700,
+            height: 400,
+            title: '北京-上海分公司环比销量对比',
+            stacked: true,
+            yScaleOptions: {
+                position: 'left',
+                title: '百分比'
+            },
+            color: {luminosity: 'light'},
             //'zeroLine': true,
-            'legends': [{
-                'text': '测试图1',
-                //'borderWidth': 0,
-                'key': 'test1'
+            legends: [{
+                text: '北京',
+                key: 'bj'
             }, {
-                'text': '测试图2',
-                'key': 'test2',
-                //'borderWidth': 0
+                text: '上海',
+                key: 'sh'
+            },{
+                text: '深圳',
+                key: 'sz'
             }]
         });
 
         wxBar.update([{
-            test1: -10,
-            test2: 20,
+            bj: 10,
+            sh: -22,
+            sz: -40,
             label: '一月'
         }, {
-            test1: 42,
-            test2: 115,
+            bj: 42,
+            sh: 115,
+            sz: -21,
             label: '二月'
         }, {
-            test1: 38,
-            test2: 34.5,
+            bj: 38,
+            sh: 34.5,
+            sz: -1,
             label: '三月'
         }, {
-            test1: 56,
-            test2: 22,
+            bj: 56,
+            sh: 22,
+            sz: 10,
             label: '四月'
         }, {
-            test1: 71,
-            test2: 56,
+            bj: 71,
+            sh: 56,
+            sz: 70,
             label: '五月'
         }]);
     });
+
     afterEach(() => {
         wxBar.destroy();
         destoryCanvasElement();
     });
 });
+
+
+

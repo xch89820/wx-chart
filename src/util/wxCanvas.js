@@ -78,6 +78,8 @@ export default class WxCanvas {
         let me = this,
             canvas,
             context;
+        // Outer canvas config
+        let handlerCanvas = config.canvas;
 
         if (me.isWeiXinAPP) {
             if (is.String(id)) {
@@ -86,10 +88,12 @@ export default class WxCanvas {
                 throw new Error('Should set an id');
             }
         } else {
-            canvas = is.String(id) ? document.getElementById(id) :
-                (typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement) ?
-                    id:
-                    null;
+            if (handlerCanvas) canvas = handlerCanvas;
+            else
+                canvas = is.String(id) ? document.getElementById(id) :
+                    (typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement) ?
+                        id:
+                        null;
             if (typeof canvas != 'undefined') {
                 context = canvas.getContext && canvas.getContext('2d');
             }

@@ -49,7 +49,10 @@ export default class WxCrossScale {
 
         // Adjust X-BOX
         let xMWidth = yBox.outerWidth - yBox.marginLR - me.yScale.lineSpace;
+
+
         let xOffset = xMWidth - me.xScale.fixPadding / 2;
+
         let xExtendLeft;
         if (xFirstPointSpace === 'auto') {
             xExtendLeft = me.xScale.config.extendLeft || Math.min(xBox.width / 10, me.xScale.calculateTickWidth(xScaleDatasets, xBox) / xScaleDatasets.length);
@@ -62,9 +65,8 @@ export default class WxCrossScale {
         } else {
             xExtendLeft = parseFloat(xFirstPointSpace);
         }
-        if (xExtendLeft) {
-            xOffset -= (me.xScale.config.ticks.lineWidth || 1);
-        }
+
+        xOffset -= (me.xScale.config.ticks.lineWidth || 1);
         xOffset += xExtendLeft;
 
         let xAxisXPoint = area.x + xOffset;
@@ -75,7 +77,6 @@ export default class WxCrossScale {
         }
 
         let calXbox = new BoxInstance(xBox.position, xAxisXPoint, xBox.y, xBox.width - xOffset - xMargin, xBox.height, xBox.outerWidth - xOffset, xBox.outerHeight);
-
         me.yScale.setBox(yBox, false);
         me.yScale.update(yScaleDatasets);
 

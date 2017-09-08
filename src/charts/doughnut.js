@@ -27,6 +27,8 @@ const WX_DOUGHNUT_DEFAULT_CONFIG = {
         luminosity: 'light'
     },
 
+    point: {},
+
     // The title text or a title config object
     title: undefined,
 
@@ -106,7 +108,7 @@ export default class WxDoughnut extends WxChart {
      */
     update(datasets) {
         let me = this;
-        super.update(datasets, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG);
+        super.update(datasets, extend({}, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
         me.wxLayout.removeAllBox();
         return me.draw();
     }

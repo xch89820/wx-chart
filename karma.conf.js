@@ -17,7 +17,7 @@ module.exports = function(config) {
     files: [
         {pattern: 'test/**/*.css', included: false},
         'src/**',
-        'test/*Spec.js'
+        'test/**.Spec.js'
     ],
 
 

@@ -15,35 +15,31 @@ describe('WxDoughnut component test', () => {
 
     it('Draw an Pie', () => {
         wxDoughnut = new WxDoughnut('myCanvas', {
-            'width': 600,
-            'height': 350,
-            'cutoutPercentage': 0,
-            'title': '测试饼图'
+            width: 600,
+            height: 350,
+            title: '各直销公司业务销量',
+            point: {
+                format: function(label, value, totalValue) {
+                    return label + ' (' + (value/totalValue*100).toFixed(2) + '%)';
+                }
+            }
         });
 
-        let formatLabel = function(label, value, totalValue) {
-            return label + ' (' + (value/totalValue*100).toFixed(2) + '%)';
-        };
         wxDoughnut.update([{
-            label: '测试3',
-            value: 30,
-            format:formatLabel
+            label: '北京',
+            value: 30
         },{
-            label: '测试4',
-            value: 32,
-            format:formatLabel
+            label: '天津',
+            value: 32
         },{
-            label: '测试5',
-            value: 10,
-            format:formatLabel
+            label: '厦门',
+            value: 10
         },{
-            label: '测试',
-            value: 100,
-            format:formatLabel
+            label: '福建',
+            value: 100
         },{
-            label: '测试2',
-            value: 3,
-            format:formatLabel
+            label: '广州',
+            value: 3
         }]);
     });
 
@@ -74,30 +70,29 @@ describe('WxDoughnut component test', () => {
 
     it('Draw an wxDoughnut with percentage options', () => {
         wxDoughnut = new WxDoughnut('myCanvas', {
-            'width': 600,
-            'height': 350,
-            'cutoutPercentage': 30,
-            'title': '测试多纳圈图'
+            width: 600,
+            height: 350,
+            title: '各直销公司业务销量'
         });
 
         wxDoughnut.update([{
-            label: '测试',
+            label: '北京',
             value: 100,
             percentage: 60
         },{
-            label: '测试2',
+            label: '天津',
             value: 100,
             percentage: 70
         },{
-            label: '测试3',
+            label: '厦门',
             value: 50,
             percentage: 80
         },{
-            label: '测试4',
+            label: '福建',
             value: 30,
             percentage: 90
         },{
-            label: '测试5',
+            label: '广州',
             value: 30,
             percentage: 100
         }])
@@ -108,3 +103,4 @@ describe('WxDoughnut component test', () => {
         destoryCanvasElement();
     })
 });
+

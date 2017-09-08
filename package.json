@@ -1,10 +1,10 @@
 {
   "name": "wx-chart",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "跨平台微信小程序图形库",
   "main": "src/wx-chart.js",
   "scripts": {
-    "test": "karma",
+    "test": "karma start",
     "build": "gulp build"
   },
   "repository": {
@@ -91,7 +91,6 @@
     "watchify": "^3.8.0"
   },
   "dependencies": {
-    "react": "^15.5.4",
-    "react-dom": "^15.5.4"
+    "es6-mixins": "^1.0.2"
   }
 }

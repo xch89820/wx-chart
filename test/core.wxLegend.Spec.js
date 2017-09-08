@@ -25,19 +25,25 @@ describe('WxLegend component test', () => {
         });
 
         let datasets = [{
-            text: 'Red',
+            text: 'Jun',
+            fillStyle: '#00eabf',
+            strokeStyle: '#00b574'
+        },{
+            text: 'July',
+            fillStyle: '#eae742',
+            strokeStyle: '#eac900'
+        },{
+            text: 'Aug',
+            fillStyle: '#5353ea',
+            strokeStyle: '#404aea'
+        },{
+            text: 'Sep',
             fillStyle: '#ea1935',
             strokeStyle: '#b50d0a'
         },{
-            hidden: true,
-            text: 'Blue',
-            fillStyle: '#ea1935',
-            strokeStyle: '#b50d0a'
-        },{
-            hidden: true,
-            text: 'Yellow,Yellow,Yellow,Yellow,Yellow',
-            fillStyle: '#ea1935',
-            strokeStyle: '#b50d0a'
+            text: 'Oct',
+            fillStyle: '#eab2bb',
+            strokeStyle: '#b54b6b'
         }];
 
         legend.update(datasets, wxChart.innerBox);

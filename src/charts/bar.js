@@ -1,18 +1,21 @@
 /* global module, wx, window: false, document: false */
 'use strict';
 
+import mixins from 'es6-mixins';
+import {extend, is, splineCurve, shadeBlendConvert} from '../util/helper';
+import tinycolor from '../util/tinycolor';
+import randomColor from '../util/randomColor';
+
 import WxCanvas from '../util/wxCanvas';
 import WxChart from './wxChart';
 import WxTitle from '../core/title';
 import WxScale from '../core/scale';
 import WxLinerScale from '../scale/scale.liner';
 import WxCrossScale from '../scale/scale.crosshelp';
+import WxStackMixin from '../scale/scale.stackhelp';
 import WxCategoryScale from '../scale/scale.category';
 import WxLegend from '../core/legend';
 import WxLayout, {BoxInstance} from '../core/layout';
-import {extend, is, splineCurve, shadeBlendConvert} from '../util/helper';
-import tinycolor from '../util/tinycolor';
-import randomColor from '../util/randomColor';
 
 // Bar legend's default config
 const WX_BAR_LEGEND_DEFAULT_CONFIG = {
@@ -55,6 +58,8 @@ const WX_BAR_DEFAULT_CONFIG = {
     legendOptions: {
         'position': 'bottom'
     },
+
+    point: {},
 
     // The randomColor scheme
     // See https://github.com/davidmerfield/randomColor
@@ -113,6 +118,11 @@ export default class WxBar extends WxChart {
     */
     constructor(id, config) {
         super(id, config);
+
+        mixins([WxStackMixin], this, {
+            // Mixins will create a new method to nested call all duplicate method
+            mergeDuplicates: false
+        });
 
         let me = this;
         me.chartConfig = extend({}, WX_BAR_DEFAULT_CONFIG, config);
@@ -205,7 +215,7 @@ export default class WxBar extends WxChart {
         let me = this;
         me._labels = null;
         me._legends = null;
-        super.update(datasets, WX_BAR_ITEM_DEFAULT_CONFIG);
+        super.update(datasets, extend({}, WX_BAR_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
         me.wxLayout.removeAllBox();
         return me.draw();
     }
@@ -320,6 +330,9 @@ export default class WxBar extends WxChart {
         dataset.forEach(d => {
             ctx.beginPath();
             let { value, data, point } = d;
+            if (!point) {
+                return;
+            }
             if (stacked && hasNeg) {
                 ctx.rect(point.x ,point.y ,point.barWidth, point.barHeight);
                 if (borderWidth) {
@@ -459,9 +472,9 @@ export default class WxBar extends WxChart {
         }
         // Calculate the bar's width in front of this legend
         let frontBarWidth = me.legends.slice(0, legendIndex).reduce((acc, cur) => acc + cur.barWidth, 0);
-        let datas = me.visDatasets[index];
-        let value = legendOpt.key && typeof datas[legendOpt.key] !== 'undefined' ?　
-            datas[legendOpt.key] :
+        let data = me.visDatasets[index];
+        let value = legendOpt.key && typeof data[legendOpt.key] !== 'undefined' ?　
+            data[legendOpt.key] :
             null;
         if (is.Null(value) || is.Undefined(value)) {
             return;
@@ -471,13 +484,16 @@ export default class WxBar extends WxChart {
         let xPointInstance = xScale.getPoint(index);
         if (stacked) {
             xPoint = xPointInstance.x - barRuler.pointWidth/2 + barRuler.barIntervalWidth/2;
-            yPoint = me._getStackPoint(index, legendIndex, barRuler).y;
+            yPoint = me._getStackPoint(index, legendIndex).y;
             barWidth = legendOpt.barWidth;
 
+            // TODO: Find another way to replace this variable :__sumNeg __sumPos
             let baseY = yScale.getPoint(0).y;
             barHeight = value < 0 ?
-            (value / legendOpt.sumNeg) * (yScale.getPoint(legendOpt.sumNeg).y - baseY) :
-            (value / legendOpt.sumPos) * (baseY - yScale.getPoint(legendOpt.sumPos).y)
+            (value / data.__sumNeg) * (yScale.getPoint(data.__sumNeg).y - baseY) :
+            (value / data.__sumPos) * (baseY - yScale.getPoint(data.__sumPos).y)
+
+            yPoint = value < 0 ? yPoint - barHeight : yPoint;
         } else {
             xPoint = xPointInstance.x - barRuler.pointWidth/2 +
                 frontBarWidth + barRuler.barIntervalWidth/2*(legendIndex+1);
@@ -487,45 +503,6 @@ export default class WxBar extends WxChart {
         }
 
         return {x: xPoint, y: yPoint, barWidth, barHeight};
-    }
-
-    /**
-     * Calculate the stack bar
-     * @param {number} index - The index of item
-     * @param {Object} legendIndex - The index of legend
-     * @param {BarRuler} barRuler
-     * @param {WxScale} [yScale=this.yAxis] - Y-Axis instance
-     * @retrun {Object}
-     * @private
-     */
-    _getStackPoint(index, legendIndex, barRuler, yScale = this.yAxis) {
-        let me = this,
-            data = me.visDatasets[index],
-            value = data[me.legends[legendIndex].key];
-
-        let stackedVal, sumNeg = 0, sumPos = 0;
-        for (let j = 0; j < legendIndex; j++) {
-            stackedVal = data[me.legends[j].key];
-            if (stackedVal < 0) {
-                sumNeg += stackedVal || 0;
-            } else {
-                sumPos += stackedVal || 0;
-            }
-        }
-        // let stackedVal, sumNeg = 0, sumPos = 0;
-        // for (let i = 0; i < index; i++) {
-        //     let data = me.visDatasets[i];
-        //     for (let j = 0; j < legendIndex; j++) {
-        //         stackedVal = data[me.legends[j].key];
-        //         if (stackedVal < 0) {
-        //             sumNeg += stackedVal || 0;
-        //         } else {
-        //             sumPos += stackedVal || 0;
-        //         }
-        //     }
-        // }
-
-        return value < 0 ? yScale.getPoint(sumNeg) : yScale.getPoint(sumPos + value) ;
     }
 
     /**
@@ -558,23 +535,8 @@ export default class WxBar extends WxChart {
         let tickLimits = me.yAxis.calculateTickLimit(area, ctx);
 
         if (stacked) {
-            let min = 0, max = 0;
-            me.legends.forEach(function(legend) {
-                let key = legend.key;
-                let sumNeg = 0, sumPos = 0;
-                me.visDatasets.forEach(function (data) {
-                    let stackedVal = data[key];
-                    if (stackedVal < 0) {
-                        sumNeg += stackedVal || 0;
-                    } else {
-                        sumPos += stackedVal || 0;
-                    }
-                });
-                if (sumNeg < min) min = sumNeg;
-                if (sumPos > max) max = sumPos;
-                legend.sumNeg = sumNeg;
-                legend.sumPos = sumPos;
-            });
+            //let {max, min}  = me.stackYScaleAxisLimit();
+            let {max, min} = me.stackYScaleAxisLimit();
             return me.yAxis.buildDatasets(max, min, tickLimits, undefined, yScaleItemOptions);
         } else {
             // First, get all available values and calculate the max/min value
