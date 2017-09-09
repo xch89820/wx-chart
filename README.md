@@ -34,8 +34,6 @@ wx-chart是一个跨平台的图形库，可在普通站点以及微信小程序
 ![line](https://cloud.githubusercontent.com/assets/4920540/26517973/89460140-42d7-11e7-8576-e1503e7cf4df.JPG)
 ![doughnut](https://cloud.githubusercontent.com/assets/4920540/26517974/894c57a2-42d7-11e7-9856-a300fa72a2c8.JPG)
 
-微信小程序实例，请参见：
-https://github.com/xch89820/wx-chart-demo
 
 ## 快速使用
 
@@ -87,6 +85,33 @@ wxLiner.update([{
 
 如果你想查看更详细的使用，请参见文档链接
 
+### 微信小程序
+
+当前微信小程序不支持从npm等包管理器下载js库，因此你需要手动拷贝 `dist/wx-chart.min.js` 到你的程序工程中，而后手动引用。
+
+微信小程序中，首先在 view 声明一个Canvas节点,请注意需要声明 canvas-id
+```
+<view class="container">
+   <canvas canvas-id="myCanvas" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+</view>
+```
+
+而后将wx-chart的工程文件加入小程序工程，并引用
+```
+let WxChart = require("you/path/wx-chart.min.js");
+
+// 初始化
+let options = {...};
+let myChart = new WxChart.WxLiner('myCanvas', options);
+```
+
+完整的例子请见：
+https://github.com/xch89820/wx-chart-demo
+
+### React环境
+
+请参见wx-chart react插件：
+https://github.com/xch89820/wx-chart-react
 
 ## 文档
 https://www.kancloud.cn/xchhhh/wx-chart
