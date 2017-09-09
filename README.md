@@ -37,6 +37,57 @@ wx-chart是一个跨平台的图形库，可在普通站点以及微信小程序
 微信小程序实例，请参见：
 https://github.com/xch89820/wx-chart-demo
 
+## 快速使用
+
+### 安装
+使用npm下载： `npm install wx-chart --save-dev`
+使用bower下载：`bower install wx-chart`
+
+### 声明节点
+
+```html
+<canvas id="myCanvas" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+```
+
+### 引用库 & 使用
+
+```js
+import { WxLiner } from 'wx-chart';
+
+// 实例化一个线状图
+var wxLiner = new .WxLiner('myCanvas', { //myCanvas 为节点的ID值
+	width: 600,
+	height: 400,
+	title: '销售量',
+	legends: [{
+		text: '巧克力'
+	}]
+});
+
+// 更新数据
+wxLiner.update([{
+		value: 10,
+		label: '一月'
+	}, {
+		value: 40,
+		label: '二月'
+	}, {
+		value: 35,
+		label: '三月'
+	}, {
+		value: 56,
+		label: '四月'
+	}, {
+		value: 71,
+		label: '五月'
+}]);
+```
+
+搞定，一个简单的线图诞生了。可以看到在我们引用wx-chart后，全局变量 `WxChart` 中就包含的我们所需的图形库类。在进行初始化后，使用 `update` 方法便可以更新我们的数据部分，从而触发图形渲染。
+
+如果你想查看更详细的使用，请参见文档链接
+
+
 ## 文档
 https://www.kancloud.cn/xchhhh/wx-chart
 
