@@ -39,6 +39,7 @@ wx-chart是一个跨平台的图形库，可在普通站点以及微信小程序
 
 ### 安装
 使用npm下载： `npm install wx-chart --save-dev`
+
 使用bower下载：`bower install wx-chart`
 
 ### 声明节点
@@ -54,30 +55,30 @@ import { WxLiner } from 'wx-chart';
 
 // 实例化一个线状图
 var wxLiner = new .WxLiner('myCanvas', { //myCanvas 为节点的ID值
-	width: 600,
-	height: 400,
-	title: '销售量',
-	legends: [{
-		text: '巧克力'
-	}]
+  width: 600,
+  height: 400,
+  title: '销售量',
+  legends: [{
+	text: '巧克力'
+  }]
 });
 
 // 更新数据
 wxLiner.update([{
-		value: 10,
-		label: '一月'
-	}, {
-		value: 40,
-		label: '二月'
-	}, {
-		value: 35,
-		label: '三月'
-	}, {
-		value: 56,
-		label: '四月'
-	}, {
-		value: 71,
-		label: '五月'
+  value: 10,
+  label: '一月'
+}, {
+  value: 40,
+  label: '二月'
+}, {
+  value: 35,
+  label: '三月'
+}, {
+  value: 56,
+  label: '四月'
+}, {
+  value: 71,
+  label: '五月'
 }]);
 ```
 
