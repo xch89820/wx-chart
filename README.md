@@ -17,7 +17,7 @@ wx-chart是一个跨平台的图形库，可在普通站点以及微信小程序
 
 ### 支持图表
 * 线状图
-  单维度/多维度曲线图(Line)，单维度/多维度区域曲线图(Area Line)
+  单维度/多维度曲线图(Line)，单维度/多维度区域曲线图(Area Line)，栈式线形图(Stacked Line)
 * 饼状图
   单维度饼状图(Pie)，单维度多纳圈图(Doughnut)
 * 柱状图
@@ -38,7 +38,16 @@ wx-chart是一个跨平台的图形库，可在普通站点以及微信小程序
 https://github.com/xch89820/wx-chart-demo
 
 ## 文档
-https://www.gitbook.com/book/xch89820/wx-chart/details
+https://www.kancloud.cn/xchhhh/wx-chart
+
+## ChangeLog
+v0.3
+更新文档到看云：https://www.kancloud.cn/xchhhh/wx-chart
+
+v0.2.2
+[react插件](https://github.com/xch89820/wx-chart-react) 独立工程，解除主工程的依赖
+增加栈式线形图
+修复若干BUG
 
 ## License
 
