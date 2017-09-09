@@ -1,4 +1,4 @@
-# wx-chart  [![NPM version][npm-version-image]][npm-url]   [![MIT License][license-image]][license-url]    [![npm](https://img.shields.io/npm/dw/localeval.svg)](https://github.com/xch89820/wx-chart)
+# wx-chart  [![NPM version][npm-version-image]][npm-url]   [![MIT License][license-image]][license-url]    [![NPM downloads][npm-downloads-image]][npm-url]
 
 wx-chart是一个跨平台的图形库，可在普通站点，React环境以及微信小程序中部署
 
@@ -113,6 +113,9 @@ https://github.com/xch89820/wx-chart-react
 https://www.kancloud.cn/xchhhh/wx-chart
 
 ## ChangeLog
+v0.3.1
+更新ReadME
+
 v0.3
 更新文档到看云：https://www.kancloud.cn/xchhhh/wx-chart
 
