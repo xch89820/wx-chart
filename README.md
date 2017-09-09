@@ -1,6 +1,8 @@
-# wx-chart
-[![NPM version][npm-version-image]][npm-url]
-[![MIT License][license-image]][license-url]
+# wx-chart  [![NPM version][npm-version-image]][npm-url][![MIT License][license-image]][license-url][![npm](https://img.shields.io/npm/dw/localeval.svg)](https://github.com/xch89820/wx-chart)
+
+[![GitHub forks](https://img.shields.io/github/forks/badges/shields.svg?style=social&label=Fork)](https://github.com/xch89820/wx-chart)
+[![GitHub stars](https://img.shields.io/github/stars/badges/shields.svg?style=social&label=Star)](https://github.com/xch89820/wx-chart)
+
 
 跨平台微信小程序图形库
 
