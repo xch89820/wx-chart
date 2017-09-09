@@ -1,13 +1,6 @@
-# wx-chart  [![NPM version][npm-version-image]][npm-url][![MIT License][license-image]][license-url][![npm](https://img.shields.io/npm/dw/localeval.svg)](https://github.com/xch89820/wx-chart)
+# wx-chart  [![NPM version][npm-version-image]][npm-url]   [![MIT License][license-image]][license-url]    [![npm](https://img.shields.io/npm/dw/localeval.svg)](https://github.com/xch89820/wx-chart)
 
-[![GitHub forks](https://img.shields.io/github/forks/badges/shields.svg?style=social&label=Fork)](https://github.com/xch89820/wx-chart)
-[![GitHub stars](https://img.shields.io/github/stars/badges/shields.svg?style=social&label=Star)](https://github.com/xch89820/wx-chart)
-
-
-跨平台微信小程序图形库
-
-## 介绍
-wx-chart是一个跨平台的图形库，可在普通站点以及微信小程序中使用。
+wx-chart是一个跨平台的图形库，可在普通站点，React环境以及微信小程序中部署
 
 ### 特点
 * 跨平台：可以使用在AMD,CMD,微信小程序,React等环境中使用
