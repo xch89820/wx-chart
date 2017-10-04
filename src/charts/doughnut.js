@@ -8,6 +8,7 @@ import WxLayout, {BoxInstance} from '../core/layout';
 import WxLegend from '../core/legend';
 import randomColor from '../util/randomColor';
 import {extend, is} from '../util/helper';
+import WxAnimation from '../core/animation';
 
 // Doughnut default config
 const WX_DOUGHNUT_DEFAULT_CONFIG = {
@@ -38,7 +39,14 @@ const WX_DOUGHNUT_DEFAULT_CONFIG = {
     // Chart padding, default auto set
     padding: undefined,
 
-    labelDistancePercentage: 0.15
+    labelDistancePercentage: 0.15,
+    // Animation
+    animate: true,
+    animateOptions:{
+        start: 1,
+        end: 1001,
+        duration: 1000
+    }
 };
 
 /**
@@ -91,6 +99,14 @@ export default class WxDoughnut extends WxChart {
 
         me.legend = new WxLegend(me, me.chartConfig.legendOptions);
         me.wxLayout = new WxLayout(me);
+
+        // Initialize wxAnimation
+        if (me.chartConfig.animate)
+            me.wxAnimation = new WxAnimation(me.chartConfig.animateOptions);
+
+        me.emit('init', {
+            options: me.chartConfig
+        });
     }
 
     /**
@@ -110,6 +126,7 @@ export default class WxDoughnut extends WxChart {
         let me = this;
         super.update(datasets, extend({}, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
         me.wxLayout.removeAllBox();
+        if (me.wxAnimation) me.wxAnimation.reset();
         return me.draw();
     }
 
@@ -119,6 +136,7 @@ export default class WxDoughnut extends WxChart {
     draw() {
         let box,
             me = this,
+            animate = me.chartConfig.animate,
             labelDistancePercentage = me.chartConfig.labelDistancePercentage,
             wxLayout = me.wxLayout;
         let {
@@ -129,6 +147,10 @@ export default class WxDoughnut extends WxChart {
             borderWidth,
             padding
         } = me.chartConfig;
+
+        me.emit('beforeDraw', {
+            options: me.chartConfig,
+        });
 
         box = wxLayout.adjustBox();
         // First, we draw title
@@ -208,26 +230,31 @@ export default class WxDoughnut extends WxChart {
         let pointX = x + (outerWidth / 2),
             pointY = y + (outerHeight / 2);
 
-        let drawAngle = rotation;
-        me.initAvoidCollision();
-        me.visDatasets.forEach(function(dataset, index) {
-            let startAngle = drawAngle,
-                endAngle = startAngle + (Math.PI * 2.0) * (dataset.value / totalValue);
-            let opt = {
-                pointX,
-                pointY,
-                startAngle,
-                endAngle,
-                innerRadius,
-                outerRadius,
-                totalValue,
-                borderWidth
-            };
-            me.drawData(dataset, opt);
-            me.drawLabel(dataset, opt);
+        let opt = {
+            pointX,
+            pointY,
+            innerRadius,
+            outerRadius,
+            totalValue,
+            borderWidth,
+            rotation,
+            totalAngle: Math.PI * 2.0
+        };
 
-            drawAngle = endAngle;
-        });
+        me.drawDoughnut(me.visDatasets, opt);
+        if (animate) {
+            me.emit('animate', { animation: me.wxAnimation });
+            me.wxAnimation.run(true);
+            me.wxAnimation.on('done', () => {
+                me.emit('draw', {
+                    options: opt,
+                });
+            });
+        } else {
+            me.emit('draw', {
+                options: opt,
+            });
+        }
         wxLayout.addBox(me.box);
     }
 
@@ -363,6 +390,101 @@ export default class WxDoughnut extends WxChart {
         ctx.draw();
         ctx.restore();
     };
+
+    /**
+     * Draw Doughnut
+     * @param {Object} dateset - Doughnut data
+     * @param {Object} opt - Draw options
+     */
+    drawDoughnut(dataset, opt) {
+        let me = this,
+            animate = me.chartConfig.animate,
+            animateOpt = me.chartConfig.animateOptions;
+
+        if (animate) {
+            let actionAnimation = me._getAnimationDrawDoughnut(dataset, opt);
+            if (!actionAnimation) {
+                return;
+            }
+            me.wxAnimation.pushActions(actionAnimation);
+        } else {
+            me._drawDoughnut(dataset, opt);
+        }
+    }
+
+    _getAnimationDrawDoughnut(dataset, opt) {
+        let me = this,
+            ctx = me.ctx,
+            animateOpt = me.chartConfig.animateOptions,
+            backgroundColor = me.config.backgroundColor;
+        let {
+            pointX,
+            pointY,
+            totalValue,
+            rotation,
+            outerRadius,
+            borderWidth,
+            totalAngle
+        } = opt;
+        let aniTotal = animateOpt.end - animateOpt.start;
+
+        return (t, lastt, toNext) => {
+            let percent = t/aniTotal;
+            let currTotalAngle = totalAngle * percent;
+
+            // Clear
+            ctx.save();
+            ctx.beginPath();
+            ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+            ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+            ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+            ctx.fill();
+            if (borderWidth) {
+                ctx.beginPath();
+                ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+                ctx.lineJoin = 'bevel';
+                ctx.lineWidth = borderWidth;
+                ctx.stroke();
+            }
+            ctx.draw();
+            ctx.restore();
+
+            if (animateOpt.end === t) {
+                me._drawDoughnut(dataset, opt);
+            } else {
+                let drawAngle = rotation;
+                dataset.forEach(function(data) {
+                    let startAngle = drawAngle,
+                        endAngle = startAngle + currTotalAngle * (data.value / totalValue);
+                    let o = extend({startAngle, endAngle}, opt);
+                    me.drawData(data, o);
+                    drawAngle = endAngle;
+                });
+            }
+
+            return t;
+        };
+    }
+
+    _drawDoughnut(dataset, opt) {
+        let me = this;
+        let {
+            totalValue,
+            rotation,
+            totalAngle
+        } = opt;
+
+        let drawAngle = rotation;
+        me.initAvoidCollision();
+        dataset.forEach(function(data) {
+            let startAngle = drawAngle,
+                endAngle = startAngle + totalAngle * (data.value / totalValue);
+            let o = extend({startAngle, endAngle}, opt);
+            me.drawData(data, o);
+            me.drawLabel(data, o);
+            drawAngle = endAngle;
+        });
+    }
 
     // Get longest label
     _longestLabel(totalValue) {

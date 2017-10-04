@@ -1,7 +1,7 @@
 /*!
  * wx-chart.js
  * Chart for WeiXin application
- * Version: 0.2.1
+ * Version: 0.3.1
  *
  * Copyright 2016 Jone Casper
  * Released under the MIT license
@@ -41,6 +41,1588 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             s(r[o]);
         }return s;
     }({ 1: [function (require, module, exports) {
+            module.exports = require('./lib/bezier');
+        }, { "./lib/bezier": 2 }], 2: [function (require, module, exports) {
+            /**
+              A javascript Bezier curve library by Pomax.
+            
+              Based on http://pomax.github.io/bezierinfo
+            
+              This code is MIT licensed.
+            **/
+            (function () {
+                "use strict";
+
+                // math-inlining.
+
+                var abs = Math.abs,
+                    min = Math.min,
+                    max = Math.max,
+                    acos = Math.acos,
+                    sqrt = Math.sqrt,
+                    pi = Math.PI,
+
+                // a zero coordinate, which is surprisingly useful
+                ZERO = { x: 0, y: 0, z: 0 };
+
+                // quite needed
+                var utils = require('./utils.js');
+
+                // not quite needed, but eventually this'll be useful...
+                var PolyBezier = require('./poly-bezier.js');
+
+                /**
+                 * Bezier curve constructor. The constructor argument can be one of three things:
+                 *
+                 * 1. array/4 of {x:..., y:..., z:...}, z optional
+                 * 2. numerical array/8 ordered x1,y1,x2,y2,x3,y3,x4,y4
+                 * 3. numerical array/12 ordered x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
+                 *
+                 */
+                var Bezier = function Bezier(coords) {
+                    var args = coords && coords.forEach ? coords : [].slice.call(arguments);
+                    var coordlen = false;
+                    if (_typeof2(args[0]) === "object") {
+                        coordlen = args.length;
+                        var newargs = [];
+                        args.forEach(function (point) {
+                            ['x', 'y', 'z'].forEach(function (d) {
+                                if (typeof point[d] !== "undefined") {
+                                    newargs.push(point[d]);
+                                }
+                            });
+                        });
+                        args = newargs;
+                    }
+                    var higher = false;
+                    var len = args.length;
+                    if (coordlen) {
+                        if (coordlen > 4) {
+                            if (arguments.length !== 1) {
+                                throw new Error("Only new Bezier(point[]) is accepted for 4th and higher order curves");
+                            }
+                            higher = true;
+                        }
+                    } else {
+                        if (len !== 6 && len !== 8 && len !== 9 && len !== 12) {
+                            if (arguments.length !== 1) {
+                                throw new Error("Only new Bezier(point[]) is accepted for 4th and higher order curves");
+                            }
+                        }
+                    }
+                    var _3d = !higher && (len === 9 || len === 12) || coords && coords[0] && typeof coords[0].z !== "undefined";
+                    this._3d = _3d;
+                    var points = [];
+                    for (var idx = 0, step = _3d ? 3 : 2; idx < len; idx += step) {
+                        var point = {
+                            x: args[idx],
+                            y: args[idx + 1]
+                        };
+                        if (_3d) {
+                            point.z = args[idx + 2];
+                        };
+                        points.push(point);
+                    }
+                    this.order = points.length - 1;
+                    this.points = points;
+                    var dims = ['x', 'y'];
+                    if (_3d) dims.push('z');
+                    this.dims = dims;
+                    this.dimlen = dims.length;
+
+                    (function (curve) {
+                        var order = curve.order;
+                        var points = curve.points;
+                        var a = utils.align(points, { p1: points[0], p2: points[order] });
+                        for (var i = 0; i < a.length; i++) {
+                            if (abs(a[i].y) > 0.0001) {
+                                curve._linear = false;
+                                return;
+                            }
+                        }
+                        curve._linear = true;
+                    })(this);
+
+                    this._t1 = 0;
+                    this._t2 = 1;
+                    this.update();
+                };
+
+                Bezier.fromSVG = function (svgString) {
+                    var list = svgString.match(/[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/g).map(parseFloat);
+                    var relative = /[cq]/.test(svgString);
+                    if (!relative) return new Bezier(list);
+                    list = list.map(function (v, i) {
+                        return i < 2 ? v : v + list[i % 2];
+                    });
+                    return new Bezier(list);
+                };
+
+                function getABC(n, S, B, E, t) {
+                    if (typeof t === "undefined") {
+                        t = 0.5;
+                    }
+                    var u = utils.projectionratio(t, n),
+                        um = 1 - u,
+                        C = {
+                        x: u * S.x + um * E.x,
+                        y: u * S.y + um * E.y
+                    },
+                        s = utils.abcratio(t, n),
+                        A = {
+                        x: B.x + (B.x - C.x) / s,
+                        y: B.y + (B.y - C.y) / s
+                    };
+                    return { A: A, B: B, C: C };
+                }
+
+                Bezier.quadraticFromPoints = function (p1, p2, p3, t) {
+                    if (typeof t === "undefined") {
+                        t = 0.5;
+                    }
+                    // shortcuts, although they're really dumb
+                    if (t === 0) {
+                        return new Bezier(p2, p2, p3);
+                    }
+                    if (t === 1) {
+                        return new Bezier(p1, p2, p2);
+                    }
+                    // real fitting.
+                    var abc = getABC(2, p1, p2, p3, t);
+                    return new Bezier(p1, abc.A, p3);
+                };
+
+                Bezier.cubicFromPoints = function (S, B, E, t, d1) {
+                    if (typeof t === "undefined") {
+                        t = 0.5;
+                    }
+                    var abc = getABC(3, S, B, E, t);
+                    if (typeof d1 === "undefined") {
+                        d1 = utils.dist(B, abc.C);
+                    }
+                    var d2 = d1 * (1 - t) / t;
+
+                    var selen = utils.dist(S, E),
+                        lx = (E.x - S.x) / selen,
+                        ly = (E.y - S.y) / selen,
+                        bx1 = d1 * lx,
+                        by1 = d1 * ly,
+                        bx2 = d2 * lx,
+                        by2 = d2 * ly;
+                    // derivation of new hull coordinates
+                    var e1 = { x: B.x - bx1, y: B.y - by1 },
+                        e2 = { x: B.x + bx2, y: B.y + by2 },
+                        A = abc.A,
+                        v1 = { x: A.x + (e1.x - A.x) / (1 - t), y: A.y + (e1.y - A.y) / (1 - t) },
+                        v2 = { x: A.x + (e2.x - A.x) / t, y: A.y + (e2.y - A.y) / t },
+                        nc1 = { x: S.x + (v1.x - S.x) / t, y: S.y + (v1.y - S.y) / t },
+                        nc2 = { x: E.x + (v2.x - E.x) / (1 - t), y: E.y + (v2.y - E.y) / (1 - t) };
+                    // ...done
+                    return new Bezier(S, nc1, nc2, E);
+                };
+
+                var getUtils = function getUtils() {
+                    return utils;
+                };
+
+                Bezier.getUtils = getUtils;
+
+                Bezier.prototype = {
+                    getUtils: getUtils,
+                    valueOf: function valueOf() {
+                        return this.toString();
+                    },
+                    toString: function toString() {
+                        return utils.pointsToString(this.points);
+                    },
+                    toSVG: function toSVG(relative) {
+                        if (this._3d) return false;
+                        var p = this.points,
+                            x = p[0].x,
+                            y = p[0].y,
+                            s = ["M", x, y, this.order === 2 ? "Q" : "C"];
+                        for (var i = 1, last = p.length; i < last; i++) {
+                            s.push(p[i].x);
+                            s.push(p[i].y);
+                        }
+                        return s.join(" ");
+                    },
+                    update: function update() {
+                        // one-time compute derivative coordinates
+                        this.dpoints = [];
+                        for (var p = this.points, d = p.length, c = d - 1; d > 1; d--, c--) {
+                            var list = [];
+                            for (var j = 0, dpt; j < c; j++) {
+                                dpt = {
+                                    x: c * (p[j + 1].x - p[j].x),
+                                    y: c * (p[j + 1].y - p[j].y)
+                                };
+                                if (this._3d) {
+                                    dpt.z = c * (p[j + 1].z - p[j].z);
+                                }
+                                list.push(dpt);
+                            }
+                            this.dpoints.push(list);
+                            p = list;
+                        };
+                        this.computedirection();
+                    },
+                    computedirection: function computedirection() {
+                        var points = this.points;
+                        var angle = utils.angle(points[0], points[this.order], points[1]);
+                        this.clockwise = angle > 0;
+                    },
+                    length: function length() {
+                        return utils.length(this.derivative.bind(this));
+                    },
+                    _lut: [],
+                    getLUT: function getLUT(steps) {
+                        steps = steps || 100;
+                        if (this._lut.length === steps) {
+                            return this._lut;
+                        }
+                        this._lut = [];
+                        for (var t = 0; t <= steps; t++) {
+                            this._lut.push(this.compute(t / steps));
+                        }
+                        return this._lut;
+                    },
+                    on: function on(point, error) {
+                        error = error || 5;
+                        var lut = this.getLUT(),
+                            hits = [],
+                            c,
+                            t = 0;
+                        for (var i = 0; i < lut.length; i++) {
+                            c = lut[i];
+                            if (utils.dist(c, point) < error) {
+                                hits.push(c);
+                                t += i / lut.length;
+                            }
+                        }
+                        if (!hits.length) return false;
+                        return t /= hits.length;
+                    },
+                    project: function project(point) {
+                        // step 1: coarse check
+                        var LUT = this.getLUT(),
+                            l = LUT.length - 1,
+                            closest = utils.closest(LUT, point),
+                            mdist = closest.mdist,
+                            mpos = closest.mpos;
+                        if (mpos === 0 || mpos === l) {
+                            var t = mpos / l,
+                                pt = this.compute(t);
+                            pt.t = t;
+                            pt.d = mdist;
+                            return pt;
+                        }
+
+                        // step 2: fine check
+                        var ft,
+                            t,
+                            p,
+                            d,
+                            t1 = (mpos - 1) / l,
+                            t2 = (mpos + 1) / l,
+                            step = 0.1 / l;
+                        mdist += 1;
+                        for (t = t1, ft = t; t < t2 + step; t += step) {
+                            p = this.compute(t);
+                            d = utils.dist(point, p);
+                            if (d < mdist) {
+                                mdist = d;
+                                ft = t;
+                            }
+                        }
+                        p = this.compute(ft);
+                        p.t = ft;
+                        p.d = mdist;
+                        return p;
+                    },
+                    get: function get(t) {
+                        return this.compute(t);
+                    },
+                    point: function point(idx) {
+                        return this.points[idx];
+                    },
+                    compute: function compute(t) {
+                        // shortcuts
+                        if (t === 0) {
+                            return this.points[0];
+                        }
+                        if (t === 1) {
+                            return this.points[this.order];
+                        }
+
+                        var p = this.points;
+                        var mt = 1 - t;
+
+                        // linear?
+                        if (this.order === 1) {
+                            ret = {
+                                x: mt * p[0].x + t * p[1].x,
+                                y: mt * p[0].y + t * p[1].y
+                            };
+                            if (this._3d) {
+                                ret.z = mt * p[0].z + t * p[1].z;
+                            }
+                            return ret;
+                        }
+
+                        // quadratic/cubic curve?
+                        if (this.order < 4) {
+                            var mt2 = mt * mt,
+                                t2 = t * t,
+                                a,
+                                b,
+                                c,
+                                d = 0;
+                            if (this.order === 2) {
+                                p = [p[0], p[1], p[2], ZERO];
+                                a = mt2;
+                                b = mt * t * 2;
+                                c = t2;
+                            } else if (this.order === 3) {
+                                a = mt2 * mt;
+                                b = mt2 * t * 3;
+                                c = mt * t2 * 3;
+                                d = t * t2;
+                            }
+                            var ret = {
+                                x: a * p[0].x + b * p[1].x + c * p[2].x + d * p[3].x,
+                                y: a * p[0].y + b * p[1].y + c * p[2].y + d * p[3].y
+                            };
+                            if (this._3d) {
+                                ret.z = a * p[0].z + b * p[1].z + c * p[2].z + d * p[3].z;
+                            }
+                            return ret;
+                        }
+
+                        // higher order curves: use de Casteljau's computation
+                        var dCpts = JSON.parse(JSON.stringify(this.points));
+                        while (dCpts.length > 1) {
+                            for (var i = 0; i < dCpts.length - 1; i++) {
+                                dCpts[i] = {
+                                    x: dCpts[i].x + (dCpts[i + 1].x - dCpts[i].x) * t,
+                                    y: dCpts[i].y + (dCpts[i + 1].y - dCpts[i].y) * t
+                                };
+                                if (typeof dCpts[i].z !== "undefined") {
+                                    dCpts[i] = dCpts[i].z + (dCpts[i + 1].z - dCpts[i].z) * t;
+                                }
+                            }
+                            dCpts.splice(dCpts.length - 1, 1);
+                        }
+                        return dCpts[0];
+                    },
+                    raise: function raise() {
+                        var p = this.points,
+                            np = [p[0]],
+                            i,
+                            k = p.length,
+                            pi,
+                            pim;
+                        for (var i = 1; i < k; i++) {
+                            pi = p[i];
+                            pim = p[i - 1];
+                            np[i] = {
+                                x: (k - i) / k * pi.x + i / k * pim.x,
+                                y: (k - i) / k * pi.y + i / k * pim.y
+                            };
+                        }
+                        np[k] = p[k - 1];
+                        return new Bezier(np);
+                    },
+                    derivative: function derivative(t) {
+                        var mt = 1 - t,
+                            a,
+                            b,
+                            c = 0,
+                            p = this.dpoints[0];
+                        if (this.order === 2) {
+                            p = [p[0], p[1], ZERO];a = mt;b = t;
+                        }
+                        if (this.order === 3) {
+                            a = mt * mt;b = mt * t * 2;c = t * t;
+                        }
+                        var ret = {
+                            x: a * p[0].x + b * p[1].x + c * p[2].x,
+                            y: a * p[0].y + b * p[1].y + c * p[2].y
+                        };
+                        if (this._3d) {
+                            ret.z = a * p[0].z + b * p[1].z + c * p[2].z;
+                        }
+                        return ret;
+                    },
+                    inflections: function inflections() {
+                        return utils.inflections(this.points);
+                    },
+                    normal: function normal(t) {
+                        return this._3d ? this.__normal3(t) : this.__normal2(t);
+                    },
+                    __normal2: function __normal2(t) {
+                        var d = this.derivative(t);
+                        var q = sqrt(d.x * d.x + d.y * d.y);
+                        return { x: -d.y / q, y: d.x / q };
+                    },
+                    __normal3: function __normal3(t) {
+                        // see http://stackoverflow.com/questions/25453159
+                        var r1 = this.derivative(t),
+                            r2 = this.derivative(t + 0.01),
+                            q1 = sqrt(r1.x * r1.x + r1.y * r1.y + r1.z * r1.z),
+                            q2 = sqrt(r2.x * r2.x + r2.y * r2.y + r2.z * r2.z);
+                        r1.x /= q1;r1.y /= q1;r1.z /= q1;
+                        r2.x /= q2;r2.y /= q2;r2.z /= q2;
+                        // cross product
+                        var c = {
+                            x: r2.y * r1.z - r2.z * r1.y,
+                            y: r2.z * r1.x - r2.x * r1.z,
+                            z: r2.x * r1.y - r2.y * r1.x
+                        };
+                        var m = sqrt(c.x * c.x + c.y * c.y + c.z * c.z);
+                        c.x /= m;c.y /= m;c.z /= m;
+                        // rotation matrix
+                        var R = [c.x * c.x, c.x * c.y - c.z, c.x * c.z + c.y, c.x * c.y + c.z, c.y * c.y, c.y * c.z - c.x, c.x * c.z - c.y, c.y * c.z + c.x, c.z * c.z];
+                        // normal vector:
+                        var n = {
+                            x: R[0] * r1.x + R[1] * r1.y + R[2] * r1.z,
+                            y: R[3] * r1.x + R[4] * r1.y + R[5] * r1.z,
+                            z: R[6] * r1.x + R[7] * r1.y + R[8] * r1.z
+                        };
+                        return n;
+                    },
+                    hull: function hull(t) {
+                        var p = this.points,
+                            _p = [],
+                            pt,
+                            q = [],
+                            idx = 0,
+                            i = 0,
+                            l = 0;
+                        q[idx++] = p[0];
+                        q[idx++] = p[1];
+                        q[idx++] = p[2];
+                        if (this.order === 3) {
+                            q[idx++] = p[3];
+                        }
+                        // we lerp between all points at each iteration, until we have 1 point left.
+                        while (p.length > 1) {
+                            _p = [];
+                            for (i = 0, l = p.length - 1; i < l; i++) {
+                                pt = utils.lerp(t, p[i], p[i + 1]);
+                                q[idx++] = pt;
+                                _p.push(pt);
+                            }
+                            p = _p;
+                        }
+                        return q;
+                    },
+                    split: function split(t1, t2) {
+                        // shortcuts
+                        if (t1 === 0 && !!t2) {
+                            return this.split(t2).left;
+                        }
+                        if (t2 === 1) {
+                            return this.split(t1).right;
+                        }
+
+                        // no shortcut: use "de Casteljau" iteration.
+                        var q = this.hull(t1);
+                        var result = {
+                            left: this.order === 2 ? new Bezier([q[0], q[3], q[5]]) : new Bezier([q[0], q[4], q[7], q[9]]),
+                            right: this.order === 2 ? new Bezier([q[5], q[4], q[2]]) : new Bezier([q[9], q[8], q[6], q[3]]),
+                            span: q
+                        };
+
+                        // make sure we bind _t1/_t2 information!
+                        result.left._t1 = utils.map(0, 0, 1, this._t1, this._t2);
+                        result.left._t2 = utils.map(t1, 0, 1, this._t1, this._t2);
+                        result.right._t1 = utils.map(t1, 0, 1, this._t1, this._t2);
+                        result.right._t2 = utils.map(1, 0, 1, this._t1, this._t2);
+
+                        // if we have no t2, we're done
+                        if (!t2) {
+                            return result;
+                        }
+
+                        // if we have a t2, split again:
+                        t2 = utils.map(t2, t1, 1, 0, 1);
+                        var subsplit = result.right.split(t2);
+                        return subsplit.left;
+                    },
+                    extrema: function extrema() {
+                        var dims = this.dims,
+                            result = {},
+                            roots = [],
+                            p,
+                            mfn;
+                        dims.forEach(function (dim) {
+                            mfn = function mfn(v) {
+                                return v[dim];
+                            };
+                            p = this.dpoints[0].map(mfn);
+                            result[dim] = utils.droots(p);
+                            if (this.order === 3) {
+                                p = this.dpoints[1].map(mfn);
+                                result[dim] = result[dim].concat(utils.droots(p));
+                            }
+                            result[dim] = result[dim].filter(function (t) {
+                                return t >= 0 && t <= 1;
+                            });
+                            roots = roots.concat(result[dim].sort());
+                        }.bind(this));
+                        roots = roots.sort().filter(function (v, idx) {
+                            return roots.indexOf(v) === idx;
+                        });
+                        result.values = roots;
+                        return result;
+                    },
+                    bbox: function bbox() {
+                        var extrema = this.extrema(),
+                            result = {};
+                        this.dims.forEach(function (d) {
+                            result[d] = utils.getminmax(this, d, extrema[d]);
+                        }.bind(this));
+                        return result;
+                    },
+                    overlaps: function overlaps(curve) {
+                        var lbbox = this.bbox(),
+                            tbbox = curve.bbox();
+                        return utils.bboxoverlap(lbbox, tbbox);
+                    },
+                    offset: function offset(t, d) {
+                        if (typeof d !== "undefined") {
+                            var c = this.get(t);
+                            var n = this.normal(t);
+                            var ret = {
+                                c: c,
+                                n: n,
+                                x: c.x + n.x * d,
+                                y: c.y + n.y * d
+                            };
+                            if (this._3d) {
+                                ret.z = c.z + n.z * d;
+                            };
+                            return ret;
+                        }
+                        if (this._linear) {
+                            var nv = this.normal(0);
+                            var coords = this.points.map(function (p) {
+                                var ret = {
+                                    x: p.x + t * nv.x,
+                                    y: p.y + t * nv.y
+                                };
+                                if (p.z && n.z) {
+                                    ret.z = p.z + t * nv.z;
+                                }
+                                return ret;
+                            });
+                            return [new Bezier(coords)];
+                        }
+                        var reduced = this.reduce();
+                        return reduced.map(function (s) {
+                            return s.scale(t);
+                        });
+                    },
+                    simple: function simple() {
+                        if (this.order === 3) {
+                            var a1 = utils.angle(this.points[0], this.points[3], this.points[1]);
+                            var a2 = utils.angle(this.points[0], this.points[3], this.points[2]);
+                            if (a1 > 0 && a2 < 0 || a1 < 0 && a2 > 0) return false;
+                        }
+                        var n1 = this.normal(0);
+                        var n2 = this.normal(1);
+                        var s = n1.x * n2.x + n1.y * n2.y;
+                        if (this._3d) {
+                            s += n1.z * n2.z;
+                        }
+                        var angle = abs(acos(s));
+                        return angle < pi / 3;
+                    },
+                    reduce: function reduce() {
+                        var i,
+                            t1 = 0,
+                            t2 = 0,
+                            step = 0.01,
+                            segment,
+                            pass1 = [],
+                            pass2 = [];
+                        // first pass: split on extrema
+                        var extrema = this.extrema().values;
+                        if (extrema.indexOf(0) === -1) {
+                            extrema = [0].concat(extrema);
+                        }
+                        if (extrema.indexOf(1) === -1) {
+                            extrema.push(1);
+                        }
+
+                        for (t1 = extrema[0], i = 1; i < extrema.length; i++) {
+                            t2 = extrema[i];
+                            segment = this.split(t1, t2);
+                            segment._t1 = t1;
+                            segment._t2 = t2;
+                            pass1.push(segment);
+                            t1 = t2;
+                        }
+
+                        // second pass: further reduce these segments to simple segments
+                        pass1.forEach(function (p1) {
+                            t1 = 0;
+                            t2 = 0;
+                            while (t2 <= 1) {
+                                for (t2 = t1 + step; t2 <= 1 + step; t2 += step) {
+                                    segment = p1.split(t1, t2);
+                                    if (!segment.simple()) {
+                                        t2 -= step;
+                                        if (abs(t1 - t2) < step) {
+                                            // we can never form a reduction
+                                            return [];
+                                        }
+                                        segment = p1.split(t1, t2);
+                                        segment._t1 = utils.map(t1, 0, 1, p1._t1, p1._t2);
+                                        segment._t2 = utils.map(t2, 0, 1, p1._t1, p1._t2);
+                                        pass2.push(segment);
+                                        t1 = t2;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (t1 < 1) {
+                                segment = p1.split(t1, 1);
+                                segment._t1 = utils.map(t1, 0, 1, p1._t1, p1._t2);
+                                segment._t2 = p1._t2;
+                                pass2.push(segment);
+                            }
+                        });
+                        return pass2;
+                    },
+                    scale: function scale(d) {
+                        var order = this.order;
+                        var distanceFn = false;
+                        if (typeof d === "function") {
+                            distanceFn = d;
+                        }
+                        if (distanceFn && order === 2) {
+                            return this.raise().scale(distanceFn);
+                        }
+
+                        // TODO: add special handling for degenerate (=linear) curves.
+                        var clockwise = this.clockwise;
+                        var r1 = distanceFn ? distanceFn(0) : d;
+                        var r2 = distanceFn ? distanceFn(1) : d;
+                        var v = [this.offset(0, 10), this.offset(1, 10)];
+                        var o = utils.lli4(v[0], v[0].c, v[1], v[1].c);
+                        if (!o) {
+                            throw new Error("cannot scale this curve. Try reducing it first.");
+                        }
+                        // move all points by distance 'd' wrt the origin 'o'
+                        var points = this.points,
+                            np = [];
+
+                        // move end points by fixed distance along normal.
+                        [0, 1].forEach(function (t) {
+                            var p = np[t * order] = utils.copy(points[t * order]);
+                            p.x += (t ? r2 : r1) * v[t].n.x;
+                            p.y += (t ? r2 : r1) * v[t].n.y;
+                        }.bind(this));
+
+                        if (!distanceFn) {
+                            // move control points to lie on the intersection of the offset
+                            // derivative vector, and the origin-through-control vector
+                            [0, 1].forEach(function (t) {
+                                if (this.order === 2 && !!t) return;
+                                var p = np[t * order];
+                                var d = this.derivative(t);
+                                var p2 = { x: p.x + d.x, y: p.y + d.y };
+                                np[t + 1] = utils.lli4(p, p2, o, points[t + 1]);
+                            }.bind(this));
+                            return new Bezier(np);
+                        }
+
+                        // move control points by "however much necessary to
+                        // ensure the correct tangent to endpoint".
+                        [0, 1].forEach(function (t) {
+                            if (this.order === 2 && !!t) return;
+                            var p = points[t + 1];
+                            var ov = {
+                                x: p.x - o.x,
+                                y: p.y - o.y
+                            };
+                            var rc = distanceFn ? distanceFn((t + 1) / order) : d;
+                            if (distanceFn && !clockwise) rc = -rc;
+                            var m = sqrt(ov.x * ov.x + ov.y * ov.y);
+                            ov.x /= m;
+                            ov.y /= m;
+                            np[t + 1] = {
+                                x: p.x + rc * ov.x,
+                                y: p.y + rc * ov.y
+                            };
+                        }.bind(this));
+                        return new Bezier(np);
+                    },
+                    outline: function outline(d1, d2, d3, d4) {
+                        d2 = typeof d2 === "undefined" ? d1 : d2;
+                        var reduced = this.reduce(),
+                            len = reduced.length,
+                            fcurves = [],
+                            bcurves = [],
+                            p,
+                            alen = 0,
+                            tlen = this.length();
+
+                        var graduated = typeof d3 !== "undefined" && typeof d4 !== "undefined";
+
+                        function linearDistanceFunction(s, e, tlen, alen, slen) {
+                            return function (v) {
+                                var f1 = alen / tlen,
+                                    f2 = (alen + slen) / tlen,
+                                    d = e - s;
+                                return utils.map(v, 0, 1, s + f1 * d, s + f2 * d);
+                            };
+                        };
+
+                        // form curve oulines
+                        reduced.forEach(function (segment) {
+                            slen = segment.length();
+                            if (graduated) {
+                                fcurves.push(segment.scale(linearDistanceFunction(d1, d3, tlen, alen, slen)));
+                                bcurves.push(segment.scale(linearDistanceFunction(-d2, -d4, tlen, alen, slen)));
+                            } else {
+                                fcurves.push(segment.scale(d1));
+                                bcurves.push(segment.scale(-d2));
+                            }
+                            alen += slen;
+                        });
+
+                        // reverse the "return" outline
+                        bcurves = bcurves.map(function (s) {
+                            p = s.points;
+                            if (p[3]) {
+                                s.points = [p[3], p[2], p[1], p[0]];
+                            } else {
+                                s.points = [p[2], p[1], p[0]];
+                            }
+                            return s;
+                        }).reverse();
+
+                        // form the endcaps as lines
+                        var fs = fcurves[0].points[0],
+                            fe = fcurves[len - 1].points[fcurves[len - 1].points.length - 1],
+                            bs = bcurves[len - 1].points[bcurves[len - 1].points.length - 1],
+                            be = bcurves[0].points[0],
+                            ls = utils.makeline(bs, fs),
+                            le = utils.makeline(fe, be),
+                            segments = [ls].concat(fcurves).concat([le]).concat(bcurves),
+                            slen = segments.length;
+
+                        return new PolyBezier(segments);
+                    },
+                    outlineshapes: function outlineshapes(d1, d2, curveIntersectionThreshold) {
+                        d2 = d2 || d1;
+                        var outline = this.outline(d1, d2).curves;
+                        var shapes = [];
+                        for (var i = 1, len = outline.length; i < len / 2; i++) {
+                            var shape = utils.makeshape(outline[i], outline[len - i], curveIntersectionThreshold);
+                            shape.startcap.virtual = i > 1;
+                            shape.endcap.virtual = i < len / 2 - 1;
+                            shapes.push(shape);
+                        }
+                        return shapes;
+                    },
+                    intersects: function intersects(curve, curveIntersectionThreshold) {
+                        if (!curve) return this.selfintersects(curveIntersectionThreshold);
+                        if (curve.p1 && curve.p2) {
+                            return this.lineIntersects(curve);
+                        }
+                        if (curve instanceof Bezier) {
+                            curve = curve.reduce();
+                        }
+                        return this.curveintersects(this.reduce(), curve, curveIntersectionThreshold);
+                    },
+                    lineIntersects: function lineIntersects(line) {
+                        var mx = min(line.p1.x, line.p2.x),
+                            my = min(line.p1.y, line.p2.y),
+                            MX = max(line.p1.x, line.p2.x),
+                            MY = max(line.p1.y, line.p2.y),
+                            self = this;
+                        return utils.roots(this.points, line).filter(function (t) {
+                            var p = self.get(t);
+                            return utils.between(p.x, mx, MX) && utils.between(p.y, my, MY);
+                        });
+                    },
+                    selfintersects: function selfintersects(curveIntersectionThreshold) {
+                        var reduced = this.reduce();
+                        // "simple" curves cannot intersect with their direct
+                        // neighbour, so for each segment X we check whether
+                        // it intersects [0:x-2][x+2:last].
+                        var i,
+                            len = reduced.length - 2,
+                            results = [],
+                            result,
+                            left,
+                            right;
+                        for (i = 0; i < len; i++) {
+                            left = reduced.slice(i, i + 1);
+                            right = reduced.slice(i + 2);
+                            result = this.curveintersects(left, right, curveIntersectionThreshold);
+                            results = results.concat(result);
+                        }
+                        return results;
+                    },
+                    curveintersects: function curveintersects(c1, c2, curveIntersectionThreshold) {
+                        var pairs = [];
+                        // step 1: pair off any overlapping segments
+                        c1.forEach(function (l) {
+                            c2.forEach(function (r) {
+                                if (l.overlaps(r)) {
+                                    pairs.push({ left: l, right: r });
+                                }
+                            });
+                        });
+                        // step 2: for each pairing, run through the convergence algorithm.
+                        var intersections = [];
+                        pairs.forEach(function (pair) {
+                            var result = utils.pairiteration(pair.left, pair.right, curveIntersectionThreshold);
+                            if (result.length > 0) {
+                                intersections = intersections.concat(result);
+                            }
+                        });
+                        return intersections;
+                    },
+                    arcs: function arcs(errorThreshold) {
+                        errorThreshold = errorThreshold || 0.5;
+                        var circles = [];
+                        return this._iterate(errorThreshold, circles);
+                    },
+                    _error: function _error(pc, np1, s, e) {
+                        var q = (e - s) / 4,
+                            c1 = this.get(s + q),
+                            c2 = this.get(e - q),
+                            ref = utils.dist(pc, np1),
+                            d1 = utils.dist(pc, c1),
+                            d2 = utils.dist(pc, c2);
+                        return abs(d1 - ref) + abs(d2 - ref);
+                    },
+                    _iterate: function _iterate(errorThreshold, circles) {
+                        var s = 0,
+                            e = 1,
+                            safety;
+                        // we do a binary search to find the "good `t` closest to no-longer-good"
+                        do {
+                            safety = 0;
+
+                            // step 1: start with the maximum possible arc
+                            e = 1;
+
+                            // points:
+                            var np1 = this.get(s),
+                                np2,
+                                np3,
+                                arc,
+                                prev_arc;
+
+                            // booleans:
+                            var curr_good = false,
+                                prev_good = false,
+                                done;
+
+                            // numbers:
+                            var m = e,
+                                prev_e = 1,
+                                step = 0;
+
+                            // step 2: find the best possible arc
+                            do {
+                                prev_good = curr_good;
+                                prev_arc = arc;
+                                m = (s + e) / 2;
+                                step++;
+
+                                np2 = this.get(m);
+                                np3 = this.get(e);
+
+                                arc = utils.getccenter(np1, np2, np3);
+
+                                //also save the t values
+                                arc.interval = {
+                                    start: s,
+                                    end: e
+                                };
+
+                                var error = this._error(arc, np1, s, e);
+                                curr_good = error <= errorThreshold;
+
+                                done = prev_good && !curr_good;
+                                if (!done) prev_e = e;
+
+                                // this arc is fine: we can move 'e' up to see if we can find a wider arc
+                                if (curr_good) {
+
+                                    // if e is already at max, then we're done for this arc.
+                                    if (e >= 1) {
+                                        arc.interval.end = prev_e = 1;
+                                        prev_arc = arc;
+                                        break;
+                                    }
+                                    // if not, move it up by half the iteration distance
+                                    e = e + (e - s) / 2;
+                                }
+
+                                // this is a bad arc: we need to move 'e' down to find a good arc
+                                else {
+                                        e = m;
+                                    }
+                            } while (!done && safety++ < 100);
+
+                            if (safety >= 100) {
+                                break;
+                            }
+
+                            // console.log("L835: [F] arc found", s, prev_e, prev_arc.x, prev_arc.y, prev_arc.s, prev_arc.e);
+
+                            prev_arc = prev_arc ? prev_arc : arc;
+                            circles.push(prev_arc);
+                            s = prev_e;
+                        } while (e < 1);
+                        return circles;
+                    }
+                };
+
+                module.exports = Bezier;
+            })();
+        }, { "./poly-bezier.js": 3, "./utils.js": 4 }], 3: [function (require, module, exports) {
+            (function () {
+                "use strict";
+
+                var utils = require('./utils.js');
+
+                /**
+                 * Poly Bezier
+                 * @param {[type]} curves [description]
+                 */
+                var PolyBezier = function PolyBezier(curves) {
+                    this.curves = [];
+                    this._3d = false;
+                    if (!!curves) {
+                        this.curves = curves;
+                        this._3d = this.curves[0]._3d;
+                    }
+                };
+
+                PolyBezier.prototype = {
+                    valueOf: function valueOf() {
+                        return this.toString();
+                    },
+                    toString: function toString() {
+                        return "[" + this.curves.map(function (curve) {
+                            return utils.pointsToString(curve.points);
+                        }).join(", ") + "]";
+                    },
+                    addCurve: function addCurve(curve) {
+                        this.curves.push(curve);
+                        this._3d = this._3d || curve._3d;
+                    },
+                    length: function length() {
+                        return this.curves.map(function (v) {
+                            return v.length();
+                        }).reduce(function (a, b) {
+                            return a + b;
+                        });
+                    },
+                    curve: function curve(idx) {
+                        return this.curves[idx];
+                    },
+                    bbox: function bbox() {
+                        var c = this.curves;
+                        var bbox = c[0].bbox();
+                        for (var i = 1; i < c.length; i++) {
+                            utils.expandbox(bbox, c[i].bbox());
+                        }
+                        return bbox;
+                    },
+                    offset: function offset(d) {
+                        var offset = [];
+                        this.curves.forEach(function (v) {
+                            offset = offset.concat(v.offset(d));
+                        });
+                        return new PolyBezier(offset);
+                    }
+                };
+
+                module.exports = PolyBezier;
+            })();
+        }, { "./utils.js": 4 }], 4: [function (require, module, exports) {
+            (function () {
+                "use strict";
+
+                // math-inlining.
+
+                var abs = Math.abs,
+                    cos = Math.cos,
+                    sin = Math.sin,
+                    acos = Math.acos,
+                    atan2 = Math.atan2,
+                    sqrt = Math.sqrt,
+                    pow = Math.pow,
+
+                // cube root function yielding real roots
+                crt = function crt(v) {
+                    return v < 0 ? -pow(-v, 1 / 3) : pow(v, 1 / 3);
+                },
+
+                // trig constants
+                pi = Math.PI,
+                    tau = 2 * pi,
+                    quart = pi / 2,
+
+                // float precision significant decimal
+                epsilon = 0.000001,
+
+                // extremas used in bbox calculation and similar algorithms
+                nMax = Number.MAX_SAFE_INTEGER,
+                    nMin = Number.MIN_SAFE_INTEGER;
+
+                // Bezier utility functions
+                var utils = {
+                    // Legendre-Gauss abscissae with n=24 (x_i values, defined at i=n as the roots of the nth order Legendre polynomial Pn(x))
+                    Tvalues: [-0.0640568928626056260850430826247450385909, 0.0640568928626056260850430826247450385909, -0.1911188674736163091586398207570696318404, 0.1911188674736163091586398207570696318404, -0.3150426796961633743867932913198102407864, 0.3150426796961633743867932913198102407864, -0.4337935076260451384870842319133497124524, 0.4337935076260451384870842319133497124524, -0.5454214713888395356583756172183723700107, 0.5454214713888395356583756172183723700107, -0.6480936519369755692524957869107476266696, 0.6480936519369755692524957869107476266696, -0.7401241915785543642438281030999784255232, 0.7401241915785543642438281030999784255232, -0.8200019859739029219539498726697452080761, 0.8200019859739029219539498726697452080761, -0.8864155270044010342131543419821967550873, 0.8864155270044010342131543419821967550873, -0.9382745520027327585236490017087214496548, 0.9382745520027327585236490017087214496548, -0.9747285559713094981983919930081690617411, 0.9747285559713094981983919930081690617411, -0.9951872199970213601799974097007368118745, 0.9951872199970213601799974097007368118745],
+
+                    // Legendre-Gauss weights with n=24 (w_i values, defined by a function linked to in the Bezier primer article)
+                    Cvalues: [0.1279381953467521569740561652246953718517, 0.1279381953467521569740561652246953718517, 0.1258374563468282961213753825111836887264, 0.1258374563468282961213753825111836887264, 0.1216704729278033912044631534762624256070, 0.1216704729278033912044631534762624256070, 0.1155056680537256013533444839067835598622, 0.1155056680537256013533444839067835598622, 0.1074442701159656347825773424466062227946, 0.1074442701159656347825773424466062227946, 0.0976186521041138882698806644642471544279, 0.0976186521041138882698806644642471544279, 0.0861901615319532759171852029837426671850, 0.0861901615319532759171852029837426671850, 0.0733464814110803057340336152531165181193, 0.0733464814110803057340336152531165181193, 0.0592985849154367807463677585001085845412, 0.0592985849154367807463677585001085845412, 0.0442774388174198061686027482113382288593, 0.0442774388174198061686027482113382288593, 0.0285313886289336631813078159518782864491, 0.0285313886289336631813078159518782864491, 0.0123412297999871995468056670700372915759, 0.0123412297999871995468056670700372915759],
+
+                    arcfn: function arcfn(t, derivativeFn) {
+                        var d = derivativeFn(t);
+                        var l = d.x * d.x + d.y * d.y;
+                        if (typeof d.z !== "undefined") {
+                            l += d.z * d.z;
+                        }
+                        return sqrt(l);
+                    },
+
+                    between: function between(v, m, M) {
+                        return m <= v && v <= M || utils.approximately(v, m) || utils.approximately(v, M);
+                    },
+
+                    approximately: function approximately(a, b, precision) {
+                        return abs(a - b) <= (precision || epsilon);
+                    },
+
+                    length: function length(derivativeFn) {
+                        var z = 0.5,
+                            sum = 0,
+                            len = utils.Tvalues.length,
+                            i,
+                            t;
+                        for (i = 0; i < len; i++) {
+                            t = z * utils.Tvalues[i] + z;
+                            sum += utils.Cvalues[i] * utils.arcfn(t, derivativeFn);
+                        }
+                        return z * sum;
+                    },
+
+                    map: function map(v, ds, de, ts, te) {
+                        var d1 = de - ds,
+                            d2 = te - ts,
+                            v2 = v - ds,
+                            r = v2 / d1;
+                        return ts + d2 * r;
+                    },
+
+                    lerp: function lerp(r, v1, v2) {
+                        var ret = {
+                            x: v1.x + r * (v2.x - v1.x),
+                            y: v1.y + r * (v2.y - v1.y)
+                        };
+                        if (!!v1.z && !!v2.z) {
+                            ret.z = v1.z + r * (v2.z - v1.z);
+                        }
+                        return ret;
+                    },
+
+                    pointToString: function pointToString(p) {
+                        var s = p.x + "/" + p.y;
+                        if (typeof p.z !== "undefined") {
+                            s += "/" + p.z;
+                        }
+                        return s;
+                    },
+
+                    pointsToString: function pointsToString(points) {
+                        return "[" + points.map(utils.pointToString).join(", ") + "]";
+                    },
+
+                    copy: function copy(obj) {
+                        return JSON.parse(JSON.stringify(obj));
+                    },
+
+                    angle: function angle(o, v1, v2) {
+                        var dx1 = v1.x - o.x,
+                            dy1 = v1.y - o.y,
+                            dx2 = v2.x - o.x,
+                            dy2 = v2.y - o.y,
+                            cross = dx1 * dy2 - dy1 * dx2,
+                            dot = dx1 * dx2 + dy1 * dy2;
+                        return atan2(cross, dot);
+                    },
+
+                    // round as string, to avoid rounding errors
+                    round: function round(v, d) {
+                        var s = '' + v;
+                        var pos = s.indexOf(".");
+                        return parseFloat(s.substring(0, pos + 1 + d));
+                    },
+
+                    dist: function dist(p1, p2) {
+                        var dx = p1.x - p2.x,
+                            dy = p1.y - p2.y;
+                        return sqrt(dx * dx + dy * dy);
+                    },
+
+                    closest: function closest(LUT, point) {
+                        var mdist = pow(2, 63),
+                            mpos,
+                            d;
+                        LUT.forEach(function (p, idx) {
+                            d = utils.dist(point, p);
+                            if (d < mdist) {
+                                mdist = d;
+                                mpos = idx;
+                            }
+                        });
+                        return { mdist: mdist, mpos: mpos };
+                    },
+
+                    abcratio: function abcratio(t, n) {
+                        // see ratio(t) note on http://pomax.github.io/bezierinfo/#abc
+                        if (n !== 2 && n !== 3) {
+                            return false;
+                        }
+                        if (typeof t === "undefined") {
+                            t = 0.5;
+                        } else if (t === 0 || t === 1) {
+                            return t;
+                        }
+                        var bottom = pow(t, n) + pow(1 - t, n),
+                            top = bottom - 1;
+                        return abs(top / bottom);
+                    },
+
+                    projectionratio: function projectionratio(t, n) {
+                        // see u(t) note on http://pomax.github.io/bezierinfo/#abc
+                        if (n !== 2 && n !== 3) {
+                            return false;
+                        }
+                        if (typeof t === "undefined") {
+                            t = 0.5;
+                        } else if (t === 0 || t === 1) {
+                            return t;
+                        }
+                        var top = pow(1 - t, n),
+                            bottom = pow(t, n) + top;
+                        return top / bottom;
+                    },
+
+                    lli8: function lli8(x1, y1, x2, y2, x3, y3, x4, y4) {
+                        var nx = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4),
+                            ny = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4),
+                            d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+                        if (d == 0) {
+                            return false;
+                        }
+                        return { x: nx / d, y: ny / d };
+                    },
+
+                    lli4: function lli4(p1, p2, p3, p4) {
+                        var x1 = p1.x,
+                            y1 = p1.y,
+                            x2 = p2.x,
+                            y2 = p2.y,
+                            x3 = p3.x,
+                            y3 = p3.y,
+                            x4 = p4.x,
+                            y4 = p4.y;
+                        return utils.lli8(x1, y1, x2, y2, x3, y3, x4, y4);
+                    },
+
+                    lli: function lli(v1, v2) {
+                        return utils.lli4(v1, v1.c, v2, v2.c);
+                    },
+
+                    makeline: function makeline(p1, p2) {
+                        var Bezier = require('./bezier');
+                        var x1 = p1.x,
+                            y1 = p1.y,
+                            x2 = p2.x,
+                            y2 = p2.y,
+                            dx = (x2 - x1) / 3,
+                            dy = (y2 - y1) / 3;
+                        return new Bezier(x1, y1, x1 + dx, y1 + dy, x1 + 2 * dx, y1 + 2 * dy, x2, y2);
+                    },
+
+                    findbbox: function findbbox(sections) {
+                        var mx = nMax,
+                            my = nMax,
+                            MX = nMin,
+                            MY = nMin;
+                        sections.forEach(function (s) {
+                            var bbox = s.bbox();
+                            if (mx > bbox.x.min) mx = bbox.x.min;
+                            if (my > bbox.y.min) my = bbox.y.min;
+                            if (MX < bbox.x.max) MX = bbox.x.max;
+                            if (MY < bbox.y.max) MY = bbox.y.max;
+                        });
+                        return {
+                            x: { min: mx, mid: (mx + MX) / 2, max: MX, size: MX - mx },
+                            y: { min: my, mid: (my + MY) / 2, max: MY, size: MY - my }
+                        };
+                    },
+
+                    shapeintersections: function shapeintersections(s1, bbox1, s2, bbox2, curveIntersectionThreshold) {
+                        if (!utils.bboxoverlap(bbox1, bbox2)) return [];
+                        var intersections = [];
+                        var a1 = [s1.startcap, s1.forward, s1.back, s1.endcap];
+                        var a2 = [s2.startcap, s2.forward, s2.back, s2.endcap];
+                        a1.forEach(function (l1) {
+                            if (l1.virtual) return;
+                            a2.forEach(function (l2) {
+                                if (l2.virtual) return;
+                                var iss = l1.intersects(l2, curveIntersectionThreshold);
+                                if (iss.length > 0) {
+                                    iss.c1 = l1;
+                                    iss.c2 = l2;
+                                    iss.s1 = s1;
+                                    iss.s2 = s2;
+                                    intersections.push(iss);
+                                }
+                            });
+                        });
+                        return intersections;
+                    },
+
+                    makeshape: function makeshape(forward, back, curveIntersectionThreshold) {
+                        var bpl = back.points.length;
+                        var fpl = forward.points.length;
+                        var start = utils.makeline(back.points[bpl - 1], forward.points[0]);
+                        var end = utils.makeline(forward.points[fpl - 1], back.points[0]);
+                        var shape = {
+                            startcap: start,
+                            forward: forward,
+                            back: back,
+                            endcap: end,
+                            bbox: utils.findbbox([start, forward, back, end])
+                        };
+                        var self = utils;
+                        shape.intersections = function (s2) {
+                            return self.shapeintersections(shape, shape.bbox, s2, s2.bbox, curveIntersectionThreshold);
+                        };
+                        return shape;
+                    },
+
+                    getminmax: function getminmax(curve, d, list) {
+                        if (!list) return { min: 0, max: 0 };
+                        var min = nMax,
+                            max = nMin,
+                            t,
+                            c;
+                        if (list.indexOf(0) === -1) {
+                            list = [0].concat(list);
+                        }
+                        if (list.indexOf(1) === -1) {
+                            list.push(1);
+                        }
+                        for (var i = 0, len = list.length; i < len; i++) {
+                            t = list[i];
+                            c = curve.get(t);
+                            if (c[d] < min) {
+                                min = c[d];
+                            }
+                            if (c[d] > max) {
+                                max = c[d];
+                            }
+                        }
+                        return { min: min, mid: (min + max) / 2, max: max, size: max - min };
+                    },
+
+                    align: function align(points, line) {
+                        var tx = line.p1.x,
+                            ty = line.p1.y,
+                            a = -atan2(line.p2.y - ty, line.p2.x - tx),
+                            d = function d(v) {
+                            return {
+                                x: (v.x - tx) * cos(a) - (v.y - ty) * sin(a),
+                                y: (v.x - tx) * sin(a) + (v.y - ty) * cos(a)
+                            };
+                        };
+                        return points.map(d);
+                    },
+
+                    roots: function roots(points, line) {
+                        line = line || { p1: { x: 0, y: 0 }, p2: { x: 1, y: 0 } };
+                        var order = points.length - 1;
+                        var p = utils.align(points, line);
+                        var reduce = function reduce(t) {
+                            return 0 <= t && t <= 1;
+                        };
+
+                        if (order === 2) {
+                            var a = p[0].y,
+                                b = p[1].y,
+                                c = p[2].y,
+                                d = a - 2 * b + c;
+                            if (d !== 0) {
+                                var m1 = -sqrt(b * b - a * c),
+                                    m2 = -a + b,
+                                    v1 = -(m1 + m2) / d,
+                                    v2 = -(-m1 + m2) / d;
+                                return [v1, v2].filter(reduce);
+                            } else if (b !== c && d === 0) {
+                                return [(2 * b - c) / 2 * (b - c)].filter(reduce);
+                            }
+                            return [];
+                        }
+
+                        // see http://www.trans4mind.com/personal_development/mathematics/polynomials/cubicAlgebra.htm
+                        var pa = p[0].y,
+                            pb = p[1].y,
+                            pc = p[2].y,
+                            pd = p[3].y,
+                            d = -pa + 3 * pb - 3 * pc + pd,
+                            a = (3 * pa - 6 * pb + 3 * pc) / d,
+                            b = (-3 * pa + 3 * pb) / d,
+                            c = pa / d,
+                            p = (3 * b - a * a) / 3,
+                            p3 = p / 3,
+                            q = (2 * a * a * a - 9 * a * b + 27 * c) / 27,
+                            q2 = q / 2,
+                            discriminant = q2 * q2 + p3 * p3 * p3,
+                            u1,
+                            v1,
+                            x1,
+                            x2,
+                            x3;
+                        if (discriminant < 0) {
+                            var mp3 = -p / 3,
+                                mp33 = mp3 * mp3 * mp3,
+                                r = sqrt(mp33),
+                                t = -q / (2 * r),
+                                cosphi = t < -1 ? -1 : t > 1 ? 1 : t,
+                                phi = acos(cosphi),
+                                crtr = crt(r),
+                                t1 = 2 * crtr;
+                            x1 = t1 * cos(phi / 3) - a / 3;
+                            x2 = t1 * cos((phi + tau) / 3) - a / 3;
+                            x3 = t1 * cos((phi + 2 * tau) / 3) - a / 3;
+                            return [x1, x2, x3].filter(reduce);
+                        } else if (discriminant === 0) {
+                            u1 = q2 < 0 ? crt(-q2) : -crt(q2);
+                            x1 = 2 * u1 - a / 3;
+                            x2 = -u1 - a / 3;
+                            return [x1, x2].filter(reduce);
+                        } else {
+                            var sd = sqrt(discriminant);
+                            u1 = crt(-q2 + sd);
+                            v1 = crt(q2 + sd);
+                            return [u1 - v1 - a / 3].filter(reduce);;
+                        }
+                    },
+
+                    droots: function droots(p) {
+                        // quadratic roots are easy
+                        if (p.length === 3) {
+                            var a = p[0],
+                                b = p[1],
+                                c = p[2],
+                                d = a - 2 * b + c;
+                            if (d !== 0) {
+                                var m1 = -sqrt(b * b - a * c),
+                                    m2 = -a + b,
+                                    v1 = -(m1 + m2) / d,
+                                    v2 = -(-m1 + m2) / d;
+                                return [v1, v2];
+                            } else if (b !== c && d === 0) {
+                                return [(2 * b - c) / (2 * (b - c))];
+                            }
+                            return [];
+                        }
+
+                        // linear roots are even easier
+                        if (p.length === 2) {
+                            var a = p[0],
+                                b = p[1];
+                            if (a !== b) {
+                                return [a / (a - b)];
+                            }
+                            return [];
+                        }
+                    },
+
+                    inflections: function inflections(points) {
+                        if (points.length < 4) return [];
+
+                        // FIXME: TODO: add in inflection abstraction for quartic+ curves?
+
+                        var p = utils.align(points, { p1: points[0], p2: points.slice(-1)[0] }),
+                            a = p[2].x * p[1].y,
+                            b = p[3].x * p[1].y,
+                            c = p[1].x * p[2].y,
+                            d = p[3].x * p[2].y,
+                            v1 = 18 * (-3 * a + 2 * b + 3 * c - d),
+                            v2 = 18 * (3 * a - b - 3 * c),
+                            v3 = 18 * (c - a);
+
+                        if (utils.approximately(v1, 0)) {
+                            if (!utils.approximately(v2, 0)) {
+                                var t = -v3 / v2;
+                                if (0 <= t && t <= 1) return [t];
+                            }
+                            return [];
+                        }
+
+                        var trm = v2 * v2 - 4 * v1 * v3,
+                            sq = Math.sqrt(trm),
+                            d = 2 * v1;
+
+                        if (utils.approximately(d, 0)) return [];
+
+                        return [(sq - v2) / d, -(v2 + sq) / d].filter(function (r) {
+                            return 0 <= r && r <= 1;
+                        });
+                    },
+
+                    bboxoverlap: function bboxoverlap(b1, b2) {
+                        var dims = ['x', 'y'],
+                            len = dims.length,
+                            i,
+                            dim,
+                            l,
+                            t,
+                            d;
+                        for (i = 0; i < len; i++) {
+                            dim = dims[i];
+                            l = b1[dim].mid;
+                            t = b2[dim].mid;
+                            d = (b1[dim].size + b2[dim].size) / 2;
+                            if (abs(l - t) >= d) return false;
+                        }
+                        return true;
+                    },
+
+                    expandbox: function expandbox(bbox, _bbox) {
+                        if (_bbox.x.min < bbox.x.min) {
+                            bbox.x.min = _bbox.x.min;
+                        }
+                        if (_bbox.y.min < bbox.y.min) {
+                            bbox.y.min = _bbox.y.min;
+                        }
+                        if (_bbox.z && _bbox.z.min < bbox.z.min) {
+                            bbox.z.min = _bbox.z.min;
+                        }
+                        if (_bbox.x.max > bbox.x.max) {
+                            bbox.x.max = _bbox.x.max;
+                        }
+                        if (_bbox.y.max > bbox.y.max) {
+                            bbox.y.max = _bbox.y.max;
+                        }
+                        if (_bbox.z && _bbox.z.max > bbox.z.max) {
+                            bbox.z.max = _bbox.z.max;
+                        }
+                        bbox.x.mid = (bbox.x.min + bbox.x.max) / 2;
+                        bbox.y.mid = (bbox.y.min + bbox.y.max) / 2;
+                        if (bbox.z) {
+                            bbox.z.mid = (bbox.z.min + bbox.z.max) / 2;
+                        }
+                        bbox.x.size = bbox.x.max - bbox.x.min;
+                        bbox.y.size = bbox.y.max - bbox.y.min;
+                        if (bbox.z) {
+                            bbox.z.size = bbox.z.max - bbox.z.min;
+                        }
+                    },
+
+                    pairiteration: function pairiteration(c1, c2, curveIntersectionThreshold) {
+                        var c1b = c1.bbox(),
+                            c2b = c2.bbox(),
+                            r = 100000,
+                            threshold = curveIntersectionThreshold || 0.5;
+                        if (c1b.x.size + c1b.y.size < threshold && c2b.x.size + c2b.y.size < threshold) {
+                            return [(r * (c1._t1 + c1._t2) / 2 | 0) / r + "/" + (r * (c2._t1 + c2._t2) / 2 | 0) / r];
+                        }
+                        var cc1 = c1.split(0.5),
+                            cc2 = c2.split(0.5),
+                            pairs = [{ left: cc1.left, right: cc2.left }, { left: cc1.left, right: cc2.right }, { left: cc1.right, right: cc2.right }, { left: cc1.right, right: cc2.left }];
+                        pairs = pairs.filter(function (pair) {
+                            return utils.bboxoverlap(pair.left.bbox(), pair.right.bbox());
+                        });
+                        var results = [];
+                        if (pairs.length === 0) return results;
+                        pairs.forEach(function (pair) {
+                            results = results.concat(utils.pairiteration(pair.left, pair.right, threshold));
+                        });
+                        results = results.filter(function (v, i) {
+                            return results.indexOf(v) === i;
+                        });
+                        return results;
+                    },
+
+                    getccenter: function getccenter(p1, p2, p3) {
+                        var dx1 = p2.x - p1.x,
+                            dy1 = p2.y - p1.y,
+                            dx2 = p3.x - p2.x,
+                            dy2 = p3.y - p2.y;
+                        var dx1p = dx1 * cos(quart) - dy1 * sin(quart),
+                            dy1p = dx1 * sin(quart) + dy1 * cos(quart),
+                            dx2p = dx2 * cos(quart) - dy2 * sin(quart),
+                            dy2p = dx2 * sin(quart) + dy2 * cos(quart);
+                        // chord midpoints
+                        var mx1 = (p1.x + p2.x) / 2,
+                            my1 = (p1.y + p2.y) / 2,
+                            mx2 = (p2.x + p3.x) / 2,
+                            my2 = (p2.y + p3.y) / 2;
+                        // midpoint offsets
+                        var mx1n = mx1 + dx1p,
+                            my1n = my1 + dy1p,
+                            mx2n = mx2 + dx2p,
+                            my2n = my2 + dy2p;
+                        // intersection of these lines:
+                        var arc = utils.lli8(mx1, my1, mx1n, my1n, mx2, my2, mx2n, my2n),
+                            r = utils.dist(arc, p1),
+
+                        // arc start/end values, over mid point:
+                        s = atan2(p1.y - arc.y, p1.x - arc.x),
+                            m = atan2(p2.y - arc.y, p2.x - arc.x),
+                            e = atan2(p3.y - arc.y, p3.x - arc.x),
+                            _;
+                        // determine arc direction (cw/ccw correction)
+                        if (s < e) {
+                            // if s<m<e, arc(s, e)
+                            // if m<s<e, arc(e, s + tau)
+                            // if s<e<m, arc(e, s + tau)
+                            if (s > m || m > e) {
+                                s += tau;
+                            }
+                            if (s > e) {
+                                _ = e;e = s;s = _;
+                            }
+                        } else {
+                            // if e<m<s, arc(e, s)
+                            // if m<e<s, arc(s, e + tau)
+                            // if e<s<m, arc(s, e + tau)
+                            if (e < m && m < s) {
+                                _ = e;e = s;s = _;
+                            } else {
+                                e += tau;
+                            }
+                        }
+                        // assign and done.
+                        arc.s = s;
+                        arc.e = e;
+                        arc.r = r;
+                        return arc;
+                    }
+                };
+
+                module.exports = utils;
+            })();
+        }, { "./bezier": 2 }], 5: [function (require, module, exports) {
             'use strict';
 
             var _classCallCheck = function _classCallCheck(instance, Constructor) {
@@ -200,7 +1782,468 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             var mix = new Mixins();
 
             module.exports = mix.init.bind(mix);
-        }, {}], 2: [function (require, module, exports) {
+        }, {}], 6: [function (require, module, exports) {
+            (function (global) {
+                (function (f) {
+                    if ((typeof exports === "undefined" ? "undefined" : _typeof2(exports)) === "object" && typeof module !== "undefined") {
+                        module.exports = f();
+                    } else if (typeof define === "function" && define.amd) {
+                        define([], f);
+                    } else {
+                        var g;if (typeof window !== "undefined") {
+                            g = window;
+                        } else if (typeof global !== "undefined") {
+                            g = global;
+                        } else if (typeof self !== "undefined") {
+                            g = self;
+                        } else {
+                            g = this;
+                        }g.Ez = f();
+                    }
+                })(function () {
+                    var define, module, exports;return function e(t, n, r) {
+                        function s(o, u) {
+                            if (!n[o]) {
+                                if (!t[o]) {
+                                    var a = typeof require == "function" && require;if (!u && a) return a(o, !0);if (i) return i(o, !0);var f = new Error("Cannot find module '" + o + "'");throw f.code = "MODULE_NOT_FOUND", f;
+                                }var l = n[o] = { exports: {} };t[o][0].call(l.exports, function (e) {
+                                    var n = t[o][1][e];return s(n ? n : e);
+                                }, l, l.exports, e, t, n, r);
+                            }return n[o].exports;
+                        }var i = typeof require == "function" && require;for (var o = 0; o < r.length; o++) {
+                            s(r[o]);
+                        }return s;
+                    }({ 1: [function (require, module, exports) {
+                            "use strict";
+
+                            Object.defineProperty(exports, "__esModule", {
+                                value: true
+                            });
+                            exports.easeInQuad = easeInQuad;
+                            exports.easeOutQuad = easeOutQuad;
+                            exports.easeInOutQuad = easeInOutQuad;
+                            exports.easeInCubic = easeInCubic;
+                            exports.easeOutCubic = easeOutCubic;
+                            exports.easeInOutCubic = easeInOutCubic;
+                            exports.easeInQuart = easeInQuart;
+                            exports.easeOutQuart = easeOutQuart;
+                            exports.easeInOutQuart = easeInOutQuart;
+                            exports.easeInQuint = easeInQuint;
+                            exports.easeOutQuint = easeOutQuint;
+                            exports.easeInOutQuint = easeInOutQuint;
+                            exports.easeInSine = easeInSine;
+                            exports.easeOutSine = easeOutSine;
+                            exports.easeInOutSine = easeInOutSine;
+                            exports.easeInExpo = easeInExpo;
+                            exports.easeOutExpo = easeOutExpo;
+                            exports.easeInOutExpo = easeInOutExpo;
+                            exports.easeInCirc = easeInCirc;
+                            exports.easeOutCirc = easeOutCirc;
+                            exports.easeInOutCirc = easeInOutCirc;
+                            exports.easeInElastic = easeInElastic;
+                            exports.easeOutElastic = easeOutElastic;
+                            exports.easeInOutElastic = easeInOutElastic;
+                            exports.easeInBack = easeInBack;
+                            exports.easeOutBack = easeOutBack;
+                            exports.easeInOutBack = easeInOutBack;
+                            exports.easeInBounce = easeInBounce;
+                            exports.easeOutBounce = easeOutBounce;
+                            exports.easeInOutBounce = easeInOutBounce;
+
+                            function easeInQuad(t, b, c, d) {
+                                return c * (t /= d) * t + b;
+                            }
+
+                            function easeOutQuad(t, b, c, d) {
+                                return -c * (t /= d) * (t - 2) + b;
+                            }
+
+                            function easeInOutQuad(t, b, c, d) {
+                                if ((t /= d / 2) < 1) return c / 2 * t * t + b;
+                                return -c / 2 * (--t * (t - 2) - 1) + b;
+                            }
+
+                            function easeInCubic(t, b, c, d) {
+                                return c * (t /= d) * t * t + b;
+                            }
+
+                            function easeOutCubic(t, b, c, d) {
+                                return c * ((t = t / d - 1) * t * t + 1) + b;
+                            }
+
+                            function easeInOutCubic(t, b, c, d) {
+                                if ((t /= d / 2) < 1) return c / 2 * t * t * t + b;
+                                return c / 2 * ((t -= 2) * t * t + 2) + b;
+                            }
+
+                            function easeInQuart(t, b, c, d) {
+                                return c * (t /= d) * t * t * t + b;
+                            }
+
+                            function easeOutQuart(t, b, c, d) {
+                                return -c * ((t = t / d - 1) * t * t * t - 1) + b;
+                            }
+
+                            function easeInOutQuart(t, b, c, d) {
+                                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t + b;
+                                return -c / 2 * ((t -= 2) * t * t * t - 2) + b;
+                            }
+
+                            function easeInQuint(t, b, c, d) {
+                                return c * (t /= d) * t * t * t * t + b;
+                            }
+
+                            function easeOutQuint(t, b, c, d) {
+                                return c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+                            }
+
+                            function easeInOutQuint(t, b, c, d) {
+                                if ((t /= d / 2) < 1) return c / 2 * t * t * t * t * t + b;
+                                return c / 2 * ((t -= 2) * t * t * t * t + 2) + b;
+                            }
+
+                            function easeInSine(t, b, c, d) {
+                                return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
+                            }
+
+                            function easeOutSine(t, b, c, d) {
+                                return c * Math.sin(t / d * (Math.PI / 2)) + b;
+                            }
+
+                            function easeInOutSine(t, b, c, d) {
+                                return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+                            }
+
+                            function easeInExpo(t, b, c, d) {
+                                return t == 0 ? b : c * Math.pow(2, 10 * (t / d - 1)) + b;
+                            }
+
+                            function easeOutExpo(t, b, c, d) {
+                                return t == d ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
+                            }
+
+                            function easeInOutExpo(t, b, c, d) {
+                                if (t == 0) return b;
+                                if (t == d) return b + c;
+                                if ((t /= d / 2) < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
+                                return c / 2 * (-Math.pow(2, -10 * --t) + 2) + b;
+                            }
+
+                            function easeInCirc(t, b, c, d) {
+                                return -c * (Math.sqrt(1 - (t /= d) * t) - 1) + b;
+                            }
+
+                            function easeOutCirc(t, b, c, d) {
+                                return c * Math.sqrt(1 - (t = t / d - 1) * t) + b;
+                            }
+
+                            function easeInOutCirc(t, b, c, d) {
+                                if ((t /= d / 2) < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
+                                return c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1) + b;
+                            }
+
+                            function easeInElastic(t, b, c, d) {
+                                var s = 1.70158;var p = 0;var a = c;
+                                if (t == 0) return b;if ((t /= d) == 1) return b + c;if (!p) p = d * .3;
+
+                                if (a < Math.abs(c)) {
+                                    a = c;var s = p / 4;
+                                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                                return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+                            }
+
+                            function easeOutElastic(t, b, c, d) {
+                                var s = 1.70158;var p = 0;var a = c;
+                                if (t == 0) return b;if ((t /= d) == 1) return b + c;if (!p) p = d * .3;
+
+                                if (a < Math.abs(c)) {
+                                    a = c;var s = p / 4;
+                                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                                return a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b;
+                            }
+
+                            function easeInOutElastic(t, b, c, d) {
+                                var s = 1.70158;var p = 0;var a = c;
+                                if (t == 0) return b;if ((t /= d / 2) == 2) return b + c;if (!p) p = d * (.3 * 1.5);
+
+                                if (a < Math.abs(c)) {
+                                    a = c;var s = p / 4;
+                                } else var s = p / (2 * Math.PI) * Math.asin(c / a);
+                                if (t < 1) return -.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+                                return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * .5 + c + b;
+                            }
+
+                            function easeInBack(t, b, c, d, s) {
+                                if (s == undefined) s = 1.70158;
+                                return c * (t /= d) * t * ((s + 1) * t - s) + b;
+                            }
+
+                            function easeOutBack(t, b, c, d, s) {
+                                if (s == undefined) s = 1.70158;
+                                return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+                            }
+
+                            function easeInOutBack(t, b, c, d, s) {
+                                if (s == undefined) s = 1.70158;
+                                if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= 1.525) + 1) * t - s)) + b;
+                                return c / 2 * ((t -= 2) * t * (((s *= 1.525) + 1) * t + s) + 2) + b;
+                            }
+
+                            function easeInBounce(t, b, c, d) {
+                                return c - easeOutBounce(d - t, 0, c, d) + b;
+                            }
+
+                            function easeOutBounce(t, b, c, d) {
+
+                                if ((t /= d) < 1 / 2.75) {
+                                    return c * (7.5625 * t * t) + b;
+                                } else if (t < 2 / 2.75) {
+                                    return c * (7.5625 * (t -= 1.5 / 2.75) * t + .75) + b;
+                                } else if (t < 2.5 / 2.75) {
+                                    return c * (7.5625 * (t -= 2.25 / 2.75) * t + .9375) + b;
+                                } else {
+                                    return c * (7.5625 * (t -= 2.625 / 2.75) * t + .984375) + b;
+                                }
+                            }
+
+                            function easeInOutBounce(t, b, c, d) {
+                                if (t < d / 2) return easeInBounce(t * 2, 0, c, d) * .5 + b;
+                                return easeOutBounce(t * 2 - d, 0, c, d) * .5 + c * .5 + b;
+                            }
+                        }, {}] }, {}, [1])(1);
+                });
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
+        }, {}], 7: [function (require, module, exports) {
+            function n(n) {
+                return n = n || Object.create(null), { on: function on(t, o) {
+                        (n[t] || (n[t] = [])).push(o);
+                    }, off: function off(t, o) {
+                        n[t] && n[t].splice(n[t].indexOf(o) >>> 0, 1);
+                    }, emit: function emit(t, o) {
+                        (n[t] || []).map(function (n) {
+                            n(o);
+                        }), (n["*"] || []).map(function (n) {
+                            n(t, o);
+                        });
+                    } };
+            }module.exports = n;
+        }, {}], 8: [function (require, module, exports) {
+            (function (process) {
+                // Generated by CoffeeScript 1.12.2
+                (function () {
+                    var getNanoSeconds, hrtime, loadTime, moduleLoadTime, nodeLoadTime, upTime;
+
+                    if (typeof performance !== "undefined" && performance !== null && performance.now) {
+                        module.exports = function () {
+                            return performance.now();
+                        };
+                    } else if (typeof process !== "undefined" && process !== null && process.hrtime) {
+                        module.exports = function () {
+                            return (getNanoSeconds() - nodeLoadTime) / 1e6;
+                        };
+                        hrtime = process.hrtime;
+                        getNanoSeconds = function getNanoSeconds() {
+                            var hr;
+                            hr = hrtime();
+                            return hr[0] * 1e9 + hr[1];
+                        };
+                        moduleLoadTime = getNanoSeconds();
+                        upTime = process.uptime() * 1e9;
+                        nodeLoadTime = moduleLoadTime - upTime;
+                    } else if (Date.now) {
+                        module.exports = function () {
+                            return Date.now() - loadTime;
+                        };
+                        loadTime = Date.now();
+                    } else {
+                        module.exports = function () {
+                            return new Date().getTime() - loadTime;
+                        };
+                        loadTime = new Date().getTime();
+                    }
+                }).call(this);
+            }).call(this, require('_process'));
+        }, { "_process": 9 }], 9: [function (require, module, exports) {
+            // shim for using process in browser
+            var process = module.exports = {};
+
+            // cached from whatever global is present so that test runners that stub it
+            // don't break things.  But we need to wrap it in a try catch in case it is
+            // wrapped in strict mode code which doesn't define any globals.  It's inside a
+            // function because try/catches deoptimize in certain engines.
+
+            var cachedSetTimeout;
+            var cachedClearTimeout;
+
+            function defaultSetTimout() {
+                throw new Error('setTimeout has not been defined');
+            }
+            function defaultClearTimeout() {
+                throw new Error('clearTimeout has not been defined');
+            }
+            (function () {
+                try {
+                    if (typeof setTimeout === 'function') {
+                        cachedSetTimeout = setTimeout;
+                    } else {
+                        cachedSetTimeout = defaultSetTimout;
+                    }
+                } catch (e) {
+                    cachedSetTimeout = defaultSetTimout;
+                }
+                try {
+                    if (typeof clearTimeout === 'function') {
+                        cachedClearTimeout = clearTimeout;
+                    } else {
+                        cachedClearTimeout = defaultClearTimeout;
+                    }
+                } catch (e) {
+                    cachedClearTimeout = defaultClearTimeout;
+                }
+            })();
+            function runTimeout(fun) {
+                if (cachedSetTimeout === setTimeout) {
+                    //normal enviroments in sane situations
+                    return setTimeout(fun, 0);
+                }
+                // if setTimeout wasn't available but was latter defined
+                if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+                    cachedSetTimeout = setTimeout;
+                    return setTimeout(fun, 0);
+                }
+                try {
+                    // when when somebody has screwed with setTimeout but no I.E. maddness
+                    return cachedSetTimeout(fun, 0);
+                } catch (e) {
+                    try {
+                        // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+                        return cachedSetTimeout.call(null, fun, 0);
+                    } catch (e) {
+                        // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+                        return cachedSetTimeout.call(this, fun, 0);
+                    }
+                }
+            }
+            function runClearTimeout(marker) {
+                if (cachedClearTimeout === clearTimeout) {
+                    //normal enviroments in sane situations
+                    return clearTimeout(marker);
+                }
+                // if clearTimeout wasn't available but was latter defined
+                if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+                    cachedClearTimeout = clearTimeout;
+                    return clearTimeout(marker);
+                }
+                try {
+                    // when when somebody has screwed with setTimeout but no I.E. maddness
+                    return cachedClearTimeout(marker);
+                } catch (e) {
+                    try {
+                        // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+                        return cachedClearTimeout.call(null, marker);
+                    } catch (e) {
+                        // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+                        // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+                        return cachedClearTimeout.call(this, marker);
+                    }
+                }
+            }
+            var queue = [];
+            var draining = false;
+            var currentQueue;
+            var queueIndex = -1;
+
+            function cleanUpNextTick() {
+                if (!draining || !currentQueue) {
+                    return;
+                }
+                draining = false;
+                if (currentQueue.length) {
+                    queue = currentQueue.concat(queue);
+                } else {
+                    queueIndex = -1;
+                }
+                if (queue.length) {
+                    drainQueue();
+                }
+            }
+
+            function drainQueue() {
+                if (draining) {
+                    return;
+                }
+                var timeout = runTimeout(cleanUpNextTick);
+                draining = true;
+
+                var len = queue.length;
+                while (len) {
+                    currentQueue = queue;
+                    queue = [];
+                    while (++queueIndex < len) {
+                        if (currentQueue) {
+                            currentQueue[queueIndex].run();
+                        }
+                    }
+                    queueIndex = -1;
+                    len = queue.length;
+                }
+                currentQueue = null;
+                draining = false;
+                runClearTimeout(timeout);
+            }
+
+            process.nextTick = function (fun) {
+                var args = new Array(arguments.length - 1);
+                if (arguments.length > 1) {
+                    for (var i = 1; i < arguments.length; i++) {
+                        args[i - 1] = arguments[i];
+                    }
+                }
+                queue.push(new Item(fun, args));
+                if (queue.length === 1 && !draining) {
+                    runTimeout(drainQueue);
+                }
+            };
+
+            // v8 likes predictible objects
+            function Item(fun, array) {
+                this.fun = fun;
+                this.array = array;
+            }
+            Item.prototype.run = function () {
+                this.fun.apply(null, this.array);
+            };
+            process.title = 'browser';
+            process.browser = true;
+            process.env = {};
+            process.argv = [];
+            process.version = ''; // empty string to avoid regexp issues
+            process.versions = {};
+
+            function noop() {}
+
+            process.on = noop;
+            process.addListener = noop;
+            process.once = noop;
+            process.off = noop;
+            process.removeListener = noop;
+            process.removeAllListeners = noop;
+            process.emit = noop;
+
+            process.binding = function (name) {
+                throw new Error('process.binding is not supported');
+            };
+
+            process.cwd = function () {
+                return '/';
+            };
+            process.chdir = function (dir) {
+                throw new Error('process.chdir is not supported');
+            };
+            process.umask = function () {
+                return 0;
+            };
+        }, {}], 10: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -288,6 +2331,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             var _layout2 = _interopRequireDefault(_layout);
 
+            var _animation = require('../core/animation');
+
+            var _animation2 = _interopRequireDefault(_animation);
+
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
             }
@@ -372,7 +2419,15 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 },
 
                 // The dataset's default key
-                defaultKey: 'value'
+                defaultKey: 'value',
+
+                // Animation
+                animate: true,
+                animateOptions: {
+                    start: 1,
+                    end: 1001,
+                    duration: 1000
+                }
             };
 
             var WX_BAR_ITEM_DEFAULT_CONFIG = {
@@ -425,6 +2480,68 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     var _this = _possibleConstructorReturn(this, (WxBar.__proto__ || Object.getPrototypeOf(WxBar)).call(this, id, config));
 
+                    _this.__drawBar = function (point, percent, legend, stacked, hasNeg) {
+                        var ctx = _this.ctx;
+                        var display = legend.display,
+                            borderWidth = legend.borderWidth,
+                            fillStyle = legend.fillStyle,
+                            strokeStyle = legend.strokeStyle,
+                            fillArea = legend.fillArea,
+                            fillAlpha = legend.fillAlpha;
+
+                        var px = void 0,
+                            py = void 0,
+                            width = void 0,
+                            height = void 0;
+                        if (!point) {
+                            return { px: px, py: py, width: width, height: height };
+                        }
+
+                        if (stacked && hasNeg) {
+                            width = point.barWidth;
+                            height = point.barHeight * percent;
+                            px = point.x;
+                            py = point.y + point.barHeight / 2 - height / 2;
+                        } else {
+                            px = point.x;
+                            width = point.barWidth;
+                            height = point.barHeight * percent;
+                            py = point.y + point.barHeight * (1 - percent);
+                        }
+
+                        ctx.save();
+
+                        ctx.fillStyle = fillStyle;
+                        ctx.strokeStyle = strokeStyle;
+                        ctx.lineWidth = borderWidth;
+                        // First, fill
+                        if (fillArea) {
+                            ctx.beginPath();
+                            ctx.globalAlpha = fillAlpha;
+                            ctx.rect(px, py, width, height);
+                            ctx.fill();
+                            ctx.globalAlpha = 1;
+                        }
+                        // Next, stroke
+                        if (borderWidth) {
+                            ctx.beginPath();
+                            if (stacked && hasNeg) {
+                                ctx.rect(px, py, width, height);
+                            } else {
+                                ctx.moveTo(px, py + height);
+                                ctx.lineTo(px, py);
+                                ctx.lineTo(px + width, py);
+                                ctx.lineTo(px + width, py + height);
+                            }
+                            ctx.stroke();
+                        }
+
+                        ctx.draw();
+                        ctx.restore();
+
+                        return { px: px, py: py, width: width, height: height };
+                    };
+
                     (0, _es6Mixins2.default)([_scale8.default], _this, {
                         // Mixins will create a new method to nested call all duplicate method
                         mergeDuplicates: false
@@ -448,6 +2565,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     me.xAxis = new _scale10.default(me, me.chartConfig.xScaleOptions);
                     me.wxCrossScale = new _scale6.default(me.xAxis, me.yAxis, me.chartConfig.crossScaleOptions);
                     me.wxLayout = new _layout2.default(me);
+
+                    // Initialize wxAnimation
+                    if (me.chartConfig.animate) me.wxAnimation = new _animation2.default(me.chartConfig.animateOptions);
+
+                    me.emit('init', {
+                        options: me.chartConfig
+                    });
                     return _this;
                 }
 
@@ -502,6 +2626,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         me._legends = null;
                         _get(WxBar.prototype.__proto__ || Object.getPrototypeOf(WxBar.prototype), 'update', this).call(this, datasets, (0, _helper.extend)({}, WX_BAR_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
                         me.wxLayout.removeAllBox();
+                        if (me.wxAnimation) me.wxAnimation.reset();
                         return me.draw();
                     }
                     /**
@@ -514,6 +2639,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var box = void 0,
                             me = this,
                             ctx = me.ctx,
+                            animate = me.chartConfig.animate,
                             wxLayout = me.wxLayout;
                         var _me$chartConfig = me.chartConfig,
                             pointPercentage = _me$chartConfig.pointPercentage,
@@ -522,8 +2648,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             color = _me$chartConfig.color,
                             zeroLine = _me$chartConfig.zeroLine;
 
-                        // First, we draw title
+                        me.emit('beforeDraw', {
+                            options: me.chartConfig
+                        });
 
+                        // First, we draw title
                         box = wxLayout.adjustBox();
                         if (me.title) {
                             me.title.update(me.titleText, box);
@@ -570,36 +2699,159 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         });
 
                         barConfigs.forEach(function (bar) {
-                            return me._drawBar(bar, hasNeg);
+                            return me.drawBar(bar, hasNeg);
                         });
 
-                        // zero line
-                        if (zeroLine) {
-                            ctx.save();
-                            ctx.fillStyle = me.xAxis.config.color;
-                            ctx.lineWidth = me.xAxis.config.lineWidth;
-
-                            var baseY = me.yAxis.getPoint(0).y;
-                            var beginPoint = [me.xAxis.getPoint(-1).x, baseY],
-                                endPoint = [me.xAxis.box.ex, baseY];
-                            ctx.beginPath();
-                            ctx.moveTo.apply(ctx, beginPoint);
-                            ctx.lineTo.apply(ctx, endPoint);
-                            ctx.stroke();
-                            ctx.restore();
+                        if (animate) {
+                            me.emit('animate', { animation: me.wxAnimation });
+                            me.wxAnimation.run(true);
+                            me.wxAnimation.on('done', function () {
+                                if (zeroLine) me._darwZeroLine();
+                                me.emit('draw', {
+                                    options: barConfigs
+                                });
+                            });
+                        } else {
+                            if (zeroLine) me._darwZeroLine();
+                            me.emit('draw', {
+                                options: barConfigs
+                            });
                         }
                     }
 
                     /**
-                     * Draw one line
-                     * @param {Object} barData - Line dataset
-                     * @param {Object} barData.legend - Legend's config
-                     * @param {Object[]} barData[].value - Data of each line point
-                     * @param {Object[]} barData[].data - The data object
-                     * @param {Object[]} barData[].point - The point for rending.
+                     * Draw zero line
                      * @private
                      */
 
+                }, {
+                    key: '_darwZeroLine',
+                    value: function _darwZeroLine() {
+                        var me = this,
+                            ctx = me.ctx;
+                        // zero line
+                        ctx.save();
+                        ctx.fillStyle = me.xAxis.config.color;
+                        ctx.lineWidth = me.xAxis.config.lineWidth;
+
+                        var baseY = me.yAxis.getPoint(0).y;
+                        ctx.beginPath();
+                        ctx.moveTo(me.xAxis.getPoint(-1).x, baseY);
+                        ctx.lineTo(me.xAxis.box.ex, baseY);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }, {
+                    key: '_getAnimationDrawBar',
+
+                    /**
+                     * Return a animate tick func
+                     * @param barData
+                     * @param hasNeg
+                     * @return {function(*, *, *)|null}
+                     * @private
+                     */
+                    value: function _getAnimationDrawBar(barData, hasNeg) {
+                        var me = this,
+                            backgroundColor = me.config.backgroundColor,
+                            stacked = me.chartConfig.stacked,
+                            animate = me.chartConfig.animate,
+                            animateOpt = me.chartConfig.animateOptions,
+                            ctx = me.ctx;
+
+                        var legend = barData.legend,
+                            dataset = barData.dataset;
+                        var display = legend.display,
+                            borderWidth = legend.borderWidth,
+                            fillStyle = legend.fillStyle,
+                            strokeStyle = legend.strokeStyle,
+                            fillArea = legend.fillArea,
+                            fillAlpha = legend.fillAlpha;
+
+                        // Animation dynamic options
+
+                        var dataLen = dataset.length,
+                            categoryTicks = (animateOpt.end - animateOpt.start) / dataLen;
+
+                        if (!display) {
+                            return;
+                        }
+
+                        return function (t, lastData, toNext) {
+                            var dataIndex = Math.floor(t / categoryTicks);
+
+                            var _ref = dataIndex < dataLen ? dataset[dataIndex] : dataset[dataLen - 1],
+                                point = _ref.point;
+
+                            var percent = t % categoryTicks / categoryTicks;
+
+                            if (lastData) {
+                                var lastDataIndex = lastData.dataIndex,
+                                    lastPercent = lastData.percent,
+                                    lastt = lastData.t,
+                                    lastx = lastData.x,
+                                    lasty = lastData.y,
+                                    lastWidth = lastData.width,
+                                    lastHeight = lastData.height;
+
+                                if (lastDataIndex < dataLen && lastx) {
+                                    ctx.save();
+                                    ctx.beginPath();
+                                    // TODO: optimize clear check!!
+                                    ctx.lineWidth = borderWidth;
+                                    ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+                                    ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+                                    ctx.fillRect(lastx, lasty, lastWidth, lastHeight);
+                                    if (borderWidth) {
+                                        ctx.beginPath();
+                                        if (stacked && hasNeg && borderWidth) {
+                                            ctx.rect(lastx, lasty, lastWidth, lastHeight);
+                                        } else {
+                                            ctx.moveTo(lastx, lasty + lastHeight);
+                                            ctx.lineTo(lastx, lasty);
+                                            ctx.lineTo(lastx + lastWidth, lasty);
+                                            ctx.lineTo(lastx + lastWidth, lasty + lastHeight);
+                                        }
+                                        ctx.stroke();
+                                    }
+
+                                    ctx.draw();
+                                    ctx.restore();
+                                }
+
+                                if (lastDataIndex !== dataIndex && !!lastPercent) {
+                                    // End the lasted bar
+                                    var _ref2 = lastDataIndex < dataLen ? dataset[lastDataIndex] : dataset[dataLen - 1],
+                                        lastPoint = _ref2.point;
+
+                                    me.__drawBar(lastPoint, 1, legend, stacked, hasNeg);
+                                }
+                            }
+
+                            var px = void 0,
+                                py = void 0,
+                                width = void 0,
+                                height = void 0;
+                            if (dataIndex < dataLen && (!!percent || !point)) {
+                                var _me$__drawBar = me.__drawBar(point, percent, legend, stacked, hasNeg);
+
+                                px = _me$__drawBar.px;
+                                py = _me$__drawBar.py;
+                                width = _me$__drawBar.width;
+                                height = _me$__drawBar.height;
+                            }
+
+                            return {
+                                dataIndex: dataIndex,
+                                percent: percent,
+                                t: t,
+                                x: px,
+                                y: py,
+                                width: width,
+                                height: height
+                            };
+                        };
+                    }
                 }, {
                     key: '_drawBar',
                     value: function _drawBar(barData, hasNeg) {
@@ -619,13 +2871,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             return;
                         }
 
-                        ctx.save();
-                        ctx.fillStyle = fillStyle;
-                        ctx.strokeStyle = strokeStyle;
-                        ctx.lineWidth = borderWidth;
-
                         dataset.forEach(function (d) {
-                            ctx.beginPath();
                             var value = d.value,
                                 data = d.data,
                                 point = d.point;
@@ -633,39 +2879,72 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             if (!point) {
                                 return;
                             }
-                            if (stacked && hasNeg) {
-                                ctx.rect(point.x, point.y, point.barWidth, point.barHeight);
-                                if (borderWidth) {
-                                    ctx.stroke();
-                                }
-                                if (fillArea) {
-                                    ctx.globalAlpha = fillAlpha;
-                                    ctx.fill();
-                                    ctx.globalAlpha = 1;
-                                }
-                            } else {
-                                // | 1 2 |
-                                // | 0 3 |
-                                var points = [[point.x, point.y + point.barHeight], [point.x, point.y], [point.x + point.barWidth, point.y], [point.x + point.barWidth, point.y + point.barHeight]];
 
-                                ctx.moveTo.apply(ctx, _toConsumableArray(points[0]));
-                                ctx.lineTo.apply(ctx, _toConsumableArray(points[1]));
-                                ctx.lineTo.apply(ctx, _toConsumableArray(points[2]));
-                                ctx.lineTo.apply(ctx, _toConsumableArray(points[3]));
-
-                                if (borderWidth) {
-                                    ctx.stroke();
-                                }
-                                if (fillArea) {
-                                    ctx.globalAlpha = fillAlpha;
-                                    ctx.fill();
-                                    ctx.globalAlpha = 1;
-                                }
-                            }
+                            me.__drawBar(point, 1, legend, stacked, hasNeg);
+                            // if (stacked && hasNeg) {
+                            //     ctx.beginPath();
+                            //     ctx.rect(point.x ,point.y ,point.barWidth, point.barHeight);
+                            //     if (borderWidth) {
+                            //         ctx.stroke();
+                            //     }
+                            //     if (fillArea) {
+                            //         ctx.globalAlpha = fillAlpha;
+                            //         ctx.fill();
+                            //         ctx.globalAlpha = 1;
+                            //     }
+                            // } else {
+                            //     // | 1 2 |
+                            //     // | 0 3 |
+                            //     let points = [
+                            //         [point.x, point.y + point.barHeight],
+                            //         [point.x, point.y],
+                            //         [point.x + point.barWidth, point.y],
+                            //         [point.x + point.barWidth, point.y + point.barHeight]
+                            //     ];
+                            //
+                            //     ctx.moveTo(...points[0]);
+                            //     ctx.lineTo(...points[1]);
+                            //     ctx.lineTo(...points[2]);
+                            //     ctx.lineTo(...points[3]);
+                            //
+                            //     if (borderWidth) {
+                            //         ctx.stroke();
+                            //     }
+                            //     if (fillArea) {
+                            //         ctx.globalAlpha = fillAlpha;
+                            //         ctx.fill();
+                            //         ctx.globalAlpha = 1;
+                            //     }
+                            // }
                         });
+                    }
 
-                        ctx.draw();
-                        ctx.restore();
+                    /**
+                     * Draw one line
+                     * @param {Object} barData - Line dataset
+                     * @param {Object} barData.legend - Legend's config
+                     * @param {Object[]} barData[].value - Data of each line point
+                     * @param {Object[]} barData[].data - The data object
+                     * @param {Object[]} barData[].point - The point for rending.
+                     * @parma {boolean} hasNeg - Has negative value or not
+                     * @private
+                     */
+
+                }, {
+                    key: 'drawBar',
+                    value: function drawBar(barData, hasNeg) {
+                        var me = this,
+                            animate = me.chartConfig.animate;
+
+                        if (animate) {
+                            var actionAnimation = me._getAnimationDrawBar(barData, hasNeg);
+                            me.wxAnimation.pushActions(actionAnimation);
+                            // me.wxAnimation.on('done', () => {
+                            //     me._drawBar(barData, hasNeg);
+                            // })
+                        } else {
+                            me._drawBar(barData, hasNeg);
+                        }
                     }
 
                     /**
@@ -865,8 +3144,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                             return cur[legend.key] || 0;
                                         }
                                     }).concat(max, min);
-                                    max = Math.max.apply(Math, _toConsumableArray(curValue));
-                                    min = Math.min.apply(Math, _toConsumableArray(curValue));
+                                    max = Math.max.apply(Math, curValue);
+                                    min = Math.min.apply(Math, curValue);
                                 }
                                 return { max: max, min: min };
                             }, {
@@ -936,7 +3215,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxBar;
-        }, { "../core/layout": 7, "../core/legend": 8, "../core/scale": 9, "../core/title": 10, "../scale/scale.category": 11, "../scale/scale.crosshelp": 12, "../scale/scale.liner": 13, "../scale/scale.stackhelp": 14, "../util/helper": 15, "../util/randomColor": 16, "../util/tinycolor": 17, "../util/wxCanvas": 18, "./wxChart": 5, "es6-mixins": 1 }], 3: [function (require, module, exports) {
+        }, { "../core/animation": 14, "../core/layout": 16, "../core/legend": 17, "../core/scale": 18, "../core/title": 19, "../scale/scale.category": 20, "../scale/scale.crosshelp": 21, "../scale/scale.liner": 22, "../scale/scale.stackhelp": 23, "../util/helper": 24, "../util/randomColor": 26, "../util/tinycolor": 27, "../util/wxCanvas": 29, "./wxChart": 13, "es6-mixins": 5 }], 11: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -996,6 +3275,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             var _helper = require('../util/helper');
 
+            var _animation = require('../core/animation');
+
+            var _animation2 = _interopRequireDefault(_animation);
+
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
             }
@@ -1047,7 +3330,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 // Chart padding, default auto set
                 padding: undefined,
 
-                labelDistancePercentage: 0.15
+                labelDistancePercentage: 0.15,
+                // Animation
+                animate: true,
+                animateOptions: {
+                    start: 1,
+                    end: 1001,
+                    duration: 1000
+                }
             };
 
             /**
@@ -1101,6 +3391,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     me.legend = new _legend2.default(me, me.chartConfig.legendOptions);
                     me.wxLayout = new _layout2.default(me);
+
+                    // Initialize wxAnimation
+                    if (me.chartConfig.animate) me.wxAnimation = new _animation2.default(me.chartConfig.animateOptions);
+
+                    me.emit('init', {
+                        options: me.chartConfig
+                    });
                     return _this;
                 }
 
@@ -1124,6 +3421,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var me = this;
                         _get(WxDoughnut.prototype.__proto__ || Object.getPrototypeOf(WxDoughnut.prototype), 'update', this).call(this, datasets, (0, _helper.extend)({}, WX_DOUGHNUT_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
                         me.wxLayout.removeAllBox();
+                        if (me.wxAnimation) me.wxAnimation.reset();
                         return me.draw();
                     }
 
@@ -1136,6 +3434,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     value: function draw() {
                         var box = void 0,
                             me = this,
+                            animate = me.chartConfig.animate,
                             labelDistancePercentage = me.chartConfig.labelDistancePercentage,
                             wxLayout = me.wxLayout;
                         var _me$chartConfig = me.chartConfig,
@@ -1145,6 +3444,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             title = _me$chartConfig.title,
                             borderWidth = _me$chartConfig.borderWidth,
                             padding = _me$chartConfig.padding;
+
+                        me.emit('beforeDraw', {
+                            options: me.chartConfig
+                        });
 
                         box = wxLayout.adjustBox();
                         // First, we draw title
@@ -1219,26 +3522,31 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var pointX = x + outerWidth / 2,
                             pointY = y + outerHeight / 2;
 
-                        var drawAngle = rotation;
-                        me.initAvoidCollision();
-                        me.visDatasets.forEach(function (dataset, index) {
-                            var startAngle = drawAngle,
-                                endAngle = startAngle + Math.PI * 2.0 * (dataset.value / totalValue);
-                            var opt = {
-                                pointX: pointX,
-                                pointY: pointY,
-                                startAngle: startAngle,
-                                endAngle: endAngle,
-                                innerRadius: innerRadius,
-                                outerRadius: outerRadius,
-                                totalValue: totalValue,
-                                borderWidth: borderWidth
-                            };
-                            me.drawData(dataset, opt);
-                            me.drawLabel(dataset, opt);
+                        var opt = {
+                            pointX: pointX,
+                            pointY: pointY,
+                            innerRadius: innerRadius,
+                            outerRadius: outerRadius,
+                            totalValue: totalValue,
+                            borderWidth: borderWidth,
+                            rotation: rotation,
+                            totalAngle: Math.PI * 2.0
+                        };
 
-                            drawAngle = endAngle;
-                        });
+                        me.drawDoughnut(me.visDatasets, opt);
+                        if (animate) {
+                            me.emit('animate', { animation: me.wxAnimation });
+                            me.wxAnimation.run(true);
+                            me.wxAnimation.on('done', function () {
+                                me.emit('draw', {
+                                    options: opt
+                                });
+                            });
+                        } else {
+                            me.emit('draw', {
+                                options: opt
+                            });
+                        }
                         wxLayout.addBox(me.box);
                     }
                 }, {
@@ -1362,9 +3670,108 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         ctx.restore();
                     }
                 }, {
-                    key: '_longestLabel',
+                    key: 'drawDoughnut',
+
+                    /**
+                     * Draw Doughnut
+                     * @param {Object} dateset - Doughnut data
+                     * @param {Object} opt - Draw options
+                     */
+                    value: function drawDoughnut(dataset, opt) {
+                        var me = this,
+                            animate = me.chartConfig.animate,
+                            animateOpt = me.chartConfig.animateOptions;
+
+                        if (animate) {
+                            var actionAnimation = me._getAnimationDrawDoughnut(dataset, opt);
+                            if (!actionAnimation) {
+                                return;
+                            }
+                            me.wxAnimation.pushActions(actionAnimation);
+                        } else {
+                            me._drawDoughnut(dataset, opt);
+                        }
+                    }
+                }, {
+                    key: '_getAnimationDrawDoughnut',
+                    value: function _getAnimationDrawDoughnut(dataset, opt) {
+                        var me = this,
+                            ctx = me.ctx,
+                            animateOpt = me.chartConfig.animateOptions,
+                            backgroundColor = me.config.backgroundColor;
+                        var pointX = opt.pointX,
+                            pointY = opt.pointY,
+                            totalValue = opt.totalValue,
+                            rotation = opt.rotation,
+                            outerRadius = opt.outerRadius,
+                            borderWidth = opt.borderWidth,
+                            totalAngle = opt.totalAngle;
+
+                        var aniTotal = animateOpt.end - animateOpt.start;
+
+                        return function (t, lastt, toNext) {
+                            var percent = t / aniTotal;
+                            var currTotalAngle = totalAngle * percent;
+
+                            // Clear
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+                            ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+                            ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+                            ctx.fill();
+                            if (borderWidth) {
+                                ctx.beginPath();
+                                ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+                                ctx.lineJoin = 'bevel';
+                                ctx.lineWidth = borderWidth;
+                                ctx.stroke();
+                            }
+                            ctx.draw();
+                            ctx.restore();
+
+                            if (animateOpt.end === t) {
+                                me._drawDoughnut(dataset, opt);
+                            } else {
+                                (function () {
+                                    var drawAngle = rotation;
+                                    dataset.forEach(function (data) {
+                                        var startAngle = drawAngle,
+                                            endAngle = startAngle + currTotalAngle * (data.value / totalValue);
+                                        var o = (0, _helper.extend)({ startAngle: startAngle, endAngle: endAngle }, opt);
+                                        me.drawData(data, o);
+                                        drawAngle = endAngle;
+                                    });
+                                })();
+                            }
+
+                            return t;
+                        };
+                    }
+                }, {
+                    key: '_drawDoughnut',
+                    value: function _drawDoughnut(dataset, opt) {
+                        var me = this;
+                        var totalValue = opt.totalValue,
+                            rotation = opt.rotation,
+                            totalAngle = opt.totalAngle;
+
+                        var drawAngle = rotation;
+                        me.initAvoidCollision();
+                        dataset.forEach(function (data) {
+                            var startAngle = drawAngle,
+                                endAngle = startAngle + totalAngle * (data.value / totalValue);
+                            var o = (0, _helper.extend)({ startAngle: startAngle, endAngle: endAngle }, opt);
+                            me.drawData(data, o);
+                            me.drawLabel(data, o);
+                            drawAngle = endAngle;
+                        });
+                    }
 
                     // Get longest label
+
+                }, {
+                    key: '_longestLabel',
                     value: function _longestLabel(totalValue) {
                         var me = this,
                             visDatasets = me.visDatasets,
@@ -1432,7 +3839,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxDoughnut;
-        }, { "../core/layout": 7, "../core/legend": 8, "../core/title": 10, "../util/helper": 15, "../util/randomColor": 16, "../util/wxCanvas": 18, "./wxChart": 5 }], 4: [function (require, module, exports) {
+        }, { "../core/animation": 14, "../core/layout": 16, "../core/legend": 17, "../core/title": 19, "../util/helper": 24, "../util/randomColor": 26, "../util/wxCanvas": 29, "./wxChart": 13 }], 12: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -1516,18 +3923,12 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             var _layout2 = _interopRequireDefault(_layout);
 
+            var _animation = require('../core/animation');
+
+            var _animation2 = _interopRequireDefault(_animation);
+
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
-            }
-
-            function _toConsumableArray(arr) {
-                if (Array.isArray(arr)) {
-                    for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) {
-                        arr2[i] = arr[i];
-                    }return arr2;
-                } else {
-                    return Array.from(arr);
-                }
             }
 
             function _classCallCheck(instance, Constructor) {
@@ -1548,6 +3949,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
             }
 
+            var Bezier = require('bezier-js');
+
             // Line legend's default config
             var WX_LINE_LEGEND_DEFAULT_CONFIG = {
                 lineWidth: 2,
@@ -1556,7 +3959,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 fillArea: false,
                 fillAlpha: 0.5,
                 display: true,
-                spanGaps: false, // If set true, will draw line between the point
+                spanGaps: false, // If set true, will draw line between the null point
                 tension: 0.4 // Default bezier curve tension. Set to 0 for no bezier curves.
             };
             // Line default config
@@ -1594,7 +3997,15 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 },
 
                 // The dataset's default key
-                defaultKey: 'value'
+                defaultKey: 'value',
+
+                // Animation
+                animate: true,
+                animateOptions: {
+                    start: 1,
+                    end: 1001,
+                    duration: 1000
+                }
             };
 
             var WX_LINER_ITEM_DEFAULT_CONFIG = {
@@ -1646,6 +4057,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     var _this = _possibleConstructorReturn(this, (WxLiner.__proto__ || Object.getPrototypeOf(WxLiner)).call(this, id, config));
 
+                    _initialiseProps.call(_this);
+
                     (0, _es6Mixins2.default)([_scale8.default], _this, {
                         // Mixins will create a new method to nested call all duplicate method
                         mergeDuplicates: false
@@ -1669,6 +4082,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     me.xAxis = new _scale10.default(me, me.chartConfig.xScaleOptions);
                     me.wxCrossScale = new _scale6.default(me.xAxis, me.yAxis, me.chartConfig.crossScaleOptions);
                     me.wxLayout = new _layout2.default(me);
+
+                    // Initialize wxAnimation
+                    if (me.chartConfig.animate) me.wxAnimation = new _animation2.default(me.chartConfig.animateOptions);
+
+                    me.emit('init', {
+                        options: me.chartConfig
+                    });
                     return _this;
                 }
 
@@ -1712,7 +4132,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                      * @param {string} [datasets[].strokeStyle='#ffffff'] - Point's border color
                      * @param {string} [datasets[].pointStyle='circle'] - Point style, support triangle, rect and Image object
                      * @param {number} [datasets[].pointRadius=3] - Point radius if style is circle
-                     * @param {number} [datasets[].pointBorderWidth=0] - Point border width
+                     * @param {number} [datasets[].pointBorderWidth=1.5] - Point border width
                      * @param {string} [datasets[].pointBorderColor='auto'] - Point border color. If not set, will same as lineColor(luminosity+50%)
                      * @param {number} [datasets[].display=true] - display the point or not
                      * @returns {*}
@@ -1726,6 +4146,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         me._legends = null;
                         _get(WxLiner.prototype.__proto__ || Object.getPrototypeOf(WxLiner.prototype), 'update', this).call(this, datasets, (0, _helper.extend)({}, WX_LINER_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
                         me.wxLayout.removeAllBox();
+                        if (me.wxAnimation) me.wxAnimation.reset();
                         return me.draw();
                     }
 
@@ -1738,6 +4159,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     value: function draw() {
                         var box = void 0,
                             me = this,
+                            animate = me.chartConfig.animate,
                             stacked = me.chartConfig.stacked,
                             discardNeg = me.chartConfig.discardNeg,
                             wxLayout = me.wxLayout;
@@ -1748,8 +4170,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             borderWidth = _me$chartConfig.borderWidth,
                             padding = _me$chartConfig.padding;
 
-                        // First, we draw title
+                        me.emit('beforeDraw', {
+                            options: me.chartConfig
+                        });
 
+                        // First, we draw title
                         box = wxLayout.adjustBox();
                         if (me.title) {
                             me.title.update(me.titleText, box);
@@ -1808,15 +4233,29 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                     };
                                 }
 
-                                return { value: value, point: point, data: data };
+                                return { value: value, point: point, data: data, index: index };
                             });
                             return config;
                         });
 
                         lineConfigs.reduce(function (pre, curr) {
-                            me._drawLine(curr, pre);
+                            me.drawLine(curr, pre, lineConfigs);
                             return curr;
                         }, null);
+
+                        if (animate) {
+                            me.emit('animate', { animation: me.wxAnimation });
+                            me.wxAnimation.run(true);
+                            me.wxAnimation.on('done', function () {
+                                me.emit('draw', {
+                                    options: lineConfigs
+                                });
+                            });
+                        } else {
+                            me.emit('draw', {
+                                options: lineConfigs
+                            });
+                        }
                         // lineConfigs.forEach(line => me._drawLine(line));
                     }
 
@@ -1846,19 +4285,62 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     }
 
                     /**
+                     *
+                     * @param {number} n - The total tick
+                     * @param {number} ln - The space between category x-axis
+                     * @param {number} sp - If has an gap, total gap space space
+                     * @param {number} bp - If has an gap, the gap space before the current point
+                     * @return {number}
+                     * @private
+                     */
+
+                    /**
+                     * Draw a line
+                     * @param pre
+                     * @param p
+                     * @param next
+                     * @param tension
+                     * @private
+                     */
+
+                    /**
+                     * Draw a animate line
+                     * @param pre
+                     * @param p
+                     * @param next
+                     * @param pert
+                     * @param curt
+                     * @param tension
+                     * @return {*}
+                     * @private
+                     */
+
+                    /**
+                     * Return a animate tick func
+                     * @param lineData
+                     * @param preData
+                     * @return {function(*, *, *)|null}
+                     * @private
+                     */
+
+                }, {
+                    key: '_drawLine',
+
+                    /**
                      * Draw one line
                      * @param {Object} lineData - Line dataset
                      * @param {Object} lineData.legend - Legend's config
                      * @param {Object[]} lineData[].value - Data of each line point
                      * @param {Object[]} lineData[].data - The data object
                      * @param {Object[]} lineData[].point - The point for rending.
-                     *  @param {Object} preData - Previous line dataset
+                     * @param {Object} preData - Previous line dataset
+                     * @param {Object} total - All datasets
                      * @private
+                     *
                      */
+                    value: function _drawLine(lineData, preData, total) {
+                        var _this2 = this;
 
-                }, {
-                    key: '_drawLine',
-                    value: function _drawLine(lineData, preData) {
                         var me = this,
                             ctx = me.ctx;
                         var legend = lineData.legend,
@@ -1873,64 +4355,35 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             fillArea = legend.fillArea,
                             fillAlpha = legend.fillAlpha;
 
+                        var xAxisY = me.xAxis.getPoint(0).y - me.xAxis.config.lineWidth / 2;
                         if (!display) {
                             return;
                         }
 
                         ctx.save();
-                        var lineToPoint = function lineToPoint(pre, p, next) {
-                            if (!tension || tension === 0) {
-                                ctx.lineTo(p.x, p.y);
-                            } else {
-                                var controlPoints = (0, _helper.splineCurve)(pre, p, next, tension);
-                                if (!pre) {
-                                    ctx.moveTo(p.x, p.y);
-                                } else {
-                                    ctx.bezierCurveTo(pre.controlPoints.next.x, pre.controlPoints.next.y, controlPoints.previous.x, controlPoints.previous.y, p.x, p.y);
-                                }
-                                p.controlPoints = controlPoints;
-                            }
-                        };
-                        var getNextPoint = function getNextPoint(dataset, index, spanGaps) {
-                            // The end
-                            if (index >= dataset.length - 1) {
-                                return;
-                            }
-                            var nextDate = dataset[index + 1];
-                            if (!nextDate.point) {
-                                if (!!spanGaps) return getNextPoint(dataset, index + 1, spanGaps);else return;
-                            }
-                            return nextDate.point;
-                        };
+
+                        ctx.lineWidth = lineWidth;
+                        ctx.lineJoin = lineJoin;
+                        ctx.strokeStyle = strokeStyle;
+                        ctx.fillStyle = fillStyle;
                         // Draw fill area
                         if (fillArea) {
                             (function () {
-                                var firstPoint = void 0,
-                                    currPoint = void 0,
-                                    xAxisY = me.xAxis.getPoint(0).y - me.xAxis.config.lineWidth / 2;
-                                var fillInHere = function fillInHere() {
-                                    ctx.globalAlpha = fillAlpha;
-                                    ctx.fill();
-                                    ctx.globalAlpha = 1;
-                                };
                                 ctx.beginPath();
-                                ctx.lineWidth = 0;
-                                ctx.fillStyle = fillStyle;
+
+                                var firstPoint = void 0,
+                                    currPoint = void 0;
                                 dataset.forEach(function (d, index) {
                                     var point = d.point;
 
                                     if (!!currPoint) {
                                         if (point) {
-                                            //ctx.lineTo(point.x, point.y);
-                                            lineToPoint(currPoint, point, getNextPoint(dataset, index, spanGaps));
+                                            _this2._lineToPoint(currPoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
                                         } else if (!spanGaps) {
                                             // Not spanGap, close path and fill
-                                            ctx.lineTo(currPoint.x, xAxisY);
-                                            ctx.lineTo(firstPoint.x, xAxisY);
-                                            fillInHere();
+                                            _this2.__fillInHere(firstPoint, currPoint, xAxisY, fillAlpha);
                                             // First point reset
                                             firstPoint = undefined;
-                                            ctx.beginPath();
                                         } else {
                                             // SpanGap, not record this point.
                                             return;
@@ -1938,27 +4391,23 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                     } else {
                                         if (point) {
                                             //ctx.moveTo(point.x, point.y);
-                                            lineToPoint(currPoint, point, getNextPoint(dataset, index, spanGaps));
+                                            _this2._lineToPoint(currPoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
                                             firstPoint = point;
                                         }
                                     }
                                     currPoint = point;
                                 });
                                 if (currPoint && firstPoint) {
-                                    ctx.lineTo(currPoint.x, xAxisY);
-                                    ctx.lineTo(firstPoint.x, xAxisY);
-                                    fillInHere();
+                                    _this2.__fillInHere(firstPoint, currPoint, xAxisY, tension, fillAlpha);
                                 }
                             })();
                         }
 
-                        // Draw line
-                        var currPoint = void 0,
-                            pointStack = [];
                         ctx.beginPath();
-                        ctx.lineWidth = lineWidth;
-                        ctx.lineJoin = lineJoin;
-                        ctx.strokeStyle = strokeStyle;
+
+                        // Draw line
+                        var prePoint = void 0,
+                            pointStack = [];
                         dataset.forEach(function (d, index) {
                             var value = d.value,
                                 point = d.point,
@@ -1972,7 +4421,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             pointStack.push({ point: point, pointBorderColor: pointBorderColor, pointBorderWidth: pointBorderWidth, pointRadius: pointRadius, pointStyle: pointStyle });
 
                             if (point) {
-                                lineToPoint(currPoint, point, getNextPoint(dataset, index, spanGaps));
+                                _this2._lineToPoint(prePoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
                                 //!!currPoint ? ctx.lineTo(point.x, point.y): ctx.moveTo(point.x, point.y);
                                 // !!currPoint ?
                                 //     lineToPoint(currPoint, point, getNextPoint(dataset, index, spanGaps)):
@@ -1981,12 +4430,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 // SpanGap, not record this point.
                                 return;
                             }
-                            currPoint = point;
+                            prePoint = point;
                         });
                         ctx.stroke();
 
                         // Draw Point
-                        ctx.fillStyle = fillStyle;
                         pointStack.forEach(function (p) {
                             var point = p.point,
                                 pointBorderColor = p.pointBorderColor,
@@ -2010,13 +4458,49 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
                                 ctx.stroke();
                             }
-                            ////
                         });
 
                         ctx.draw();
                         ctx.restore();
+
+                        return;
                     }
 
+                    /**
+                     * Draw one line
+                     * @param {Object} lineData - Line dataset
+                     * @param {Object} lineData.legend - Legend's config
+                     * @param {Object[]} lineData[].value - Data of each line point
+                     * @param {Object[]} lineData[].data - The data object
+                     * @param {Object[]} lineData[].point - The point for rending.
+                     * @param {Object} preData - Previous line dataset
+                     * @param {Object} total - All datasets
+                     * @private
+                     *
+                     */
+
+                }, {
+                    key: 'drawLine',
+                    value: function drawLine(lineData, preData, total) {
+                        var me = this,
+                            animate = me.chartConfig.animate,
+                            animateOpt = me.chartConfig.animateOptions;
+
+                        if (animate) {
+                            var actionAnimation = me._getAnimationDrawLine(lineData, preData);
+                            if (!actionAnimation) {
+                                return;
+                            }
+                            me.wxAnimation.pushActions(actionAnimation);
+                            me.wxAnimation.pushActions(function (t) {
+                                if (animateOpt.end === t) {
+                                    me._drawLine(lineData, preData, total);
+                                }
+                            });
+                        } else {
+                            me._drawLine(lineData, preData, total);
+                        }
+                    }
                     /**
                      * Build the yAxis datasets
                      * @param {BoxInstance} area - The area of chart
@@ -2050,8 +4534,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                             return cur[legend.key] || 0;
                                         }
                                     }).concat(max, min);
-                                    max = Math.max.apply(Math, _toConsumableArray(curValue));
-                                    min = Math.min.apply(Math, _toConsumableArray(curValue));
+                                    max = Math.max.apply(Math, curValue);
+                                    min = Math.min.apply(Math, curValue);
                                 }
                                 return { max: max, min: min };
                             }, {
@@ -2120,15 +4604,262 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 return WxLiner;
             }(_wxChart2.default);
 
+            var _initialiseProps = function _initialiseProps() {
+                var _this3 = this;
+
+                this._animateLineTick = function (n, ln) {
+                    var sp = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
+                    var bp = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
+
+                    return sp ? (n % ln + bp * ln) / (ln * sp) : 0;
+                };
+
+                this._getCurr = function (dataset, index) {
+                    if (index > dataset.length - 1) {
+                        return;
+                    }
+                    return dataset[index];
+                };
+
+                this._getNext = function (dataset, index, spanGaps) {
+                    // The end
+                    if (index >= dataset.length - 1) {
+                        return;
+                    }
+                    var nextDate = dataset[index + 1];
+                    if (!nextDate.point) {
+                        if (!!spanGaps) return _this3._getNext(dataset, index + 1, spanGaps);else return;
+                    }
+                    return nextDate;
+                };
+
+                this._getNextPoint = function (dataset, index, spanGaps) {
+                    var next = _this3._getNext(dataset, index, spanGaps);
+                    return next ? next.point : null;
+                };
+
+                this._getPre = function (dataset, index, spanGaps) {
+                    if (index <= 0) {
+                        return;
+                    }
+                    var preDate = dataset[index - 1];
+                    if (!preDate.point) {
+                        if (!!spanGaps) return _this3._getPre(dataset, index - 1, spanGaps);else return;
+                    }
+                    return preDate;
+                };
+
+                this._getPrePoint = function (dataset, index, spanGaps) {
+                    var pre = _this3._getPre(dataset, index, spanGaps);
+                    return pre ? pre.point : null;
+                };
+
+                this._lineToPoint = function (pre, p, next, tension) {
+                    var ctx = _this3.ctx;
+                    if (!tension || tension === 0) {
+                        ctx.lineTo(p.x, p.y);
+                    } else {
+                        var controlPoints = (0, _helper.splineCurve)(pre, p, next, tension);
+                        if (!pre) {
+                            ctx.moveTo(p.x, p.y);
+                        } else {
+                            ctx.bezierCurveTo(pre.controlPoints.next.x, pre.controlPoints.next.y, controlPoints.previous.x, controlPoints.previous.y, p.x, p.y);
+                        }
+                        p.controlPoints = controlPoints;
+                    }
+                };
+
+                this._animateLineToPoint = function (pre, p, next, pert, curt, tension) {
+                    var ctx = _this3.ctx;
+                    if (!tension || tension === 0) {
+                        var x1 = pre.x,
+                            x2 = p.x,
+                            y1 = pre.y,
+                            y2 = p.y;
+                        var totalPath = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)),
+                            cosAngle = (x2 - x1) / totalPath,
+                            sinAngle = (y2 - y1) / totalPath;
+                        var pointX = x1 + cosAngle * curt,
+                            pointY = y1 + sinAngle * curt;
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(pointX, pointY);
+                        return {
+                            startPoint: pre,
+                            endPoint: { x: pointX, y: pointY }
+                        };
+                    } else {
+                        var p0 = void 0,
+                            p1 = void 0,
+                            p2 = void 0,
+                            p3 = void 0,
+                            controlPoints = (0, _helper.splineCurve)(pre, p, next, tension);
+
+                        if (pre && p) {
+                            var bz = new Bezier({ x: pre.x, y: pre.y }, { x: pre.controlPoints.next.x, y: pre.controlPoints.next.y }, { x: controlPoints.previous.x, y: controlPoints.previous.y }, { x: p.x, y: p.y });
+                            var sbz = bz.split(pert || 0, curt);
+
+                            p0 = sbz.point(0);p1 = sbz.point(1);p2 = sbz.point(2);p3 = sbz.point(3);
+
+                            ctx.moveTo(Math.round(p0.x), p0.y);
+                            ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, Math.round(p3.x), p3.y);
+                        }
+                        p.controlPoints = controlPoints;
+                        return {
+                            startPoint: p0 ? {
+                                x: Math.round(p0.x),
+                                y: p0.y
+                            } : null,
+                            endPoint: p3 ? {
+                                x: Math.round(p3.x),
+                                y: p3.y
+                            } : null
+                        };
+                    }
+                };
+
+                this.__fillInHere = function (firstPoint, currPoint, xAxisY, fillAlpha) {
+                    var ctx = _this3.ctx;
+                    ctx.lineTo(currPoint.x, xAxisY);
+                    ctx.lineTo(firstPoint.x, xAxisY);
+
+                    ctx.globalAlpha = fillAlpha;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                };
+
+                this._getAnimationDrawLine = function (lineData, preData) {
+                    var me = _this3,
+                        animate = me.chartConfig.animate,
+                        animateOpt = me.chartConfig.animateOptions,
+                        ctx = me.ctx;
+
+                    var legend = lineData.legend,
+                        dataset = lineData.dataset;
+                    var display = legend.display,
+                        spanGaps = legend.spanGaps,
+                        tension = legend.tension,
+                        lineWidth = legend.lineWidth,
+                        lineJoin = legend.lineJoin,
+                        fillStyle = legend.fillStyle,
+                        strokeStyle = legend.strokeStyle,
+                        fillArea = legend.fillArea,
+                        fillAlpha = legend.fillAlpha;
+
+                    // Animation dynamic options
+
+                    var dataLen = dataset.length,
+                        categoryTicks = (animateOpt.end - animateOpt.start) / (dataLen - 1);
+
+                    if (!display) {
+                        return;
+                    }
+
+                    return function (t, lastt, toNext) {
+                        ctx.save();
+                        ctx.lineWidth = lineWidth;
+                        ctx.lineJoin = lineJoin;
+                        ctx.strokeStyle = strokeStyle;
+                        ctx.fillStyle = fillStyle;
+
+                        var dataIndex = !lastt ? 0 // first point
+                        : Math.floor(t / categoryTicks) + 1;
+                        var point = void 0,
+                            drawCurrPoint = void 0,
+                            index = void 0,
+                            data = void 0,
+                            pret = lastt ? lastt.t : 0,
+                            curt = 0,
+                            curr = me._getCurr(dataset, dataIndex),
+                            next = me._getNext(dataset, dataIndex, spanGaps),
+                            pre = me._getPre(dataset, dataIndex, spanGaps),
+                            ppPoint = void 0,
+                            diffIndex = lastt ? dataIndex - lastt.index : 0;
+
+                        if (curr) {
+                            drawCurrPoint = curr.point;
+                            point = curr.point;
+                            index = curr.index;
+                            data = curr.data;
+                            curt = me._animateLineTick(t, categoryTicks, index - (pre ? pre.index : 0), dataIndex - (pre ? pre.index : 0) - 1);
+                        }
+
+                        if (pre) {
+                            ppPoint = me._getPrePoint(dataset, pre.index, spanGaps);
+                        }
+
+                        if (!drawCurrPoint && next) {
+                            drawCurrPoint = next.point;
+                            index = next.index;
+                            next = me._getNext(dataset, next.index, spanGaps);
+                        }
+
+                        if (diffIndex == 1) {
+                            // Draw line
+                            if (pre && pre.point) {
+                                ctx.beginPath();
+                                me._animateLineToPoint(ppPoint, pre.point, drawCurrPoint, pret, 1, tension);
+                                ctx.stroke();
+                            }
+
+                            pret = 0;
+                        }
+
+                        if (!point && spanGaps || point) {
+                            // this tick path close
+                            // Draw line
+
+                            if (drawCurrPoint) {
+                                ctx.beginPath();
+                                me._animateLineToPoint(pre ? pre.point : null, drawCurrPoint, next ? next.point : null, pret, curt, tension);
+                                ctx.stroke();
+                            }
+                        }
+
+                        if (pret == 0 && pre && pre.point) {
+                            var _pre$data = pre.data,
+                                pointBorderColor = _pre$data.pointBorderColor,
+                                pointBorderWidth = _pre$data.pointBorderWidth,
+                                pointRadius = _pre$data.pointRadius,
+                                pointStyle = _pre$data.pointStyle,
+                                label = _pre$data.label;
+                            // TODO: pointStyle NOT IMPLEMENT, Only can render line
+
+                            if (pointRadius) {
+                                ctx.beginPath();
+                                ctx.arc(pre.point.x, pre.point.y, pointRadius, 0, 2 * Math.PI);
+                                ctx.fill();
+                            }
+
+                            if (pointBorderWidth) {
+                                ctx.beginPath();
+                                ctx.arc(pre.point.x, pre.point.y, pointRadius, 0, 2 * Math.PI);
+                                ctx.lineWidth = pointBorderWidth;
+                                ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
+                                ctx.stroke();
+                            }
+                        }
+
+                        ctx.draw();
+                        ctx.restore();
+
+                        return {
+                            point: point,
+                            t: curt,
+                            index: dataIndex,
+                            diffIndex: diffIndex
+                        };
+                    };
+                };
+            };
+
             exports.default = WxLiner;
-        }, { "../core/layout": 7, "../core/legend": 8, "../core/scale": 9, "../core/title": 10, "../scale/scale.category": 11, "../scale/scale.crosshelp": 12, "../scale/scale.liner": 13, "../scale/scale.stackhelp": 14, "../util/helper": 15, "../util/randomColor": 16, "../util/wxCanvas": 18, "./wxChart": 5, "es6-mixins": 1 }], 5: [function (require, module, exports) {
+        }, { "../core/animation": 14, "../core/layout": 16, "../core/legend": 17, "../core/scale": 18, "../core/title": 19, "../scale/scale.category": 20, "../scale/scale.crosshelp": 21, "../scale/scale.liner": 22, "../scale/scale.stackhelp": 23, "../util/helper": 24, "../util/randomColor": 26, "../util/wxCanvas": 29, "./wxChart": 13, "bezier-js": 1, "es6-mixins": 5 }], 13: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            exports.wxChartInstances = undefined;
 
             var _createClass = function () {
                 function defineProperties(target, props) {
@@ -2140,6 +4871,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 };
             }();
 
+            exports.getChartInstances = getChartInstances;
+
             var _helper = require('../util/helper');
 
             var _wxCanvas = require('../util/wxCanvas');
@@ -2147,6 +4880,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             var _wxCanvas2 = _interopRequireDefault(_wxCanvas);
 
             var _layout = require('../core/layout');
+
+            var _mitt = require('mitt');
+
+            var _mitt2 = _interopRequireDefault(_mitt);
+
+            var _es6Mixins = require('es6-mixins');
+
+            var _es6Mixins2 = _interopRequireDefault(_es6Mixins);
 
             function _interopRequireDefault(obj) {
                 return obj && obj.__esModule ? obj : { default: obj };
@@ -2169,7 +4910,15 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             };
 
             // Store all references of 'WxChart' instances - allowing us to globally resize chart instances on window resize.
-            var wxChartInstances = exports.wxChartInstances = {};
+            var wxChartInstances = {};
+
+            function getChartInstances(id) {
+                if (id && id in wxChartInstances) {
+                    return wxChartInstances[id];
+                }
+                return null;
+            };
+
             // The basic class of WeiXin chart
 
             var WxChart = function () {
@@ -2186,6 +4935,12 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     _classCallCheck(this, WxChart);
 
                     var me = this;
+
+                    // Event emitter
+                    (0, _es6Mixins2.default)([(0, _mitt2.default)()], this, {
+                        // Mixins will create a new method to nested call all duplicate method
+                        mergeDuplicates: false
+                    });
 
                     // Arguments parse...
                     var chartConf = void 0;
@@ -2208,7 +4963,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     me.canvas = new _wxCanvas2.default(id, chartConf);
                     me.ctx = me.canvas.getContext('2d');
                     me.isWeiXinAPP = (0, _helper.checkWX)();
-                    me.id = (0, _helper.uid)();
+                    me._id = (0, _helper.uid)();
+
+                    me.emit('initCanvas', {
+                        canvas: me.canvas,
+                        ctx: me.ctx,
+                        id: me.id + ''
+                    });
 
                     me._config = me.initConfig(chartConf);
                     me.initContext();
@@ -2268,6 +5029,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             me.ctx.restore();
                             me.ctx.draw();
                         }
+
+                        me.emit('clear', {
+                            canvas: me.canvas
+                        });
                     }
                 }, {
                     key: 'destroy',
@@ -2281,14 +5046,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             delete wxChartInstances[me.id];
                         }
 
-                        me.id = null;
+                        //me.id = null;
                         me.canvas = null;
                         me.ctx = null;
                         me._config = null;
                         me.innerBox = null;
-                    }
-                    // The 'config' property
 
+                        me.emit('destroy');
+                    }
                 }, {
                     key: 'draw',
                     value: function draw() {
@@ -2308,6 +5073,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         datasets = datasets.map(function (dataset) {
                             return (0, _helper.extend)({}, defaultItemOpt, dataset);
                         });
+
+                        me.emit('update', { datasets: datasets });
                         // Fill default Options
                         me.clear();
                         me._datasets = datasets;
@@ -2330,6 +5097,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                         return total;
                     }
+                }, {
+                    key: 'id',
+                    get: function get() {
+                        return this._id;
+                    }
+
+                    // The 'config' property
+
                 }, {
                     key: 'config',
                     get: function get() {
@@ -2377,7 +5152,286 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxChart;
-        }, { "../core/layout": 7, "../util/helper": 15, "../util/wxCanvas": 18 }], 6: [function (require, module, exports) {
+        }, { "../core/layout": 16, "../util/helper": 24, "../util/wxCanvas": 29, "es6-mixins": 5, "mitt": 7 }], 14: [function (require, module, exports) {
+            /* global module, wx, window: false, document: false */
+            'use strict';
+
+            Object.defineProperty(exports, "__esModule", {
+                value: true
+            });
+
+            var _createClass = function () {
+                function defineProperties(target, props) {
+                    for (var i = 0; i < props.length; i++) {
+                        var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                    }
+                }return function (Constructor, protoProps, staticProps) {
+                    if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                };
+            }();
+
+            exports.wxAnimationActLinker = wxAnimationActLinker;
+
+            var _tweezer = require('../util/tweezer');
+
+            var _tweezer2 = _interopRequireDefault(_tweezer);
+
+            var _ez = require('ez.js');
+
+            var ez = _interopRequireWildcard(_ez);
+
+            var _helper = require('../util/helper');
+
+            var _mitt = require('mitt');
+
+            var _mitt2 = _interopRequireDefault(_mitt);
+
+            var _es6Mixins = require('es6-mixins');
+
+            var _es6Mixins2 = _interopRequireDefault(_es6Mixins);
+
+            function _interopRequireWildcard(obj) {
+                if (obj && obj.__esModule) {
+                    return obj;
+                } else {
+                    var newObj = {};if (obj != null) {
+                        for (var key in obj) {
+                            if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key];
+                        }
+                    }newObj.default = obj;return newObj;
+                }
+            }
+
+            function _interopRequireDefault(obj) {
+                return obj && obj.__esModule ? obj : { default: obj };
+            }
+
+            function _classCallCheck(instance, Constructor) {
+                if (!(instance instanceof Constructor)) {
+                    throw new TypeError("Cannot call a class as a function");
+                }
+            }
+
+            function wxAnimationActLinker() {
+                var actions = [],
+                    globals = {};
+                return function (action) {
+                    var _arguments = arguments;
+
+                    for (var _len = arguments.length, options = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+                        options[_key - 1] = arguments[_key];
+                    }
+
+                    var me = this;
+                    if (me instanceof WxAnimation) {
+                        // Run all actions in WxAnimation call
+                        var ret = void 0;
+                        actions.forEach(function (action) {
+                            ret = action.apply(me, _arguments);
+                        });
+                        return ret;
+                    } else {
+                        // Just push action
+                        actions.push(action);
+                        return actions;
+                    }
+                };
+            }
+
+            var WxAnimation = function () {
+
+                /**
+                 * WxAnimation initial
+                 *
+                 * @param {Object} options - Animation options
+                 * @param {number} options.start - The start value
+                 * @param {number} options.end - The end value
+                 * @param {Object} [options.duration=1000] - The total seconds of animation
+                 * @param {Object} [options.easeType=easeInOut] - Easing type, please see [ez.js](https://github.com/jaxgeller/ez.js/blob/master/ez.js) for more information
+                 * @constructor
+                 */
+
+                // The error in actions
+
+
+                // The animate has started or not
+
+                // Tweenzer instance
+                function WxAnimation(options) {
+                    var _this = this;
+
+                    _classCallCheck(this, WxAnimation);
+
+                    this.currentActionIndex = 0;
+
+                    this.handOverAction = function () {
+                        _this.currentActionIndex++;
+                    };
+
+                    this.stop = function () {
+                        _this.currentActionIndex = 0;
+                        _this.tweenzerHandler.stop();
+                        _this.started = false;
+                        _this.emit('stop');
+                    };
+
+                    this.reset = function () {
+                        _this.currentActionIndex = 0;
+                        _this.tweenzerHandler.stop().off('tick').off('done');
+                        _this.started = false;
+                        _this.resetActions();
+                        _this.emit('reset');
+                    };
+
+                    var easeFun = ez.easeInOutQuad;
+                    if (options.easeType) {
+                        if (typeof ez[options.easeType] != 'undefined') {
+                            easeFun = ez[options.easeType];
+                        }
+                    }
+
+                    this.tweenzerHandler = new _tweezer2.default((0, _helper.extend)({ easing: easeFun }, options));
+
+                    this.actions = [];
+
+                    var mit = (0, _mitt2.default)();
+                    (0, _es6Mixins2.default)([mit], this, {
+                        // Mixins will create a new method to nested call all duplicate method
+                        mergeDuplicates: false
+                    });
+                }
+
+                /**
+                 * Push an action to
+                 * @param {WxAnimation~action|wxAnimationActLinker} action
+                 * @return {number} - The index of action
+                 */
+
+                // The current handler action
+
+
+                /**
+                 * A action callback
+                 * @callback WxAnimation~action
+                 * @param {number} value - The value of this tick
+                 * @param {Object} preRet - The last tick's return value
+                 * @param {Promise} toNext - Hand over next action
+                 * @param {function} nextAction - Next action or Null
+                 *
+                 * @description
+                 * Every action is a callback to deal one or more ticks
+                 * Several parameters will pass to. The first is value of this tick; Another is an function can hand over the executive authority to next action.
+                 */
+
+                _createClass(WxAnimation, [{
+                    key: 'pushActions',
+                    value: function pushActions(action) {
+                        if (!_helper.is.Function(action)) {
+                            throw new Error("Should pass to an `action` callback function");
+                        }
+                        return this.actions.push(action);
+                    }
+
+                    /**
+                     * Reset actions
+                     */
+
+                }, {
+                    key: 'resetActions',
+                    value: function resetActions() {
+                        this.actions = [];
+                    }
+                }, {
+                    key: 'runTick',
+                    value: function runTick(value, preRet) {
+                        var me = this,
+                            caindex = me.currentActionIndex || 0;
+                        if (caindex >= me.actions.length) {
+                            return;
+                        }
+
+                        var ret = void 0,
+                            action = me.actions[caindex],
+                            nextAction = caindex + 1 <= me.actions.length ? me.actions[caindex + 1] : null;
+                        // try {
+                        me.emit('tick', { value: value, preRet: preRet, toNext: me.handOverAction, nextAction: nextAction, parallel: false });
+                        ret = action.apply(me, [value, preRet, me.handOverAction, nextAction]);
+                        // } catch (e) {
+                        //     me.error = `${e.name} : ${e.message}`;
+                        //     // Catch an error.
+                        //     // Stop all actions
+                        //     me.started = false;
+                        //     me.currentActionIndex = 0;
+                        //     me.tweenzerHandler.stop();
+                        //     me.emit('error', {error: me.error});
+                        // }
+                        return ret;
+                    }
+                }, {
+                    key: 'runTickParallel',
+                    value: function runTickParallel(value) {
+                        var tickRet = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : [];
+
+                        var me = this,
+                            actions = me.actions,
+                            actionsLen = me.actions.length;
+
+                        // try {
+                        actions.forEach(function (action, index) {
+                            var preRet = tickRet ? tickRet[index] : null,
+                                toNext = function toNext() {},
+                                nextAction = index + 1 < actionsLen ? actions[index + 1] : null;
+                            me.emit('tick', { value: value, preRet: preRet, toNext: toNext, nextAction: nextAction, parallel: true });
+                            var ret = action.apply(me, [value, preRet, toNext, nextAction]);
+                            tickRet[index] = ret;
+                        });
+                        // } catch (e) {
+                        //     me.error = `${e.name} : ${e.message}`;
+                        //     // Catch an error.
+                        //     // Stop all actions
+                        //     me.started = false;
+                        //     me.tweenzerHandler.stop();
+                        //     me.emit('error', {error: me.error});
+                        // }
+                        return tickRet;
+                    }
+                }, {
+                    key: 'tick',
+                    value: function tick(parallel) {
+                        var me = this,
+                            rets = undefined;
+                        return function (v) {
+                            if (parallel) rets = me.runTickParallel(v, rets);else rets = me.runTick(v, rets);
+                        };
+                    }
+                    /**
+                     * Run actions
+                     *
+                     * @param {Boolean} parallel - parallel to exec all actions
+                     */
+
+                }, {
+                    key: 'run',
+                    value: function run() {
+                        var parallel = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+
+                        var me = this;
+                        me.emit('start', { parallel: parallel });
+                        me.started = true;
+
+                        me.tweenzerHandler.on('tick', me.tick(parallel)).on('done', function () {
+                            me.currentActionIndex = 0;
+                            me.started = false;
+                            me.emit('done', { parallel: parallel });
+                        }).begin();
+                    }
+                }]);
+
+                return WxAnimation;
+            }();
+
+            exports.default = WxAnimation;
+        }, { "../util/helper": 24, "../util/tweezer": 28, "es6-mixins": 5, "ez.js": 6, "mitt": 7 }], 15: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2618,7 +5672,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxBaseComponent;
-        }, { "../charts/wxChart": 5, "../util/helper": 15, "../util/wxCanvas": 18, "./layout": 7 }], 7: [function (require, module, exports) {
+        }, { "../charts/wxChart": 13, "../util/helper": 24, "../util/wxCanvas": 29, "./layout": 16 }], 16: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2924,7 +5978,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxLayout;
-        }, { "../util/helper": 15, "./base": 6 }], 8: [function (require, module, exports) {
+        }, { "../util/helper": 24, "./base": 15 }], 17: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3311,7 +6365,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxLegend;
-        }, { "../util/helper": 15, "./base": 6, "./layout": 7 }], 9: [function (require, module, exports) {
+        }, { "../util/helper": 24, "./base": 15, "./layout": 16 }], 18: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3942,7 +6996,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxScale;
-        }, { "../util/helper": 15, "../util/wxCanvas": 18, "./base": 6, "./layout": 7 }], 10: [function (require, module, exports) {
+        }, { "../util/helper": 24, "../util/wxCanvas": 29, "./base": 15, "./layout": 16 }], 19: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4116,7 +7170,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             exports.default = WxTitle;
             ;
-        }, { "../util/helper": 15, "./base": 6, "./layout": 7 }], 11: [function (require, module, exports) {
+        }, { "../util/helper": 24, "./base": 15, "./layout": 16 }], 20: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4218,7 +7272,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxCategoryScale;
-        }, { "../core/scale": 9, "../util/helper": 15 }], 12: [function (require, module, exports) {
+        }, { "../core/scale": 18, "../util/helper": 24 }], 21: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4350,7 +7404,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxCrossScale;
-        }, { "../core/layout": 7, "../core/scale": 9, "../util/helper": 15 }], 13: [function (require, module, exports) {
+        }, { "../core/layout": 16, "../core/scale": 18, "../util/helper": 24 }], 22: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4542,7 +7596,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxLinerScale;
-        }, { "../core/scale": 9, "../util/helper": 15 }], 14: [function (require, module, exports) {
+        }, { "../core/scale": 18, "../util/helper": 24 }], 23: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -4673,7 +7727,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxStackMixin;
-        }, {}], 15: [function (require, module, exports) {
+        }, {}], 24: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -5047,7 +8101,99 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     canvas.style.width = width + 'px';
                 }
             }
-        }, {}], 16: [function (require, module, exports) {
+        }, {}], 25: [function (require, module, exports) {
+            (function (global) {
+                /* global module, wx, getApp, window: false, global:false, document: false */
+                'use strict';
+
+                /**
+                 * Modify from RAF(https://github.com/chrisdickinson/raf)
+                 *
+                 */
+
+                var _helper = require('../util/helper');
+
+                var now = require('performance-now');
+                var root = void 0,
+                    isWx = (0, _helper.checkWX)();
+                root = isWx ? {} : typeof window === 'undefined' ? global : window;
+
+                var vendors = ['moz', 'webkit'],
+                    suffix = 'AnimationFrame',
+                    raf = root['request' + suffix],
+                    caf = root['cancel' + suffix] || root['cancelRequest' + suffix];
+
+                for (var i = 0; !raf && i < vendors.length; i++) {
+                    raf = root[vendors[i] + 'Request' + suffix];
+                    caf = root[vendors[i] + 'Cancel' + suffix] || root[vendors[i] + 'CancelRequest' + suffix];
+                }
+
+                // Some versions of FF have rAF but not cAF
+                if (!raf || !caf) {
+                    (function () {
+                        var last = 0,
+                            id = 0,
+                            queue = [],
+                            frameDuration = 1000 / 60;
+
+                        raf = function raf(callback) {
+                            if (queue.length === 0) {
+                                var _now = now(),
+                                    next = Math.max(0, frameDuration - (_now - last));
+                                last = next + _now;
+                                setTimeout(function () {
+                                    var cp = queue.slice(0);
+                                    // Clear queue here to prevent
+                                    // callbacks from appending listeners
+                                    // to the current frame's queue
+                                    queue.length = 0;
+                                    for (var _i = 0; _i < cp.length; _i++) {
+                                        if (!cp[_i].cancelled) {
+                                            try {
+                                                cp[_i].callback(last);
+                                            } catch (e) {
+                                                setTimeout(function () {
+                                                    throw e;
+                                                }, 0);
+                                            }
+                                        }
+                                    }
+                                }, Math.round(next));
+                            }
+                            queue.push({
+                                handle: ++id,
+                                callback: callback,
+                                cancelled: false
+                            });
+                            return id;
+                        };
+
+                        caf = function caf(handle) {
+                            for (var _i2 = 0; _i2 < queue.length; _i2++) {
+                                if (queue[_i2].handle === handle) {
+                                    queue[_i2].cancelled = true;
+                                }
+                            }
+                        };
+                    })();
+                }
+
+                module.exports = function (fn) {
+                    // Wrap in a new function to prevent
+                    // `cancel` potentially being assigned
+                    // to the native rAF function
+                    return raf.call(root, fn);
+                };
+                module.exports._root = root;
+                module.exports.cancel = function () {
+                    caf.apply(root, arguments);
+                };
+                module.exports.polyfill = function () {
+                    root.requestAnimationFrame = raf;
+                    root.cancelAnimationFrame = caf;
+                };
+            }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
+        }, { "../util/helper": 24, "performance-now": 8 }], 26: [function (require, module, exports) {
             'use strict';
 
             Object.defineProperty(exports, "__esModule", {
@@ -5444,7 +8590,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = randomColor;
-        }, {}], 17: [function (require, module, exports) {
+        }, {}], 27: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
@@ -6634,7 +9780,148 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = tinycolor;
-        }, {}], 18: [function (require, module, exports) {
+        }, {}], 28: [function (require, module, exports) {
+            /* global module, wx, window: false, document: false */
+            'use strict';
+
+            /**
+             * Clone from https://github.com/jaxgeller/tweezer.js/blob/master/src/tweezer.js
+             * Remove the 'Global reference: window'
+             */
+
+            Object.defineProperty(exports, "__esModule", {
+                value: true
+            });
+
+            var _createClass = function () {
+                function defineProperties(target, props) {
+                    for (var i = 0; i < props.length; i++) {
+                        var descriptor = props[i];descriptor.enumerable = descriptor.enumerable || false;descriptor.configurable = true;if ("value" in descriptor) descriptor.writable = true;Object.defineProperty(target, descriptor.key, descriptor);
+                    }
+                }return function (Constructor, protoProps, staticProps) {
+                    if (protoProps) defineProperties(Constructor.prototype, protoProps);if (staticProps) defineProperties(Constructor, staticProps);return Constructor;
+                };
+            }();
+
+            function _classCallCheck(instance, Constructor) {
+                if (!(instance instanceof Constructor)) {
+                    throw new TypeError("Cannot call a class as a function");
+                }
+            }
+
+            var raf = require('./raf');
+
+            var Tweezer = function () {
+                function Tweezer() {
+                    var opts = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
+                    _classCallCheck(this, Tweezer);
+
+                    this.duration = opts.duration || 1000;
+                    this.ease = opts.easing || this._defaultEase;
+                    this.start = opts.start;
+                    this.end = opts.end;
+
+                    this.frame = null;
+                    this.next = null;
+                    this.isRunning = false;
+                    this.events = {};
+                    this.direction = this.start < this.end ? 'up' : 'down';
+                }
+
+                _createClass(Tweezer, [{
+                    key: 'begin',
+                    value: function begin() {
+                        if (!this.isRunning && this.next !== this.end) {
+                            this.frame = raf(this._tick.bind(this));
+                        }
+                        return this;
+                    }
+                }, {
+                    key: 'stop',
+                    value: function stop() {
+                        raf.cancel(this.frame);
+                        this.isRunning = false;
+                        this.frame = null;
+                        this.timeStart = null;
+                        this.next = null;
+                        return this;
+                    }
+                }, {
+                    key: 'on',
+                    value: function on(name, handler) {
+                        this.events[name] = this.events[name] || [];
+                        this.events[name].push(handler);
+                        return this;
+                    }
+                }, {
+                    key: 'off',
+                    value: function off(name, handler) {
+                        if (!this.events[name]) {
+                            return this;
+                        }
+
+                        if (!handler) {
+                            this.events[name] = [];
+                        } else {
+                            var query = this.events[name];
+                            var index = query.findIndex(function (value) {
+                                return value === handler;
+                            });
+                            query.splice(index, 1);
+                        }
+                        return this;
+                    }
+                }, {
+                    key: 'emit',
+                    value: function emit(name, val) {
+                        var _this = this;
+
+                        var e = this.events[name];
+                        e && e.forEach(function (handler) {
+                            return handler.call(_this, val);
+                        });
+                    }
+                }, {
+                    key: '_tick',
+                    value: function _tick(currentTime) {
+                        this.isRunning = true;
+
+                        var lastTick = this.next || this.start;
+
+                        if (!this.timeStart) this.timeStart = currentTime;
+                        this.timeElapsed = currentTime - this.timeStart;
+                        this.next = Math.round(this.ease(this.timeElapsed, this.start, this.end - this.start, this.duration));
+
+                        if (this._shouldTick(lastTick)) {
+                            this.emit('tick', this.next);
+                            this.frame = raf(this._tick.bind(this));
+                        } else {
+                            this.emit('tick', this.end);
+                            this.emit('done', null);
+                        }
+                    }
+                }, {
+                    key: '_shouldTick',
+                    value: function _shouldTick(lastTick) {
+                        return {
+                            up: this.next < this.end && lastTick <= this.next,
+                            down: this.next > this.end && lastTick >= this.next
+                        }[this.direction];
+                    }
+                }, {
+                    key: '_defaultEase',
+                    value: function _defaultEase(t, b, c, d) {
+                        if ((t /= d / 2) < 1) return c / 2 * t * t + b;
+                        return -c / 2 * (--t * (t - 2) - 1) + b;
+                    }
+                }]);
+
+                return Tweezer;
+            }();
+
+            exports.default = Tweezer;
+        }, { "./raf": 25 }], 29: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -6794,9 +10081,12 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             display = void 0,
                             height = void 0,
                             width = void 0;
+                        height = config.height;
+                        width = config.width;
+
                         if (this.isWeiXinAPP) {
-                            renderHeight = height = config.height;
-                            renderWidth = width = config.width;
+                            renderHeight = height;
+                            renderWidth = width;
                             display = config.display;
                         } else {
                             var style = canvas.style;
@@ -6812,7 +10102,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             style.display = style.display || 'block';
 
                             if (renderWidth === null || renderWidth === '') {
-                                var displayWidth = (0, _helper.readUsedSize)(canvas, 'width');
+                                var displayWidth = width || (0, _helper.readUsedSize)(canvas, 'width');
                                 if (displayWidth !== undefined) {
                                     canvas.width = displayWidth;
                                     width = displayWidth;
@@ -6820,13 +10110,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             }
 
                             if (renderHeight === null || renderHeight === '') {
-                                if (canvas.style.height === '') {
+                                if (!height && canvas.style.height === '') {
                                     // If no explicit render height and style height, let's apply the aspect ratio,
                                     // which one can be specified by the user but also by charts as default option
                                     // (i.e. options.aspectRatio). If not specified, use canvas aspect ratio of 2.
-                                    canvas.height = height = canvas.width / (config.options.aspectRatio || 2);
+                                    canvas.height = height = canvas.width / (config.aspectRatio || 2);
                                 } else {
-                                    var displayHeight = (0, _helper.readUsedSize)(canvas, 'height');
+                                    var displayHeight = height || (0, _helper.readUsedSize)(canvas, 'height');
                                     if (displayWidth !== undefined) {
                                         canvas.height = displayHeight;
                                         height = displayHeight;
@@ -7039,6 +10329,12 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         if (_helper.is.Null(value) || _helper.is.Undefined(value)) {
                             return value;
                         }
+
+                        //performance
+                        if (me.cp[propertyName] === value) {
+                            return value;
+                        }
+
                         if (me.isWeiXinAPP) {
                             me._ctx[wxSetName](value);
                             me.cp[propertyName] = value;
@@ -7061,6 +10357,12 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         if (_helper.is.Null(value) || _helper.is.Undefined(value)) {
                             return value;
                         }
+
+                        //performance
+                        if (me.cp[propertyName] === value) {
+                            return value;
+                        }
+
                         if (me.isWeiXinAPP) {
                             me.cp[propertyName] = value;
                             setWX ? me._ctx[propertyName] = value : null;
@@ -7103,12 +10405,17 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 },
                                 set: function set(value) {
                                     var me = _this;
+                                    // performance
+                                    if (me.cp[p] === value) {
+                                        return;
+                                    }
+
                                     if (me.isWeiXinAPP) {
                                         me.cp[p] = value;
                                         me._ctx.setShadow(me.cp['shadowOffsetX'] || 0, me.cp['shadowOffsetY'] || 0, me.cp['shadowBlur'] || 0, me.cp['shadowColor'] || '#000000');
                                     } else if (!_helper.is.Null(value) && !_helper.is.Undefined(value)) {
                                         me._ctx[p] = value;
-                                        me.cp[p] = me._ctx[p];
+                                        me.cp[p] = value;
                                     }
                                     return value;
                                 }
@@ -7141,14 +10448,16 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             set: function set(value) {
                                 if (me.isWeiXinAPP) {
                                     var m = value.match(pxReg);
-                                    if (!!m) {
+                                    if (!!m && me.cp.font !== value) {
                                         var fontSize = +m[1];
                                         me._ctx.setFontSize(fontSize);
                                         me.cp.font = value;
                                     }
                                 } else {
-                                    me._ctx.font = value;
-                                    me.cp.font = me._ctx.font;
+                                    if (me.cp.font !== value) {
+                                        me._ctx.font = value;
+                                        me.cp.font = value;
+                                    }
                                 }
                                 return me.cp.font;
                             }
@@ -7166,12 +10475,15 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                                 var currentFont = me.isWeiXinAPP ? me.cp.font : me._ctx.font;
                                 currentFont = currentFont.replace(pxReg, fontSize + 'px');
+                                if (currentFont === me.cp.font) {
+                                    return me.cp.font;
+                                }
                                 if (me.isWeiXinAPP) {
                                     me._ctx.setFontSize(fontSize);
                                     me.cp.font = currentFont;
                                 } else {
                                     me._ctx.font = currentFont;
-                                    me.cp.font = me._ctx.font;
+                                    me.cp.font = currentFont;
                                 }
                                 return me.cp.font;
                             }
@@ -7469,13 +10781,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                 return WxCanvasRenderingContext2D;
             }();
-        }, { "./helper": 15 }], 19: [function (require, module, exports) {
+        }, { "./helper": 24 }], 30: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
                 value: true
             });
-            exports.WxBar = exports.WxLiner = exports.WxDoughnut = exports.WxChart = undefined;
+            exports.WxBar = exports.WxLiner = exports.WxDoughnut = exports.WxChart = exports.getChartInstances = undefined;
 
             var _wxChart = require('./charts/wxChart');
 
@@ -7497,9 +10809,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 return obj && obj.__esModule ? obj : { default: obj };
             }
 
+            exports.getChartInstances = _wxChart.getChartInstances;
             exports.WxChart = _wxChart2.default;
             exports.WxDoughnut = _doughnut2.default;
             exports.WxLiner = _liner2.default;
             exports.WxBar = _bar2.default;
-        }, { "./charts/bar": 2, "./charts/doughnut": 3, "./charts/liner": 4, "./charts/wxChart": 5 }] }, {}, [19])(19);
+        }, { "./charts/bar": 10, "./charts/doughnut": 11, "./charts/liner": 12, "./charts/wxChart": 13 }] }, {}, [30])(30);
 });

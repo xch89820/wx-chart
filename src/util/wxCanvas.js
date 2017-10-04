@@ -117,9 +117,12 @@ export default class WxCanvas {
             display,
             height,
             width;
+        height = config.height;
+        width = config.width;
+
         if (this.isWeiXinAPP) {
-            renderHeight = height = config.height;
-            renderWidth = width = config.width;
+            renderHeight = height;
+            renderWidth = width;
             display = config.display;
         } else {
             let style = canvas.style;
@@ -135,7 +138,7 @@ export default class WxCanvas {
             style.display = style.display || 'block';
 
             if (renderWidth === null || renderWidth === '') {
-                var displayWidth = readUsedSize(canvas, 'width');
+                var displayWidth = width || readUsedSize(canvas, 'width');
                 if (displayWidth !== undefined) {
                     canvas.width = displayWidth;
                     width = displayWidth;
@@ -143,13 +146,13 @@ export default class WxCanvas {
             }
 
             if (renderHeight === null || renderHeight === '') {
-                if (canvas.style.height === '') {
+                if (!height && canvas.style.height === '') {
                     // If no explicit render height and style height, let's apply the aspect ratio,
                     // which one can be specified by the user but also by charts as default option
                     // (i.e. options.aspectRatio). If not specified, use canvas aspect ratio of 2.
-                    canvas.height = height = canvas.width / (config.options.aspectRatio || 2);
+                    canvas.height = height = canvas.width / (config.aspectRatio || 2);
                 } else {
-                    let displayHeight = readUsedSize(canvas, 'height');
+                    let displayHeight = height || readUsedSize(canvas, 'height');
                     if (displayWidth !== undefined) {
                         canvas.height = displayHeight;
                         height = displayHeight;
@@ -312,6 +315,12 @@ export class WxCanvasRenderingContext2D {
         if (is.Null(value) || is.Undefined(value)) {
             return value;
         }
+
+        //performance
+        if (me.cp[propertyName] === value) {
+            return value;
+        }
+
         if (me.isWeiXinAPP) {
             me._ctx[wxSetName](value);
             me.cp[propertyName] = value;
@@ -329,6 +338,12 @@ export class WxCanvasRenderingContext2D {
         if (is.Null(value) || is.Undefined(value)) {
             return value;
         }
+
+        //performance
+        if (me.cp[propertyName] === value) {
+            return value;
+        }
+
         if (me.isWeiXinAPP) {
             me.cp[propertyName] = value;
             setWX
@@ -369,12 +384,17 @@ export class WxCanvasRenderingContext2D {
                 },
                 set: (value) => {
                     let me = this;
+                    // performance
+                    if (me.cp[p] === value) {
+                        return;
+                    }
+
                     if (me.isWeiXinAPP) {
                         me.cp[p] = value;
                         me._ctx.setShadow(me.cp['shadowOffsetX'] || 0, me.cp['shadowOffsetY'] || 0, me.cp['shadowBlur'] || 0, me.cp['shadowColor'] || '#000000');
                     } else if (!is.Null(value) && !is.Undefined(value)) {
                         me._ctx[p] = value;
-                        me.cp[p] = me._ctx[p];
+                        me.cp[p] = value;
                     }
                     return value;
                 }
@@ -404,14 +424,16 @@ export class WxCanvasRenderingContext2D {
             set: (value) => {
                 if (me.isWeiXinAPP) {
                     let m = value.match(pxReg);
-                    if (!!m) {
+                    if (!!m && me.cp.font !== value) {
                         let fontSize = +m[1];
                         me._ctx.setFontSize(fontSize);
                         me.cp.font = value;
                     }
                 } else {
-                    me._ctx.font = value;
-                    me.cp.font = me._ctx.font;
+                    if (me.cp.font !== value) {
+                        me._ctx.font = value;
+                        me.cp.font = value;
+                    }
                 }
                 return me.cp.font;
             }
@@ -431,12 +453,15 @@ export class WxCanvasRenderingContext2D {
                     ? me.cp.font
                     : me._ctx.font;
                 currentFont = currentFont.replace(pxReg, fontSize + 'px');
+                if (currentFont === me.cp.font) {
+                    return me.cp.font;
+                }
                 if (me.isWeiXinAPP) {
                     me._ctx.setFontSize(fontSize);
                     me.cp.font = currentFont;
                 } else {
                     me._ctx.font = currentFont;
-                    me.cp.font = me._ctx.font;
+                    me.cp.font = currentFont;
                 }
                 return me.cp.font;
             }

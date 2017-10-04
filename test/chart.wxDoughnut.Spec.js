@@ -3,18 +3,20 @@
 
 import WxCanvas from '../src/util/wxCanvas'
 import WxDoughnut from '../src/charts/doughnut'
-import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
+import { createWXEnv, initCanvasElement, randomId, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
+import * as canvasInterceptor from '../verdor/canvas-interceptor'
 
 describe('WxDoughnut component test', () => {
-    let wxDoughnut;
-    beforeEach(() => {
+    let id, canvas, wxDoughnut;
+    beforeEach(function () {
+        this.timeout(5000);
         createWXEnv();
-        initCanvasElement(350, 600);
-
+        id = randomId();
+        canvas = initCanvasElement(350, 600, id);
     });
 
-    it('Draw an Pie', () => {
-        wxDoughnut = new WxDoughnut('myCanvas', {
+    it('Draw an Pie',function (done) {
+        wxDoughnut = new WxDoughnut(id, {
             width: 600,
             height: 350,
             title: '各直销公司业务销量',
@@ -41,10 +43,14 @@ describe('WxDoughnut component test', () => {
             label: '广州',
             value: 3
         }]);
+
+        wxDoughnut.on('draw',function() {
+            done();
+        });
     });
 
-    it('Draw an wxDoughnut', () => {
-        wxDoughnut = new WxDoughnut('myCanvas', {
+    it('Draw an wxDoughnut', function(done) {
+        wxDoughnut = new WxDoughnut(id, {
             'width': 600,
             'height': 350,
             'title': '测试多纳圈图'
@@ -65,11 +71,15 @@ describe('WxDoughnut component test', () => {
         },{
             label: '测试5',
             value: 30
-        }])
+        }]);
+
+        wxDoughnut.on('draw',() => {
+            done();
+        });
     });
 
-    it('Draw an wxDoughnut with percentage options', () => {
-        wxDoughnut = new WxDoughnut('myCanvas', {
+    it('Draw an wxDoughnut with percentage options', function(done){
+        wxDoughnut = new WxDoughnut(id, {
             width: 600,
             height: 350,
             title: '各直销公司业务销量'
@@ -95,12 +105,17 @@ describe('WxDoughnut component test', () => {
             label: '广州',
             value: 30,
             percentage: 100
-        }])
+        }]);
+        wxDoughnut.on('draw',() => {
+            done();
+        });
     });
 
     afterEach(() => {
+        let log = canvasInterceptor.getCanvasReplay(canvas);
+        console.log(log)
         wxDoughnut.destroy();
-        destoryCanvasElement();
+        destoryCanvasElement(id);
     })
 });
 

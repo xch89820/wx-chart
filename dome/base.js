@@ -17,7 +17,7 @@
 
     var labels = ['一月', '二月', '三月', '四月', '五月', '六月', '七月'];
     var canvasWidth = 600;
-    var canvasHeight = 400;
+    var canvasHeight = 330;
     var percentageFormatLabel = function (label, value, totalValue) {
         return label + ' (' + (value / totalValue * 100).toFixed(2) + '%)';
     };
@@ -55,35 +55,40 @@
         });
 
         wxLiner.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances']));
+
+        return wxLiner;
     };
+
     // 饼图
     var basePie = function() {
         var wxPie = new WxChart.WxDoughnut('basePie', {
             width: canvasWidth,
             height: canvasHeight,
             title: '销售量',
-            cutoutPercentage: 0
+            cutoutPercentage: 0,
+            point: {
+                format : percentageFormatLabel
+            }
         });
 
         var datas = dataGenerator(labels);
-        datas.forEach(function(x) {
-            x.format = percentageFormatLabel;
-        });
         wxPie.update(datas);
+        return wxPie;
     };
     // 多纳圈图
     var baseDoughnut = function() {
         var wxPie = new WxChart.WxDoughnut('baseDoughnut', {
             width: canvasWidth,
             height: canvasHeight,
-            title: '销售量'
+            title: '销售量',
+            point: {
+                format : percentageFormatLabel
+            }
         });
 
         var datas = dataGenerator(labels);
-        datas.forEach(function(x) {
-            x.format = percentageFormatLabel;
-        });
         wxPie.update(datas);
+        return wxPie;
     };
 
     var multiBar = function() {
@@ -114,6 +119,7 @@
         });
 
         wxBar.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances']));
+        return wxBar;
     };
 
     var multiStackedBar = function() {
@@ -145,15 +151,41 @@
         });
 
         wxBar.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances'], -20, 100));
+        return wxBar;
     }
 
-    window.onload = function() {
-        multiFillLine();
-        basePie();
+    window.onload = function(){
+        var mfl = multiFillLine();
+        var el = document.getElementById('UpdateMultiFillLine');
+        el.addEventListener('click', function(){
+            mfl.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances']));
+        });
 
-        baseDoughnut();
-        multiBar();
-        multiStackedBar();
+        var bp = basePie();
+        var el = document.getElementById('UpdateBasePie');
+        el.addEventListener('click', function(){
+            bp.update(dataGenerator(labels));
+        });
+
+
+        var bd = baseDoughnut();
+        var el = document.getElementById('UpdateBaseDoughnut');
+        el.addEventListener('click', function(){
+            bd.update(dataGenerator(labels));
+        });
+
+        var mb = multiBar();
+        var el = document.getElementById('UpdateMultiBar');
+        el.addEventListener('click', function(){
+            mb.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances']));
+        });
+
+        var msb = multiStackedBar();
+        var el = document.getElementById('UpdateMultiStackedBar');
+        el.addEventListener('click', function(){
+            msb.update(dataGenerator(labels, ['dailyNecessities', 'fruit', 'appliances'], -20, 100));
+        });
     };
+
 
 })();

@@ -2,7 +2,7 @@
 'use strict';
 
 import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
-import WxChart, { wxChartInstances } from '../src/charts/wxChart'
+import WxChart, { getChartInstances } from '../src/charts/wxChart'
 import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
 
 describe('WxChart component test', () => {
@@ -22,11 +22,10 @@ describe('WxChart component test', () => {
 
         assert.isDefined(wxChart.id, 'Has an unique ID');
         let id = wxChart.id;
-        assert.property(wxChartInstances, id);
+        assert.equal(getChartInstances(id), wxChart);
 
         wxChart.destroy();
-        assert.isNull(wxChart.id, 'Reset ID');
-        assert.notProperty(wxChartInstances, id);
+        assert.isNull(getChartInstances(id), 'Destroy Failed!');
     });
 
     afterEach(() => {

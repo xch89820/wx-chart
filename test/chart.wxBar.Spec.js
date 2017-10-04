@@ -3,19 +3,23 @@
 
 import WxCanvas from '../src/util/wxCanvas'
 import WxBar from '../src/charts/bar'
-import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
+import { createWXEnv, initCanvasElement, randomId, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
+import * as canvasInterceptor from '../verdor/canvas-interceptor'
 
 describe('WxBar component test', () => {
-    let wxBar;
-    beforeEach(() => {
+    let id, canvas, wxBar;
+    beforeEach(function () {
+        this.timeout(4000);
         createWXEnv();
-        initCanvasElement(400, 700);
+        id = randomId();
+        canvas = initCanvasElement(400, 700, id);
     });
 
-    it('Draw an WxBar', () => {
-        wxBar = new WxBar('myCanvas', {
+    it('Draw an WxBar', function(done) {
+        wxBar = new WxBar(id, {
             width: 700,
             height: 400,
+
             title: '北京分公司业务销量对比',
             legends:[{
                 text: '北京'
@@ -38,10 +42,14 @@ describe('WxBar component test', () => {
             value: 71,
             label: '五月'
         }]);
+
+        wxBar.on('draw',() => {
+            done();
+        });
     });
 
-    it('Draw an mutil-data WxBar', () => {
-        wxBar = new WxBar('myCanvas', {
+    it('Draw an mutil-data WxBar', function(done) {
+        wxBar = new WxBar(id, {
             width: 700,
             height: 400,
             title: '北京-上海分公司业务销量对比',
@@ -70,21 +78,24 @@ describe('WxBar component test', () => {
             label: '二月'
         }, {
             bj: 38,
-            sh: 34.5,
+            //sh: 34.5,
             label: '三月'
         }, {
             bj: 56,
             sh: 22,
             label: '四月'
         }, {
-            bj: 71,
+            bj: 80,
             sh: 56,
             label: '五月'
         }]);
+        wxBar.on('draw',() => {
+            done();
+        });
     });
-
-    it('Draw an mutil-data stacked WxBar', () => {
-        wxBar = new WxBar('myCanvas', {
+    //
+    it('Draw an mutil-data stacked WxBar', function(done) {
+        wxBar = new WxBar(id, {
             width: 700,
             height: 400,
             title: '北京-上海分公司环比销量对比',
@@ -113,7 +124,7 @@ describe('WxBar component test', () => {
             sz: -40,
             label: '一月'
         }, {
-            bj: 42,
+
             sh: 115,
             sz: -21,
             label: '二月'
@@ -133,11 +144,17 @@ describe('WxBar component test', () => {
             sz: 70,
             label: '五月'
         }]);
+        wxBar.on('draw',() => {
+            done();
+        });
     });
 
+
     afterEach(() => {
+        let log = canvasInterceptor.getCanvasReplay(canvas);
+        console.log(log)
         wxBar.destroy();
-        destoryCanvasElement();
+        destoryCanvasElement(id);
     });
 });
 

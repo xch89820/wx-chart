@@ -37,7 +37,7 @@ gulp.task('build',function(){
         .bundle()
         .pipe(source('wx-chart.js'))
         .pipe(streamify(babel({
-            presets: ['es2015', 'stage-3', 'react']
+            presets: ['es2015',"stage-0", 'react']
         })))
         .pipe(buffer())
         .pipe(sourcemaps.init({loadMaps: true}))

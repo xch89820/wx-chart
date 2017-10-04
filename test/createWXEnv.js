@@ -9,6 +9,15 @@ document.body.insertAdjacentHTML(
     '<link rel="stylesheet" href="/base/test/style.css" />'
 );
 
+export function randomId(len = 32) {
+    let $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+    let maxPos = $chars.length;
+    let pwd = '';
+    for (let i = 0; i < len; i++) {
+        pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+    }
+    return pwd;
+}
 // Create WeiXin virtual environment
 export function createWXEnv() {
     if (typeof wx != 'undefined') {
@@ -77,14 +86,14 @@ export function createWXEnv() {
     }
 }
 
-export let initCanvasElement = function(height = 500, width = 800) {
-    let canvasHTML = `<canvas id="myCanvas" canvas-id="myCanvas" width="${width}px" height="${height}px" style="width:${width}px; height:${height}px; border: 1px solid #ffffff;"/>`;
+export let initCanvasElement = function(height = 500, width = 800, id='myCanvas') {
+    let canvasHTML = `<canvas id="${id}" canvas-id="${id}" width="${width}px" height="${height}px" style="width:${width}px; height:${height}px; border: 1px solid #ffffff;"/>`;
     document.body.insertAdjacentHTML(
         'afterbegin',
         canvasHTML
     );
 
-    let canvas = document.getElementById('myCanvas');
+    let canvas = document.getElementById(id);
     let ctx = canvas.getContext('2d');
     let pixelRatio = window.devicePixelRatio || 1;
     if (pixelRatio === 1) {
@@ -96,10 +105,12 @@ export let initCanvasElement = function(height = 500, width = 800) {
     ctx.scale(pixelRatio, pixelRatio);
     canvas.style.height = height + 'px';
     canvas.style.width = width + 'px';
+
+    return canvas;
 };
 
-export let destoryCanvasElement = function() {
-    let canvas = document.getElementById('myCanvas');
+export let destoryCanvasElement = function(id = 'myCanvas') {
+    let canvas = document.getElementById(id);
     canvas.parentNode.removeChild(canvas);
 };
 
@@ -113,7 +124,7 @@ export let getCanvas = function(id = 'myCanvas', config = {
 };
 
 export let getRealCanvas = function(id = 'myCanvas') {
-    let realCanvas = document.getElementById('myCanvas');
+    let realCanvas = document.getElementById(id);
     let realContext = realCanvas.getContext('2d');
     return {realCanvas, realContext};
 };

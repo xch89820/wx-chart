@@ -16,6 +16,8 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
         {pattern: 'test/**/*.css', included: false},
+        {pattern: 'verdor/**/*.js', included: false},
+        'verdor/**',
         'src/**',
         'test/**.Spec.js'
     ],
@@ -32,6 +34,7 @@ module.exports = function(config) {
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
       preprocessors: {
           'src/**': ['browserify'],
+          'verdor/**': ['browserify'],
           'test/*Spec.js': ['browserify']
       },
 
@@ -41,7 +44,8 @@ module.exports = function(config) {
               ['babelify'],
               ['browserify-replace', {
                   replace: [
-                      { from: /__GLOBAL__DEBUG__WX__/, to: true }
+                      { from: /__GLOBAL__DEBUG__WX__/, to: true },
+                      { from: /__GLOBAL__DEBUG__/, to: true }
                   ]
               }]
           ]

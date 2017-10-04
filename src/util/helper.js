@@ -364,3 +364,4 @@ export function retinaScale(ctx, width, height) {
         canvas.style.width = width + 'px';
     }
 }
+

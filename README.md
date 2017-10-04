@@ -18,17 +18,25 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 * 柱状图
   单维度/多维度柱状图(Bar)，多维度堆叠柱状图(Stacked Bar)
 
-##### 待计划支持图表
-* 泡状图
-* 雷达图
+##### 近期计划支持图表
+- [x] 增加动画效果
+- [x] Canvas中间层优化
+- [ ] 增加Tooltip
+- [ ] 雷达图
+- [ ] 泡状图
+- [ ] 支持Vue
+- [ ] 支持React Native
 
 ## 实际效果以及Demo
-![pie](https://cloud.githubusercontent.com/assets/4920540/26517971/893602c2-42d7-11e7-9009-3cdfebf16f63.JPG)
-![bar](https://cloud.githubusercontent.com/assets/4920540/26517970/8933f522-42d7-11e7-8e78-a93c567f3bc0.JPG)
-![stacked](https://cloud.githubusercontent.com/assets/4920540/26517972/8937459c-42d7-11e7-9fe9-eaf8acc2e852.JPG)
-![line](https://cloud.githubusercontent.com/assets/4920540/26517973/89460140-42d7-11e7-8576-e1503e7cf4df.JPG)
-![doughnut](https://cloud.githubusercontent.com/assets/4920540/26517974/894c57a2-42d7-11e7-9856-a300fa72a2c8.JPG)
+微信场景下
 
+![line](https://user-images.githubusercontent.com/4920540/31167950-56eae110-a926-11e7-8692-c33ba92a6217.gif)
+![doughnut](https://user-images.githubusercontent.com/4920540/31167947-56dc348a-a926-11e7-959a-bb9aed012ccc.gif)
+![bar](https://user-images.githubusercontent.com/4920540/31167946-56d7f41a-a926-11e7-9918-d30666ce0874.gif)
+![bar2](https://user-images.githubusercontent.com/4920540/31167948-56dd334e-a926-11e7-962b-1d68e4d08ff3.gif)
+
+PC场景下
+![all](https://user-images.githubusercontent.com/4920540/31167949-56e700b8-a926-11e7-8035-f5b3d10fbe88.gif)
 
 ## 快速使用
 
@@ -113,6 +121,9 @@ https://github.com/xch89820/wx-chart-react
 https://www.kancloud.cn/xchhhh/wx-chart
 
 ## ChangeLog
+v0.3.2
+增加动画效果
+
 v0.3.1
 更新ReadME
 

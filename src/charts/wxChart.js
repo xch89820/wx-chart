@@ -11,6 +11,8 @@ import {
 } from '../util/helper';
 import WxCanvas from '../util/wxCanvas';
 import {BoxInstance} from '../core/layout';
+import mitt from 'mitt';
+import mixins from 'es6-mixins';
 
 // Chart default config
 let wxChartDefaultConfig = {
@@ -23,7 +25,15 @@ let wxChartDefaultConfig = {
 };
 
 // Store all references of 'WxChart' instances - allowing us to globally resize chart instances on window resize.
-export let wxChartInstances = {};
+let wxChartInstances = {};
+
+export function getChartInstances(id) {
+    if (id && id in wxChartInstances) {
+        return wxChartInstances[id];
+    }
+    return null;
+};
+
 // The basic class of WeiXin chart
 export default class WxChart {
     /**
@@ -37,6 +47,12 @@ export default class WxChart {
      */
     constructor(id, config) {
         let me = this;
+
+        // Event emitter
+        mixins([mitt()], this, {
+            // Mixins will create a new method to nested call all duplicate method
+            mergeDuplicates: false
+        });
 
         // Arguments parse...
         let chartConf;
@@ -63,7 +79,13 @@ export default class WxChart {
         me.canvas = new WxCanvas(id, chartConf);
         me.ctx = me.canvas.getContext('2d');
         me.isWeiXinAPP = checkWX();
-        me.id = uid();
+        me._id = uid();
+
+        me.emit('initCanvas', {
+            canvas: me.canvas,
+            ctx: me.ctx,
+            id: me.id + ''
+        });
 
         me._config = me.initConfig(chartConf);
         me.initContext();
@@ -123,6 +145,10 @@ export default class WxChart {
             me.ctx.restore();
             me.ctx.draw();
         }
+
+        me.emit('clear', {
+            canvas: me.canvas
+        });
     }
     destroy() {
         let me = this;
@@ -134,12 +160,18 @@ export default class WxChart {
             delete wxChartInstances[me.id];
         }
 
-        me.id = null;
+        //me.id = null;
         me.canvas = null;
         me.ctx = null;
         me._config = null;
         me.innerBox = null;
+
+        me.emit('destroy');
     }
+    get id() {
+        return this._id;
+    }
+
     // The 'config' property
     get config() {
         if (!this._config) {
@@ -174,6 +206,8 @@ export default class WxChart {
         datasets = datasets.map(function(dataset) {
             return extend({}, defaultItemOpt, dataset);
         });
+
+        me.emit('update', {datasets});
         // Fill default Options
         me.clear();
         me._datasets = datasets;

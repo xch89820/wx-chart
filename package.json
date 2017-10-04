@@ -1,6 +1,6 @@
 {
   "name": "wx-chart",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "跨平台微信小程序图形库",
   "main": "src/wx-chart.js",
   "scripts": {
@@ -34,6 +34,10 @@
             {
               "from": "__GLOBAL__DEBUG__WX__",
               "to": false
+            },
+            {
+              "from": "__GLOBAL__DEBUG__",
+              "to": false
             }
           ]
         }
@@ -54,6 +58,7 @@
     "babel-plugin-espower": "^2.3.2",
     "babel-preset-es2015": "^6.18.0",
     "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
     "babel-preset-stage-3": "^6.22.0",
     "babelify": "^7.3.0",
     "browserify": "^13.3.0",
@@ -91,6 +96,10 @@
     "watchify": "^3.8.0"
   },
   "dependencies": {
-    "es6-mixins": "^1.0.2"
+    "bezier-js": "^2.2.3",
+    "es6-mixins": "^1.0.2",
+    "ez.js": "^1.0.3",
+    "mitt": "^1.1.2",
+    "performance-now": "^2.1.0"
   }
 }
