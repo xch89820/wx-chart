@@ -31,6 +31,12 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 微信场景下
 
 <img src="https://user-images.githubusercontent.com/4920540/31167950-56eae110-a926-11e7-8692-c33ba92a6217.gif" width="500">
+<img src="https://user-images.githubusercontent.com/4920540/31167947-56dc348a-a926-11e7-959a-bb9aed012ccc.gif" width="500">
+<img src="https://user-images.githubusercontent.com/4920540/31167946-56d7f41a-a926-11e7-9918-d30666ce0874.gif" width="500">
+<img src="https://user-images.githubusercontent.com/4920540/31167948-56dd334e-a926-11e7-962b-1d68e4d08ff3.gif" width="500">
+
+PC场景下
+![all](https://user-images.githubusercontent.com/4920540/31167949-56e700b8-a926-11e7-8035-f5b3d10fbe88.gif)
 
 ## 快速使用
 
