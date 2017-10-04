@@ -44,7 +44,7 @@ const WX_DOUGHNUT_DEFAULT_CONFIG = {
     animate: true,
     animateOptions:{
         start: 1,
-        end: 1001,
+        end: 501,
         duration: 1000
     }
 };
@@ -287,7 +287,6 @@ export default class WxDoughnut extends WxChart {
         let centerAngle = startAngle + (endAngle - startAngle) / 2;
         let currentRadius = outerRadius  / 100 * percentage;
 
-        ctx.save();
         ctx.beginPath();
 
         ctx.arc(pointX, pointY, currentRadius, startAngle, endAngle);
@@ -305,7 +304,6 @@ export default class WxDoughnut extends WxChart {
             ctx.stroke();
         }
         ctx.draw();
-        ctx.restore();
         return endAngle;
     };
 
@@ -375,20 +373,17 @@ export default class WxDoughnut extends WxChart {
                 : endX - 4 - textLen,
             textY = endY + ctx.fontSize / 2;
 
-        ctx.save();
         ctx.beginPath();
         ctx.lineWidth = 1;
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
         ctx.fontSize = fontSize;
-        ctx.fontSize =
         ctx.moveTo(startX, startY);
         ctx.lineTo(turnX, turnY);
         ctx.lineTo(endX, endY);
         ctx.stroke();
         ctx.fillText(label, textX, textY);
         ctx.draw();
-        ctx.restore();
     };
 
     /**
@@ -447,7 +442,6 @@ export default class WxDoughnut extends WxChart {
                 ctx.stroke();
             }
             ctx.draw();
-            ctx.restore();
 
             if (animateOpt.end === t) {
                 me._drawDoughnut(dataset, opt);
@@ -461,7 +455,7 @@ export default class WxDoughnut extends WxChart {
                     drawAngle = endAngle;
                 });
             }
-
+            ctx.restore();
             return t;
         };
     }

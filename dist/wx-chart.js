@@ -1,7 +1,7 @@
 /*!
  * wx-chart.js
  * Chart for WeiXin application
- * Version: 0.3.1
+ * Version: 0.3.2
  *
  * Copyright 2016 Jone Casper
  * Released under the MIT license
@@ -3335,7 +3335,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 animate: true,
                 animateOptions: {
                     start: 1,
-                    end: 1001,
+                    end: 501,
                     duration: 1000
                 }
             };
@@ -3576,7 +3576,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var centerAngle = startAngle + (endAngle - startAngle) / 2;
                         var currentRadius = outerRadius / 100 * percentage;
 
-                        ctx.save();
                         ctx.beginPath();
 
                         ctx.arc(pointX, pointY, currentRadius, startAngle, endAngle);
@@ -3594,7 +3593,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             ctx.stroke();
                         }
                         ctx.draw();
-                        ctx.restore();
                         return endAngle;
                     }
                 }, {
@@ -3655,19 +3653,17 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var textX = turnX - pointX > 0 ? endX + 4 : endX - 4 - textLen,
                             textY = endY + ctx.fontSize / 2;
 
-                        ctx.save();
                         ctx.beginPath();
                         ctx.lineWidth = 1;
                         ctx.strokeStyle = color;
                         ctx.fillStyle = color;
                         ctx.fontSize = fontSize;
-                        ctx.fontSize = ctx.moveTo(startX, startY);
+                        ctx.moveTo(startX, startY);
                         ctx.lineTo(turnX, turnY);
                         ctx.lineTo(endX, endY);
                         ctx.stroke();
                         ctx.fillText(label, textX, textY);
                         ctx.draw();
-                        ctx.restore();
                     }
                 }, {
                     key: 'drawDoughnut',
@@ -3728,7 +3724,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 ctx.stroke();
                             }
                             ctx.draw();
-                            ctx.restore();
 
                             if (animateOpt.end === t) {
                                 me._drawDoughnut(dataset, opt);
@@ -3744,7 +3739,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                     });
                                 })();
                             }
-
+                            ctx.restore();
                             return t;
                         };
                     }
@@ -3953,7 +3948,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             // Line legend's default config
             var WX_LINE_LEGEND_DEFAULT_CONFIG = {
-                lineWidth: 2,
+                lineWidth: 1,
                 // 'capStyle': 'butt', //Default line cap is cap,
                 lineJoin: 'miter',
                 fillArea: false,
@@ -4009,9 +4004,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             };
 
             var WX_LINER_ITEM_DEFAULT_CONFIG = {
-                pointRadius: 4,
+                pointRadius: 2,
                 pointStyle: 'circle', // Support triangle, rect and Image object
-                pointBorderWidth: 1.5,
+                pointBorderWidth: 1,
                 pointBorderColor: '#ffffff',
                 display: true
             };

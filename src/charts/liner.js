@@ -22,7 +22,7 @@ let Bezier = require('bezier-js');
 
 // Line legend's default config
 const WX_LINE_LEGEND_DEFAULT_CONFIG = {
-    lineWidth: 2,
+    lineWidth: 1,
     // 'capStyle': 'butt', //Default line cap is cap,
     lineJoin: 'miter',
     fillArea: false,
@@ -78,9 +78,9 @@ const WX_LINER_DEFAULT_CONFIG = {
 };
 
 const WX_LINER_ITEM_DEFAULT_CONFIG = {
-    pointRadius: 4,
+    pointRadius: 2,
     pointStyle: 'circle', // Support triangle, rect and Image object
-    pointBorderWidth: 1.5,
+    pointBorderWidth: 1,
     pointBorderColor: '#ffffff',
     display: true
 };

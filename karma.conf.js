@@ -19,7 +19,8 @@ module.exports = function(config) {
         {pattern: 'verdor/**/*.js', included: false},
         'verdor/**',
         'src/**',
-        'test/**.Spec.js'
+        'test/**.Spec.js',
+        // 'test/chart.wxDoughnut.Spec.js'
     ],
 
 
