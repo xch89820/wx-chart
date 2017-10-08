@@ -122,6 +122,9 @@ https://github.com/xch89820/wx-chart-react
 ## 文档
 https://www.kancloud.cn/xchhhh/wx-chart
 
+## 实现原理（持续更新中...）
+[微信小程序开发跨平台图表库：part1](https://segmentfault.com/a/1190000011469347)
+
 ## ChangeLog
 v0.3.3
 增加bar，line点展示
