@@ -59,6 +59,8 @@ const WX_DOUGHNUT_DEFAULT_CONFIG = {
  * legend: [Object] legend options
  */
 const WX_DOUGHNUT_ITEM_DEFAULT_CONFIG = {
+    showItem: true,
+    // format: // title format function
     display: true,
     fontSize: 11,
     percentage: 100
@@ -112,7 +114,7 @@ export default class WxDoughnut extends WxChart {
     /**
      * Update a datesets of chart and reDraw
      * @param {Object[]} datasets
-     * @param {string} [datasets[].hidden=false] - Display or not.
+     * @param {string} [datasets[].display=true] - Display or not.
      * @param {string} datasets[].label - The label text of an dataset.
      * @param {function} datasets[].format - The label text format function.
      * @param {number} datasets[].value - The value of an dataset.
@@ -179,7 +181,7 @@ export default class WxDoughnut extends WxChart {
             let legend = dataset.legend;
             if (!legend || is.String(legend)) {
                 legendDatasets.push({
-                    hidden: dataset.hidden || false,
+                    display: dataset.display,
                     text: is.String(legend)
                         ? legend
                         : dataset.label,
@@ -188,7 +190,7 @@ export default class WxDoughnut extends WxChart {
                 });
             } else if (is.PureObject(legend)) {
                 legendDatasets.push(extend({
-                    hidden: dataset.hidden
+                    display: dataset.display
                 }, legend));
             }
         });
@@ -231,6 +233,7 @@ export default class WxDoughnut extends WxChart {
             pointY = y + (outerHeight / 2);
 
         let opt = {
+            box,
             pointX,
             pointY,
             innerRadius,
@@ -277,10 +280,10 @@ export default class WxDoughnut extends WxChart {
             color,
             borderColor,
             percentage,
-            hidden
+            display
         } = dataset;
 
-        if (!!hidden) {
+        if (!display) {
             return endAngle;
         }
 
@@ -329,10 +332,11 @@ export default class WxDoughnut extends WxChart {
             fontSize,
             percentage,
             format,
-            hidden
+            showItem,
+            display
         } = dataset;
 
-        if (!!hidden) {
+        if (!display || !showItem) {
             return;
         }
 
@@ -413,6 +417,7 @@ export default class WxDoughnut extends WxChart {
             animateOpt = me.chartConfig.animateOptions,
             backgroundColor = me.config.backgroundColor;
         let {
+            box,
             pointX,
             pointY,
             totalValue,
@@ -430,17 +435,36 @@ export default class WxDoughnut extends WxChart {
             // Clear
             ctx.save();
             ctx.beginPath();
-            ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
-            ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
-            ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
-            ctx.fill();
-            if (borderWidth) {
-                ctx.beginPath();
-                ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
-                ctx.lineJoin = 'bevel';
-                ctx.lineWidth = borderWidth;
-                ctx.stroke();
+
+
+            let bdWidth = borderWidth||0;
+            if (backgroundColor) {
+                ctx.fillStyle = backgroundColor;
+                ctx.strokeStyle = backgroundColor;
+                ctx.fillRect(
+                    box.x,
+                    box.y,
+                    box.outerWidth,
+                    box.outerHeight
+                )
+            } else {
+                ctx.clearRect(
+                    box.x,
+                    box.y,
+                    box.outerWidth,
+                    box.outerHeight
+                );
             }
+
+            // ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+            // ctx.fill();
+            // if (borderWidth) {
+            //     ctx.beginPath();
+            //     ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+            //     ctx.lineJoin = 'bevel';
+            //     ctx.lineWidth = borderWidth;
+            //     ctx.stroke();
+            // }
             ctx.draw();
 
             if (animateOpt.end === t) {

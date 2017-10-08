@@ -2244,6 +2244,1188 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 return 0;
             };
         }, {}], 10: [function (require, module, exports) {
+            // TinyColor v1.4.1
+            // https://github.com/bgrins/TinyColor
+            // Brian Grinstead, MIT License
+
+            (function (Math) {
+
+                var trimLeft = /^\s+/,
+                    trimRight = /\s+$/,
+                    tinyCounter = 0,
+                    mathRound = Math.round,
+                    mathMin = Math.min,
+                    mathMax = Math.max,
+                    mathRandom = Math.random;
+
+                function tinycolor(color, opts) {
+
+                    color = color ? color : '';
+                    opts = opts || {};
+
+                    // If input is already a tinycolor, return itself
+                    if (color instanceof tinycolor) {
+                        return color;
+                    }
+                    // If we are called as a function, call using new instead
+                    if (!(this instanceof tinycolor)) {
+                        return new tinycolor(color, opts);
+                    }
+
+                    var rgb = inputToRGB(color);
+                    this._originalInput = color, this._r = rgb.r, this._g = rgb.g, this._b = rgb.b, this._a = rgb.a, this._roundA = mathRound(100 * this._a) / 100, this._format = opts.format || rgb.format;
+                    this._gradientType = opts.gradientType;
+
+                    // Don't let the range of [0,255] come back in [0,1].
+                    // Potentially lose a little bit of precision here, but will fix issues where
+                    // .5 gets interpreted as half of the total, instead of half of 1
+                    // If it was supposed to be 128, this was already taken care of by `inputToRgb`
+                    if (this._r < 1) {
+                        this._r = mathRound(this._r);
+                    }
+                    if (this._g < 1) {
+                        this._g = mathRound(this._g);
+                    }
+                    if (this._b < 1) {
+                        this._b = mathRound(this._b);
+                    }
+
+                    this._ok = rgb.ok;
+                    this._tc_id = tinyCounter++;
+                }
+
+                tinycolor.prototype = {
+                    isDark: function isDark() {
+                        return this.getBrightness() < 128;
+                    },
+                    isLight: function isLight() {
+                        return !this.isDark();
+                    },
+                    isValid: function isValid() {
+                        return this._ok;
+                    },
+                    getOriginalInput: function getOriginalInput() {
+                        return this._originalInput;
+                    },
+                    getFormat: function getFormat() {
+                        return this._format;
+                    },
+                    getAlpha: function getAlpha() {
+                        return this._a;
+                    },
+                    getBrightness: function getBrightness() {
+                        //http://www.w3.org/TR/AERT#color-contrast
+                        var rgb = this.toRgb();
+                        return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+                    },
+                    getLuminance: function getLuminance() {
+                        //http://www.w3.org/TR/2008/REC-WCAG20-20081211/#relativeluminancedef
+                        var rgb = this.toRgb();
+                        var RsRGB, GsRGB, BsRGB, R, G, B;
+                        RsRGB = rgb.r / 255;
+                        GsRGB = rgb.g / 255;
+                        BsRGB = rgb.b / 255;
+
+                        if (RsRGB <= 0.03928) {
+                            R = RsRGB / 12.92;
+                        } else {
+                            R = Math.pow((RsRGB + 0.055) / 1.055, 2.4);
+                        }
+                        if (GsRGB <= 0.03928) {
+                            G = GsRGB / 12.92;
+                        } else {
+                            G = Math.pow((GsRGB + 0.055) / 1.055, 2.4);
+                        }
+                        if (BsRGB <= 0.03928) {
+                            B = BsRGB / 12.92;
+                        } else {
+                            B = Math.pow((BsRGB + 0.055) / 1.055, 2.4);
+                        }
+                        return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+                    },
+                    setAlpha: function setAlpha(value) {
+                        this._a = boundAlpha(value);
+                        this._roundA = mathRound(100 * this._a) / 100;
+                        return this;
+                    },
+                    toHsv: function toHsv() {
+                        var hsv = rgbToHsv(this._r, this._g, this._b);
+                        return { h: hsv.h * 360, s: hsv.s, v: hsv.v, a: this._a };
+                    },
+                    toHsvString: function toHsvString() {
+                        var hsv = rgbToHsv(this._r, this._g, this._b);
+                        var h = mathRound(hsv.h * 360),
+                            s = mathRound(hsv.s * 100),
+                            v = mathRound(hsv.v * 100);
+                        return this._a == 1 ? "hsv(" + h + ", " + s + "%, " + v + "%)" : "hsva(" + h + ", " + s + "%, " + v + "%, " + this._roundA + ")";
+                    },
+                    toHsl: function toHsl() {
+                        var hsl = rgbToHsl(this._r, this._g, this._b);
+                        return { h: hsl.h * 360, s: hsl.s, l: hsl.l, a: this._a };
+                    },
+                    toHslString: function toHslString() {
+                        var hsl = rgbToHsl(this._r, this._g, this._b);
+                        var h = mathRound(hsl.h * 360),
+                            s = mathRound(hsl.s * 100),
+                            l = mathRound(hsl.l * 100);
+                        return this._a == 1 ? "hsl(" + h + ", " + s + "%, " + l + "%)" : "hsla(" + h + ", " + s + "%, " + l + "%, " + this._roundA + ")";
+                    },
+                    toHex: function toHex(allow3Char) {
+                        return rgbToHex(this._r, this._g, this._b, allow3Char);
+                    },
+                    toHexString: function toHexString(allow3Char) {
+                        return '#' + this.toHex(allow3Char);
+                    },
+                    toHex8: function toHex8(allow4Char) {
+                        return rgbaToHex(this._r, this._g, this._b, this._a, allow4Char);
+                    },
+                    toHex8String: function toHex8String(allow4Char) {
+                        return '#' + this.toHex8(allow4Char);
+                    },
+                    toRgb: function toRgb() {
+                        return { r: mathRound(this._r), g: mathRound(this._g), b: mathRound(this._b), a: this._a };
+                    },
+                    toRgbString: function toRgbString() {
+                        return this._a == 1 ? "rgb(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ")" : "rgba(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ", " + this._roundA + ")";
+                    },
+                    toPercentageRgb: function toPercentageRgb() {
+                        return { r: mathRound(bound01(this._r, 255) * 100) + "%", g: mathRound(bound01(this._g, 255) * 100) + "%", b: mathRound(bound01(this._b, 255) * 100) + "%", a: this._a };
+                    },
+                    toPercentageRgbString: function toPercentageRgbString() {
+                        return this._a == 1 ? "rgb(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%)" : "rgba(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%, " + this._roundA + ")";
+                    },
+                    toName: function toName() {
+                        if (this._a === 0) {
+                            return "transparent";
+                        }
+
+                        if (this._a < 1) {
+                            return false;
+                        }
+
+                        return hexNames[rgbToHex(this._r, this._g, this._b, true)] || false;
+                    },
+                    toFilter: function toFilter(secondColor) {
+                        var hex8String = '#' + rgbaToArgbHex(this._r, this._g, this._b, this._a);
+                        var secondHex8String = hex8String;
+                        var gradientType = this._gradientType ? "GradientType = 1, " : "";
+
+                        if (secondColor) {
+                            var s = tinycolor(secondColor);
+                            secondHex8String = '#' + rgbaToArgbHex(s._r, s._g, s._b, s._a);
+                        }
+
+                        return "progid:DXImageTransform.Microsoft.gradient(" + gradientType + "startColorstr=" + hex8String + ",endColorstr=" + secondHex8String + ")";
+                    },
+                    toString: function toString(format) {
+                        var formatSet = !!format;
+                        format = format || this._format;
+
+                        var formattedString = false;
+                        var hasAlpha = this._a < 1 && this._a >= 0;
+                        var needsAlphaFormat = !formatSet && hasAlpha && (format === "hex" || format === "hex6" || format === "hex3" || format === "hex4" || format === "hex8" || format === "name");
+
+                        if (needsAlphaFormat) {
+                            // Special case for "transparent", all other non-alpha formats
+                            // will return rgba when there is transparency.
+                            if (format === "name" && this._a === 0) {
+                                return this.toName();
+                            }
+                            return this.toRgbString();
+                        }
+                        if (format === "rgb") {
+                            formattedString = this.toRgbString();
+                        }
+                        if (format === "prgb") {
+                            formattedString = this.toPercentageRgbString();
+                        }
+                        if (format === "hex" || format === "hex6") {
+                            formattedString = this.toHexString();
+                        }
+                        if (format === "hex3") {
+                            formattedString = this.toHexString(true);
+                        }
+                        if (format === "hex4") {
+                            formattedString = this.toHex8String(true);
+                        }
+                        if (format === "hex8") {
+                            formattedString = this.toHex8String();
+                        }
+                        if (format === "name") {
+                            formattedString = this.toName();
+                        }
+                        if (format === "hsl") {
+                            formattedString = this.toHslString();
+                        }
+                        if (format === "hsv") {
+                            formattedString = this.toHsvString();
+                        }
+
+                        return formattedString || this.toHexString();
+                    },
+                    clone: function clone() {
+                        return tinycolor(this.toString());
+                    },
+
+                    _applyModification: function _applyModification(fn, args) {
+                        var color = fn.apply(null, [this].concat([].slice.call(args)));
+                        this._r = color._r;
+                        this._g = color._g;
+                        this._b = color._b;
+                        this.setAlpha(color._a);
+                        return this;
+                    },
+                    lighten: function lighten() {
+                        return this._applyModification(_lighten, arguments);
+                    },
+                    brighten: function brighten() {
+                        return this._applyModification(_brighten, arguments);
+                    },
+                    darken: function darken() {
+                        return this._applyModification(_darken, arguments);
+                    },
+                    desaturate: function desaturate() {
+                        return this._applyModification(_desaturate, arguments);
+                    },
+                    saturate: function saturate() {
+                        return this._applyModification(_saturate, arguments);
+                    },
+                    greyscale: function greyscale() {
+                        return this._applyModification(_greyscale, arguments);
+                    },
+                    spin: function spin() {
+                        return this._applyModification(_spin, arguments);
+                    },
+
+                    _applyCombination: function _applyCombination(fn, args) {
+                        return fn.apply(null, [this].concat([].slice.call(args)));
+                    },
+                    analogous: function analogous() {
+                        return this._applyCombination(_analogous, arguments);
+                    },
+                    complement: function complement() {
+                        return this._applyCombination(_complement, arguments);
+                    },
+                    monochromatic: function monochromatic() {
+                        return this._applyCombination(_monochromatic, arguments);
+                    },
+                    splitcomplement: function splitcomplement() {
+                        return this._applyCombination(_splitcomplement, arguments);
+                    },
+                    triad: function triad() {
+                        return this._applyCombination(_triad, arguments);
+                    },
+                    tetrad: function tetrad() {
+                        return this._applyCombination(_tetrad, arguments);
+                    }
+                };
+
+                // If input is an object, force 1 into "1.0" to handle ratios properly
+                // String input requires "1.0" as input, so 1 will be treated as 1
+                tinycolor.fromRatio = function (color, opts) {
+                    if ((typeof color === "undefined" ? "undefined" : _typeof2(color)) == "object") {
+                        var newColor = {};
+                        for (var i in color) {
+                            if (color.hasOwnProperty(i)) {
+                                if (i === "a") {
+                                    newColor[i] = color[i];
+                                } else {
+                                    newColor[i] = convertToPercentage(color[i]);
+                                }
+                            }
+                        }
+                        color = newColor;
+                    }
+
+                    return tinycolor(color, opts);
+                };
+
+                // Given a string or object, convert that input to RGB
+                // Possible string inputs:
+                //
+                //     "red"
+                //     "#f00" or "f00"
+                //     "#ff0000" or "ff0000"
+                //     "#ff000000" or "ff000000"
+                //     "rgb 255 0 0" or "rgb (255, 0, 0)"
+                //     "rgb 1.0 0 0" or "rgb (1, 0, 0)"
+                //     "rgba (255, 0, 0, 1)" or "rgba 255, 0, 0, 1"
+                //     "rgba (1.0, 0, 0, 1)" or "rgba 1.0, 0, 0, 1"
+                //     "hsl(0, 100%, 50%)" or "hsl 0 100% 50%"
+                //     "hsla(0, 100%, 50%, 1)" or "hsla 0 100% 50%, 1"
+                //     "hsv(0, 100%, 100%)" or "hsv 0 100% 100%"
+                //
+                function inputToRGB(color) {
+
+                    var rgb = { r: 0, g: 0, b: 0 };
+                    var a = 1;
+                    var s = null;
+                    var v = null;
+                    var l = null;
+                    var ok = false;
+                    var format = false;
+
+                    if (typeof color == "string") {
+                        color = stringInputToObject(color);
+                    }
+
+                    if ((typeof color === "undefined" ? "undefined" : _typeof2(color)) == "object") {
+                        if (isValidCSSUnit(color.r) && isValidCSSUnit(color.g) && isValidCSSUnit(color.b)) {
+                            rgb = rgbToRgb(color.r, color.g, color.b);
+                            ok = true;
+                            format = String(color.r).substr(-1) === "%" ? "prgb" : "rgb";
+                        } else if (isValidCSSUnit(color.h) && isValidCSSUnit(color.s) && isValidCSSUnit(color.v)) {
+                            s = convertToPercentage(color.s);
+                            v = convertToPercentage(color.v);
+                            rgb = hsvToRgb(color.h, s, v);
+                            ok = true;
+                            format = "hsv";
+                        } else if (isValidCSSUnit(color.h) && isValidCSSUnit(color.s) && isValidCSSUnit(color.l)) {
+                            s = convertToPercentage(color.s);
+                            l = convertToPercentage(color.l);
+                            rgb = hslToRgb(color.h, s, l);
+                            ok = true;
+                            format = "hsl";
+                        }
+
+                        if (color.hasOwnProperty("a")) {
+                            a = color.a;
+                        }
+                    }
+
+                    a = boundAlpha(a);
+
+                    return {
+                        ok: ok,
+                        format: color.format || format,
+                        r: mathMin(255, mathMax(rgb.r, 0)),
+                        g: mathMin(255, mathMax(rgb.g, 0)),
+                        b: mathMin(255, mathMax(rgb.b, 0)),
+                        a: a
+                    };
+                }
+
+                // Conversion Functions
+                // --------------------
+
+                // `rgbToHsl`, `rgbToHsv`, `hslToRgb`, `hsvToRgb` modified from:
+                // <http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript>
+
+                // `rgbToRgb`
+                // Handle bounds / percentage checking to conform to CSS color spec
+                // <http://www.w3.org/TR/css3-color/>
+                // *Assumes:* r, g, b in [0, 255] or [0, 1]
+                // *Returns:* { r, g, b } in [0, 255]
+                function rgbToRgb(r, g, b) {
+                    return {
+                        r: bound01(r, 255) * 255,
+                        g: bound01(g, 255) * 255,
+                        b: bound01(b, 255) * 255
+                    };
+                }
+
+                // `rgbToHsl`
+                // Converts an RGB color value to HSL.
+                // *Assumes:* r, g, and b are contained in [0, 255] or [0, 1]
+                // *Returns:* { h, s, l } in [0,1]
+                function rgbToHsl(r, g, b) {
+
+                    r = bound01(r, 255);
+                    g = bound01(g, 255);
+                    b = bound01(b, 255);
+
+                    var max = mathMax(r, g, b),
+                        min = mathMin(r, g, b);
+                    var h,
+                        s,
+                        l = (max + min) / 2;
+
+                    if (max == min) {
+                        h = s = 0; // achromatic
+                    } else {
+                        var d = max - min;
+                        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                        switch (max) {
+                            case r:
+                                h = (g - b) / d + (g < b ? 6 : 0);break;
+                            case g:
+                                h = (b - r) / d + 2;break;
+                            case b:
+                                h = (r - g) / d + 4;break;
+                        }
+
+                        h /= 6;
+                    }
+
+                    return { h: h, s: s, l: l };
+                }
+
+                // `hslToRgb`
+                // Converts an HSL color value to RGB.
+                // *Assumes:* h is contained in [0, 1] or [0, 360] and s and l are contained [0, 1] or [0, 100]
+                // *Returns:* { r, g, b } in the set [0, 255]
+                function hslToRgb(h, s, l) {
+                    var r, g, b;
+
+                    h = bound01(h, 360);
+                    s = bound01(s, 100);
+                    l = bound01(l, 100);
+
+                    function hue2rgb(p, q, t) {
+                        if (t < 0) t += 1;
+                        if (t > 1) t -= 1;
+                        if (t < 1 / 6) return p + (q - p) * 6 * t;
+                        if (t < 1 / 2) return q;
+                        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                        return p;
+                    }
+
+                    if (s === 0) {
+                        r = g = b = l; // achromatic
+                    } else {
+                        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                        var p = 2 * l - q;
+                        r = hue2rgb(p, q, h + 1 / 3);
+                        g = hue2rgb(p, q, h);
+                        b = hue2rgb(p, q, h - 1 / 3);
+                    }
+
+                    return { r: r * 255, g: g * 255, b: b * 255 };
+                }
+
+                // `rgbToHsv`
+                // Converts an RGB color value to HSV
+                // *Assumes:* r, g, and b are contained in the set [0, 255] or [0, 1]
+                // *Returns:* { h, s, v } in [0,1]
+                function rgbToHsv(r, g, b) {
+
+                    r = bound01(r, 255);
+                    g = bound01(g, 255);
+                    b = bound01(b, 255);
+
+                    var max = mathMax(r, g, b),
+                        min = mathMin(r, g, b);
+                    var h,
+                        s,
+                        v = max;
+
+                    var d = max - min;
+                    s = max === 0 ? 0 : d / max;
+
+                    if (max == min) {
+                        h = 0; // achromatic
+                    } else {
+                        switch (max) {
+                            case r:
+                                h = (g - b) / d + (g < b ? 6 : 0);break;
+                            case g:
+                                h = (b - r) / d + 2;break;
+                            case b:
+                                h = (r - g) / d + 4;break;
+                        }
+                        h /= 6;
+                    }
+                    return { h: h, s: s, v: v };
+                }
+
+                // `hsvToRgb`
+                // Converts an HSV color value to RGB.
+                // *Assumes:* h is contained in [0, 1] or [0, 360] and s and v are contained in [0, 1] or [0, 100]
+                // *Returns:* { r, g, b } in the set [0, 255]
+                function hsvToRgb(h, s, v) {
+
+                    h = bound01(h, 360) * 6;
+                    s = bound01(s, 100);
+                    v = bound01(v, 100);
+
+                    var i = Math.floor(h),
+                        f = h - i,
+                        p = v * (1 - s),
+                        q = v * (1 - f * s),
+                        t = v * (1 - (1 - f) * s),
+                        mod = i % 6,
+                        r = [v, q, p, p, t, v][mod],
+                        g = [t, v, v, q, p, p][mod],
+                        b = [p, p, t, v, v, q][mod];
+
+                    return { r: r * 255, g: g * 255, b: b * 255 };
+                }
+
+                // `rgbToHex`
+                // Converts an RGB color to hex
+                // Assumes r, g, and b are contained in the set [0, 255]
+                // Returns a 3 or 6 character hex
+                function rgbToHex(r, g, b, allow3Char) {
+
+                    var hex = [pad2(mathRound(r).toString(16)), pad2(mathRound(g).toString(16)), pad2(mathRound(b).toString(16))];
+
+                    // Return a 3 character hex if possible
+                    if (allow3Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1)) {
+                        return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0);
+                    }
+
+                    return hex.join("");
+                }
+
+                // `rgbaToHex`
+                // Converts an RGBA color plus alpha transparency to hex
+                // Assumes r, g, b are contained in the set [0, 255] and
+                // a in [0, 1]. Returns a 4 or 8 character rgba hex
+                function rgbaToHex(r, g, b, a, allow4Char) {
+
+                    var hex = [pad2(mathRound(r).toString(16)), pad2(mathRound(g).toString(16)), pad2(mathRound(b).toString(16)), pad2(convertDecimalToHex(a))];
+
+                    // Return a 4 character hex if possible
+                    if (allow4Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1) && hex[3].charAt(0) == hex[3].charAt(1)) {
+                        return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0) + hex[3].charAt(0);
+                    }
+
+                    return hex.join("");
+                }
+
+                // `rgbaToArgbHex`
+                // Converts an RGBA color to an ARGB Hex8 string
+                // Rarely used, but required for "toFilter()"
+                function rgbaToArgbHex(r, g, b, a) {
+
+                    var hex = [pad2(convertDecimalToHex(a)), pad2(mathRound(r).toString(16)), pad2(mathRound(g).toString(16)), pad2(mathRound(b).toString(16))];
+
+                    return hex.join("");
+                }
+
+                // `equals`
+                // Can be called with any tinycolor input
+                tinycolor.equals = function (color1, color2) {
+                    if (!color1 || !color2) {
+                        return false;
+                    }
+                    return tinycolor(color1).toRgbString() == tinycolor(color2).toRgbString();
+                };
+
+                tinycolor.random = function () {
+                    return tinycolor.fromRatio({
+                        r: mathRandom(),
+                        g: mathRandom(),
+                        b: mathRandom()
+                    });
+                };
+
+                // Modification Functions
+                // ----------------------
+                // Thanks to less.js for some of the basics here
+                // <https://github.com/cloudhead/less.js/blob/master/lib/less/functions.js>
+
+                function _desaturate(color, amount) {
+                    amount = amount === 0 ? 0 : amount || 10;
+                    var hsl = tinycolor(color).toHsl();
+                    hsl.s -= amount / 100;
+                    hsl.s = clamp01(hsl.s);
+                    return tinycolor(hsl);
+                }
+
+                function _saturate(color, amount) {
+                    amount = amount === 0 ? 0 : amount || 10;
+                    var hsl = tinycolor(color).toHsl();
+                    hsl.s += amount / 100;
+                    hsl.s = clamp01(hsl.s);
+                    return tinycolor(hsl);
+                }
+
+                function _greyscale(color) {
+                    return tinycolor(color).desaturate(100);
+                }
+
+                function _lighten(color, amount) {
+                    amount = amount === 0 ? 0 : amount || 10;
+                    var hsl = tinycolor(color).toHsl();
+                    hsl.l += amount / 100;
+                    hsl.l = clamp01(hsl.l);
+                    return tinycolor(hsl);
+                }
+
+                function _brighten(color, amount) {
+                    amount = amount === 0 ? 0 : amount || 10;
+                    var rgb = tinycolor(color).toRgb();
+                    rgb.r = mathMax(0, mathMin(255, rgb.r - mathRound(255 * -(amount / 100))));
+                    rgb.g = mathMax(0, mathMin(255, rgb.g - mathRound(255 * -(amount / 100))));
+                    rgb.b = mathMax(0, mathMin(255, rgb.b - mathRound(255 * -(amount / 100))));
+                    return tinycolor(rgb);
+                }
+
+                function _darken(color, amount) {
+                    amount = amount === 0 ? 0 : amount || 10;
+                    var hsl = tinycolor(color).toHsl();
+                    hsl.l -= amount / 100;
+                    hsl.l = clamp01(hsl.l);
+                    return tinycolor(hsl);
+                }
+
+                // Spin takes a positive or negative amount within [-360, 360] indicating the change of hue.
+                // Values outside of this range will be wrapped into this range.
+                function _spin(color, amount) {
+                    var hsl = tinycolor(color).toHsl();
+                    var hue = (hsl.h + amount) % 360;
+                    hsl.h = hue < 0 ? 360 + hue : hue;
+                    return tinycolor(hsl);
+                }
+
+                // Combination Functions
+                // ---------------------
+                // Thanks to jQuery xColor for some of the ideas behind these
+                // <https://github.com/infusion/jQuery-xcolor/blob/master/jquery.xcolor.js>
+
+                function _complement(color) {
+                    var hsl = tinycolor(color).toHsl();
+                    hsl.h = (hsl.h + 180) % 360;
+                    return tinycolor(hsl);
+                }
+
+                function _triad(color) {
+                    var hsl = tinycolor(color).toHsl();
+                    var h = hsl.h;
+                    return [tinycolor(color), tinycolor({ h: (h + 120) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 240) % 360, s: hsl.s, l: hsl.l })];
+                }
+
+                function _tetrad(color) {
+                    var hsl = tinycolor(color).toHsl();
+                    var h = hsl.h;
+                    return [tinycolor(color), tinycolor({ h: (h + 90) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 180) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 270) % 360, s: hsl.s, l: hsl.l })];
+                }
+
+                function _splitcomplement(color) {
+                    var hsl = tinycolor(color).toHsl();
+                    var h = hsl.h;
+                    return [tinycolor(color), tinycolor({ h: (h + 72) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 216) % 360, s: hsl.s, l: hsl.l })];
+                }
+
+                function _analogous(color, results, slices) {
+                    results = results || 6;
+                    slices = slices || 30;
+
+                    var hsl = tinycolor(color).toHsl();
+                    var part = 360 / slices;
+                    var ret = [tinycolor(color)];
+
+                    for (hsl.h = (hsl.h - (part * results >> 1) + 720) % 360; --results;) {
+                        hsl.h = (hsl.h + part) % 360;
+                        ret.push(tinycolor(hsl));
+                    }
+                    return ret;
+                }
+
+                function _monochromatic(color, results) {
+                    results = results || 6;
+                    var hsv = tinycolor(color).toHsv();
+                    var h = hsv.h,
+                        s = hsv.s,
+                        v = hsv.v;
+                    var ret = [];
+                    var modification = 1 / results;
+
+                    while (results--) {
+                        ret.push(tinycolor({ h: h, s: s, v: v }));
+                        v = (v + modification) % 1;
+                    }
+
+                    return ret;
+                }
+
+                // Utility Functions
+                // ---------------------
+
+                tinycolor.mix = function (color1, color2, amount) {
+                    amount = amount === 0 ? 0 : amount || 50;
+
+                    var rgb1 = tinycolor(color1).toRgb();
+                    var rgb2 = tinycolor(color2).toRgb();
+
+                    var p = amount / 100;
+
+                    var rgba = {
+                        r: (rgb2.r - rgb1.r) * p + rgb1.r,
+                        g: (rgb2.g - rgb1.g) * p + rgb1.g,
+                        b: (rgb2.b - rgb1.b) * p + rgb1.b,
+                        a: (rgb2.a - rgb1.a) * p + rgb1.a
+                    };
+
+                    return tinycolor(rgba);
+                };
+
+                // Readability Functions
+                // ---------------------
+                // <http://www.w3.org/TR/2008/REC-WCAG20-20081211/#contrast-ratiodef (WCAG Version 2)
+
+                // `contrast`
+                // Analyze the 2 colors and returns the color contrast defined by (WCAG Version 2)
+                tinycolor.readability = function (color1, color2) {
+                    var c1 = tinycolor(color1);
+                    var c2 = tinycolor(color2);
+                    return (Math.max(c1.getLuminance(), c2.getLuminance()) + 0.05) / (Math.min(c1.getLuminance(), c2.getLuminance()) + 0.05);
+                };
+
+                // `isReadable`
+                // Ensure that foreground and background color combinations meet WCAG2 guidelines.
+                // The third argument is an optional Object.
+                //      the 'level' property states 'AA' or 'AAA' - if missing or invalid, it defaults to 'AA';
+                //      the 'size' property states 'large' or 'small' - if missing or invalid, it defaults to 'small'.
+                // If the entire object is absent, isReadable defaults to {level:"AA",size:"small"}.
+
+                // *Example*
+                //    tinycolor.isReadable("#000", "#111") => false
+                //    tinycolor.isReadable("#000", "#111",{level:"AA",size:"large"}) => false
+                tinycolor.isReadable = function (color1, color2, wcag2) {
+                    var readability = tinycolor.readability(color1, color2);
+                    var wcag2Parms, out;
+
+                    out = false;
+
+                    wcag2Parms = validateWCAG2Parms(wcag2);
+                    switch (wcag2Parms.level + wcag2Parms.size) {
+                        case "AAsmall":
+                        case "AAAlarge":
+                            out = readability >= 4.5;
+                            break;
+                        case "AAlarge":
+                            out = readability >= 3;
+                            break;
+                        case "AAAsmall":
+                            out = readability >= 7;
+                            break;
+                    }
+                    return out;
+                };
+
+                // `mostReadable`
+                // Given a base color and a list of possible foreground or background
+                // colors for that base, returns the most readable color.
+                // Optionally returns Black or White if the most readable color is unreadable.
+                // *Example*
+                //    tinycolor.mostReadable(tinycolor.mostReadable("#123", ["#124", "#125"],{includeFallbackColors:false}).toHexString(); // "#112255"
+                //    tinycolor.mostReadable(tinycolor.mostReadable("#123", ["#124", "#125"],{includeFallbackColors:true}).toHexString();  // "#ffffff"
+                //    tinycolor.mostReadable("#a8015a", ["#faf3f3"],{includeFallbackColors:true,level:"AAA",size:"large"}).toHexString(); // "#faf3f3"
+                //    tinycolor.mostReadable("#a8015a", ["#faf3f3"],{includeFallbackColors:true,level:"AAA",size:"small"}).toHexString(); // "#ffffff"
+                tinycolor.mostReadable = function (baseColor, colorList, args) {
+                    var bestColor = null;
+                    var bestScore = 0;
+                    var readability;
+                    var includeFallbackColors, level, size;
+                    args = args || {};
+                    includeFallbackColors = args.includeFallbackColors;
+                    level = args.level;
+                    size = args.size;
+
+                    for (var i = 0; i < colorList.length; i++) {
+                        readability = tinycolor.readability(baseColor, colorList[i]);
+                        if (readability > bestScore) {
+                            bestScore = readability;
+                            bestColor = tinycolor(colorList[i]);
+                        }
+                    }
+
+                    if (tinycolor.isReadable(baseColor, bestColor, { "level": level, "size": size }) || !includeFallbackColors) {
+                        return bestColor;
+                    } else {
+                        args.includeFallbackColors = false;
+                        return tinycolor.mostReadable(baseColor, ["#fff", "#000"], args);
+                    }
+                };
+
+                // Big List of Colors
+                // ------------------
+                // <http://www.w3.org/TR/css3-color/#svg-color>
+                var names = tinycolor.names = {
+                    aliceblue: "f0f8ff",
+                    antiquewhite: "faebd7",
+                    aqua: "0ff",
+                    aquamarine: "7fffd4",
+                    azure: "f0ffff",
+                    beige: "f5f5dc",
+                    bisque: "ffe4c4",
+                    black: "000",
+                    blanchedalmond: "ffebcd",
+                    blue: "00f",
+                    blueviolet: "8a2be2",
+                    brown: "a52a2a",
+                    burlywood: "deb887",
+                    burntsienna: "ea7e5d",
+                    cadetblue: "5f9ea0",
+                    chartreuse: "7fff00",
+                    chocolate: "d2691e",
+                    coral: "ff7f50",
+                    cornflowerblue: "6495ed",
+                    cornsilk: "fff8dc",
+                    crimson: "dc143c",
+                    cyan: "0ff",
+                    darkblue: "00008b",
+                    darkcyan: "008b8b",
+                    darkgoldenrod: "b8860b",
+                    darkgray: "a9a9a9",
+                    darkgreen: "006400",
+                    darkgrey: "a9a9a9",
+                    darkkhaki: "bdb76b",
+                    darkmagenta: "8b008b",
+                    darkolivegreen: "556b2f",
+                    darkorange: "ff8c00",
+                    darkorchid: "9932cc",
+                    darkred: "8b0000",
+                    darksalmon: "e9967a",
+                    darkseagreen: "8fbc8f",
+                    darkslateblue: "483d8b",
+                    darkslategray: "2f4f4f",
+                    darkslategrey: "2f4f4f",
+                    darkturquoise: "00ced1",
+                    darkviolet: "9400d3",
+                    deeppink: "ff1493",
+                    deepskyblue: "00bfff",
+                    dimgray: "696969",
+                    dimgrey: "696969",
+                    dodgerblue: "1e90ff",
+                    firebrick: "b22222",
+                    floralwhite: "fffaf0",
+                    forestgreen: "228b22",
+                    fuchsia: "f0f",
+                    gainsboro: "dcdcdc",
+                    ghostwhite: "f8f8ff",
+                    gold: "ffd700",
+                    goldenrod: "daa520",
+                    gray: "808080",
+                    green: "008000",
+                    greenyellow: "adff2f",
+                    grey: "808080",
+                    honeydew: "f0fff0",
+                    hotpink: "ff69b4",
+                    indianred: "cd5c5c",
+                    indigo: "4b0082",
+                    ivory: "fffff0",
+                    khaki: "f0e68c",
+                    lavender: "e6e6fa",
+                    lavenderblush: "fff0f5",
+                    lawngreen: "7cfc00",
+                    lemonchiffon: "fffacd",
+                    lightblue: "add8e6",
+                    lightcoral: "f08080",
+                    lightcyan: "e0ffff",
+                    lightgoldenrodyellow: "fafad2",
+                    lightgray: "d3d3d3",
+                    lightgreen: "90ee90",
+                    lightgrey: "d3d3d3",
+                    lightpink: "ffb6c1",
+                    lightsalmon: "ffa07a",
+                    lightseagreen: "20b2aa",
+                    lightskyblue: "87cefa",
+                    lightslategray: "789",
+                    lightslategrey: "789",
+                    lightsteelblue: "b0c4de",
+                    lightyellow: "ffffe0",
+                    lime: "0f0",
+                    limegreen: "32cd32",
+                    linen: "faf0e6",
+                    magenta: "f0f",
+                    maroon: "800000",
+                    mediumaquamarine: "66cdaa",
+                    mediumblue: "0000cd",
+                    mediumorchid: "ba55d3",
+                    mediumpurple: "9370db",
+                    mediumseagreen: "3cb371",
+                    mediumslateblue: "7b68ee",
+                    mediumspringgreen: "00fa9a",
+                    mediumturquoise: "48d1cc",
+                    mediumvioletred: "c71585",
+                    midnightblue: "191970",
+                    mintcream: "f5fffa",
+                    mistyrose: "ffe4e1",
+                    moccasin: "ffe4b5",
+                    navajowhite: "ffdead",
+                    navy: "000080",
+                    oldlace: "fdf5e6",
+                    olive: "808000",
+                    olivedrab: "6b8e23",
+                    orange: "ffa500",
+                    orangered: "ff4500",
+                    orchid: "da70d6",
+                    palegoldenrod: "eee8aa",
+                    palegreen: "98fb98",
+                    paleturquoise: "afeeee",
+                    palevioletred: "db7093",
+                    papayawhip: "ffefd5",
+                    peachpuff: "ffdab9",
+                    peru: "cd853f",
+                    pink: "ffc0cb",
+                    plum: "dda0dd",
+                    powderblue: "b0e0e6",
+                    purple: "800080",
+                    rebeccapurple: "663399",
+                    red: "f00",
+                    rosybrown: "bc8f8f",
+                    royalblue: "4169e1",
+                    saddlebrown: "8b4513",
+                    salmon: "fa8072",
+                    sandybrown: "f4a460",
+                    seagreen: "2e8b57",
+                    seashell: "fff5ee",
+                    sienna: "a0522d",
+                    silver: "c0c0c0",
+                    skyblue: "87ceeb",
+                    slateblue: "6a5acd",
+                    slategray: "708090",
+                    slategrey: "708090",
+                    snow: "fffafa",
+                    springgreen: "00ff7f",
+                    steelblue: "4682b4",
+                    tan: "d2b48c",
+                    teal: "008080",
+                    thistle: "d8bfd8",
+                    tomato: "ff6347",
+                    turquoise: "40e0d0",
+                    violet: "ee82ee",
+                    wheat: "f5deb3",
+                    white: "fff",
+                    whitesmoke: "f5f5f5",
+                    yellow: "ff0",
+                    yellowgreen: "9acd32"
+                };
+
+                // Make it easy to access colors via `hexNames[hex]`
+                var hexNames = tinycolor.hexNames = flip(names);
+
+                // Utilities
+                // ---------
+
+                // `{ 'name1': 'val1' }` becomes `{ 'val1': 'name1' }`
+                function flip(o) {
+                    var flipped = {};
+                    for (var i in o) {
+                        if (o.hasOwnProperty(i)) {
+                            flipped[o[i]] = i;
+                        }
+                    }
+                    return flipped;
+                }
+
+                // Return a valid alpha value [0,1] with all invalid values being set to 1
+                function boundAlpha(a) {
+                    a = parseFloat(a);
+
+                    if (isNaN(a) || a < 0 || a > 1) {
+                        a = 1;
+                    }
+
+                    return a;
+                }
+
+                // Take input from [0, n] and return it as [0, 1]
+                function bound01(n, max) {
+                    if (isOnePointZero(n)) {
+                        n = "100%";
+                    }
+
+                    var processPercent = isPercentage(n);
+                    n = mathMin(max, mathMax(0, parseFloat(n)));
+
+                    // Automatically convert percentage into number
+                    if (processPercent) {
+                        n = parseInt(n * max, 10) / 100;
+                    }
+
+                    // Handle floating point rounding errors
+                    if (Math.abs(n - max) < 0.000001) {
+                        return 1;
+                    }
+
+                    // Convert into [0, 1] range if it isn't already
+                    return n % max / parseFloat(max);
+                }
+
+                // Force a number between 0 and 1
+                function clamp01(val) {
+                    return mathMin(1, mathMax(0, val));
+                }
+
+                // Parse a base-16 hex value into a base-10 integer
+                function parseIntFromHex(val) {
+                    return parseInt(val, 16);
+                }
+
+                // Need to handle 1.0 as 100%, since once it is a number, there is no difference between it and 1
+                // <http://stackoverflow.com/questions/7422072/javascript-how-to-detect-number-as-a-decimal-including-1-0>
+                function isOnePointZero(n) {
+                    return typeof n == "string" && n.indexOf('.') != -1 && parseFloat(n) === 1;
+                }
+
+                // Check to see if string passed in is a percentage
+                function isPercentage(n) {
+                    return typeof n === "string" && n.indexOf('%') != -1;
+                }
+
+                // Force a hex value to have 2 characters
+                function pad2(c) {
+                    return c.length == 1 ? '0' + c : '' + c;
+                }
+
+                // Replace a decimal with it's percentage value
+                function convertToPercentage(n) {
+                    if (n <= 1) {
+                        n = n * 100 + "%";
+                    }
+
+                    return n;
+                }
+
+                // Converts a decimal to a hex value
+                function convertDecimalToHex(d) {
+                    return Math.round(parseFloat(d) * 255).toString(16);
+                }
+                // Converts a hex value to a decimal
+                function convertHexToDecimal(h) {
+                    return parseIntFromHex(h) / 255;
+                }
+
+                var matchers = function () {
+
+                    // <http://www.w3.org/TR/css3-values/#integers>
+                    var CSS_INTEGER = "[-\\+]?\\d+%?";
+
+                    // <http://www.w3.org/TR/css3-values/#number-value>
+                    var CSS_NUMBER = "[-\\+]?\\d*\\.\\d+%?";
+
+                    // Allow positive/negative integer/number.  Don't capture the either/or, just the entire outcome.
+                    var CSS_UNIT = "(?:" + CSS_NUMBER + ")|(?:" + CSS_INTEGER + ")";
+
+                    // Actual matching.
+                    // Parentheses and commas are optional, but not required.
+                    // Whitespace can take the place of commas or opening paren
+                    var PERMISSIVE_MATCH3 = "[\\s|\\(]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")\\s*\\)?";
+                    var PERMISSIVE_MATCH4 = "[\\s|\\(]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")\\s*\\)?";
+
+                    return {
+                        CSS_UNIT: new RegExp(CSS_UNIT),
+                        rgb: new RegExp("rgb" + PERMISSIVE_MATCH3),
+                        rgba: new RegExp("rgba" + PERMISSIVE_MATCH4),
+                        hsl: new RegExp("hsl" + PERMISSIVE_MATCH3),
+                        hsla: new RegExp("hsla" + PERMISSIVE_MATCH4),
+                        hsv: new RegExp("hsv" + PERMISSIVE_MATCH3),
+                        hsva: new RegExp("hsva" + PERMISSIVE_MATCH4),
+                        hex3: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
+                        hex6: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/,
+                        hex4: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
+                        hex8: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/
+                    };
+                }();
+
+                // `isValidCSSUnit`
+                // Take in a single string / number and check to see if it looks like a CSS unit
+                // (see `matchers` above for definition).
+                function isValidCSSUnit(color) {
+                    return !!matchers.CSS_UNIT.exec(color);
+                }
+
+                // `stringInputToObject`
+                // Permissive string parsing.  Take in a number of formats, and output an object
+                // based on detected format.  Returns `{ r, g, b }` or `{ h, s, l }` or `{ h, s, v}`
+                function stringInputToObject(color) {
+
+                    color = color.replace(trimLeft, '').replace(trimRight, '').toLowerCase();
+                    var named = false;
+                    if (names[color]) {
+                        color = names[color];
+                        named = true;
+                    } else if (color == 'transparent') {
+                        return { r: 0, g: 0, b: 0, a: 0, format: "name" };
+                    }
+
+                    // Try to match string input using regular expressions.
+                    // Keep most of the number bounding out of this function - don't worry about [0,1] or [0,100] or [0,360]
+                    // Just return an object and let the conversion functions handle that.
+                    // This way the result will be the same whether the tinycolor is initialized with string or object.
+                    var match;
+                    if (match = matchers.rgb.exec(color)) {
+                        return { r: match[1], g: match[2], b: match[3] };
+                    }
+                    if (match = matchers.rgba.exec(color)) {
+                        return { r: match[1], g: match[2], b: match[3], a: match[4] };
+                    }
+                    if (match = matchers.hsl.exec(color)) {
+                        return { h: match[1], s: match[2], l: match[3] };
+                    }
+                    if (match = matchers.hsla.exec(color)) {
+                        return { h: match[1], s: match[2], l: match[3], a: match[4] };
+                    }
+                    if (match = matchers.hsv.exec(color)) {
+                        return { h: match[1], s: match[2], v: match[3] };
+                    }
+                    if (match = matchers.hsva.exec(color)) {
+                        return { h: match[1], s: match[2], v: match[3], a: match[4] };
+                    }
+                    if (match = matchers.hex8.exec(color)) {
+                        return {
+                            r: parseIntFromHex(match[1]),
+                            g: parseIntFromHex(match[2]),
+                            b: parseIntFromHex(match[3]),
+                            a: convertHexToDecimal(match[4]),
+                            format: named ? "name" : "hex8"
+                        };
+                    }
+                    if (match = matchers.hex6.exec(color)) {
+                        return {
+                            r: parseIntFromHex(match[1]),
+                            g: parseIntFromHex(match[2]),
+                            b: parseIntFromHex(match[3]),
+                            format: named ? "name" : "hex"
+                        };
+                    }
+                    if (match = matchers.hex4.exec(color)) {
+                        return {
+                            r: parseIntFromHex(match[1] + '' + match[1]),
+                            g: parseIntFromHex(match[2] + '' + match[2]),
+                            b: parseIntFromHex(match[3] + '' + match[3]),
+                            a: convertHexToDecimal(match[4] + '' + match[4]),
+                            format: named ? "name" : "hex8"
+                        };
+                    }
+                    if (match = matchers.hex3.exec(color)) {
+                        return {
+                            r: parseIntFromHex(match[1] + '' + match[1]),
+                            g: parseIntFromHex(match[2] + '' + match[2]),
+                            b: parseIntFromHex(match[3] + '' + match[3]),
+                            format: named ? "name" : "hex"
+                        };
+                    }
+
+                    return false;
+                }
+
+                function validateWCAG2Parms(parms) {
+                    // return valid WCAG2 parms for isReadable.
+                    // If input parms are invalid, return {"level":"AA", "size":"small"}
+                    var level, size;
+                    parms = parms || { "level": "AA", "size": "small" };
+                    level = (parms.level || "AA").toUpperCase();
+                    size = (parms.size || "small").toLowerCase();
+                    if (level !== "AA" && level !== "AAA") {
+                        level = "AA";
+                    }
+                    if (size !== "small" && size !== "large") {
+                        size = "small";
+                    }
+                    return { "level": level, "size": size };
+                }
+
+                // Node: Export function
+                if (typeof module !== "undefined" && module.exports) {
+                    module.exports = tinycolor;
+                }
+                // AMD/requirejs: Define the module
+                else if (typeof define === 'function' && define.amd) {
+                        define(function () {
+                            return tinycolor;
+                        });
+                    }
+                    // Browser: Expose to window
+                    else {
+                            window.tinycolor = tinycolor;
+                        }
+            })(Math);
+        }, {}], 11: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -2282,10 +3464,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             var _es6Mixins2 = _interopRequireDefault(_es6Mixins);
 
             var _helper = require('../util/helper');
-
-            var _tinycolor = require('../util/tinycolor');
-
-            var _tinycolor2 = _interopRequireDefault(_tinycolor);
 
             var _randomColor = require('../util/randomColor');
 
@@ -2367,6 +3545,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 }subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } });if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
             }
 
+            var tinycolor = require("tinycolor2");
             // Bar legend's default config
             var WX_BAR_LEGEND_DEFAULT_CONFIG = {
                 borderWidth: 1,
@@ -2431,6 +3610,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             };
 
             var WX_BAR_ITEM_DEFAULT_CONFIG = {
+                showItem: true,
+                // format: // title format function
                 //borderWidth: 1,
                 //fillArea: true,
                 //fillAlpha: 0.5,
@@ -2480,33 +3661,46 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                     var _this = _possibleConstructorReturn(this, (WxBar.__proto__ || Object.getPrototypeOf(WxBar)).call(this, id, config));
 
-                    _this.__drawBar = function (point, percent, legend, stacked, hasNeg) {
+                    _this.__drawBar = function (p, percent, box, legend, stacked, hasNeg, setBarItem) {
                         var ctx = _this.ctx;
-                        var display = legend.display,
-                            borderWidth = legend.borderWidth,
-                            fillStyle = legend.fillStyle,
-                            strokeStyle = legend.strokeStyle,
-                            fillArea = legend.fillArea,
-                            fillAlpha = legend.fillAlpha;
-
                         var px = void 0,
                             py = void 0,
                             width = void 0,
                             height = void 0;
-                        if (!point) {
+
+                        var value = p.value,
+                            data = p.data,
+                            point = p.point,
+                            index = p.index;
+                        var borderWidth = legend.borderWidth,
+                            fillStyle = legend.fillStyle,
+                            strokeStyle = legend.strokeStyle,
+                            fillArea = legend.fillArea,
+                            fillAlpha = legend.fillAlpha;
+                        var showItem = data.showItem,
+                            format = data.format,
+                            label = data.label;
+
+                        if (!p || !p.point) {
                             return { px: px, py: py, width: width, height: height };
                         }
 
+                        var _p$point = p.point,
+                            pointX = _p$point.x,
+                            pointY = _p$point.y,
+                            barWidth = _p$point.barWidth,
+                            barHeight = _p$point.barHeight;
+
                         if (stacked && hasNeg) {
-                            width = point.barWidth;
-                            height = point.barHeight * percent;
-                            px = point.x;
-                            py = point.y + point.barHeight / 2 - height / 2;
+                            width = barWidth;
+                            height = barHeight * percent;
+                            px = pointX;
+                            py = pointY + barHeight / 2 - height / 2;
                         } else {
-                            px = point.x;
-                            width = point.barWidth;
-                            height = point.barHeight * percent;
-                            py = point.y + point.barHeight * (1 - percent);
+                            px = pointX;
+                            width = barWidth;
+                            height = barHeight * percent;
+                            py = pointY + barHeight * (1 - percent);
                         }
 
                         ctx.save();
@@ -2534,6 +3728,32 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 ctx.lineTo(px + width, py + height);
                             }
                             ctx.stroke();
+                        }
+
+                        // Show bar item
+                        if (!!setBarItem && !!showItem && !stacked) {
+                            var curFillStyle = ctx.fillStyle;
+                            ctx.textBaseline = "bottom";
+                            ctx.fillStyle = tinycolor(curFillStyle).darken(15).toString();
+                            ctx.fillStyle = curFillStyle;
+
+                            var barItem = _helper.is.Function(format) ? format.call(_this, label, value, index) : p.value + '';
+
+                            var boxX = box.x,
+                                boxY = box.y;
+
+                            var itemX = px + barWidth / 2 - ctx.measureText(barItem).width / 2,
+                                itemY = py - ctx.fontSize / 4;
+
+                            // Check box's X,Y
+                            if (itemX < box.x) {
+                                itemX = box.x;
+                            }
+                            if (itemY < box.y) {
+                                itemY = box.y;
+                            }
+
+                            ctx.fillText(barItem, itemX, itemY);
                         }
 
                         ctx.draw();
@@ -2665,7 +3885,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                         me.legends = me.legends.map(function (legend, index) {
                             if (!legend.strokeStyle) {
-                                legend.strokeStyle = legend.borderColor || (0, _tinycolor2.default)(rColors[index]).darken(10).toString();
+                                legend.strokeStyle = legend.borderColor || tinycolor(rColors[index]).darken(10).toString();
                             }
 
                             return (0, _helper.extend)(true, {
@@ -2676,14 +3896,16 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         wxLayout.addBox(me.legend.box);
 
                         // Thirdly, draw scale
-                        me._drawScale();
+                        me._drawScale(wxLayout);
 
+                        box = wxLayout.adjustBox();
                         // Calculate bar ruler
                         me.barRuler = me.calculateBarRuler();
                         // Finally, draw bar
                         var hasNeg = false;
                         var barConfigs = me.legends.map(function (legend, legendIndex) {
                             var config = {
+                                box: box,
                                 legend: legend
                             };
                             var key = legend.key;
@@ -2692,7 +3914,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 return {
                                     value: data[key],
                                     data: data,
-                                    point: me.calculateBarRect(index, legendIndex)
+                                    point: me.calculateBarRect(index, legendIndex),
+                                    index: index
                                 };
                             });
                             return config;
@@ -2759,7 +3982,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             animateOpt = me.chartConfig.animateOptions,
                             ctx = me.ctx;
 
-                        var legend = barData.legend,
+                        var box = barData.box,
+                            legend = barData.legend,
                             dataset = barData.dataset;
                         var display = legend.display,
                             borderWidth = legend.borderWidth,
@@ -2779,9 +4003,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                         return function (t, lastData, toNext) {
                             var dataIndex = Math.floor(t / categoryTicks);
-
-                            var _ref = dataIndex < dataLen ? dataset[dataIndex] : dataset[dataLen - 1],
-                                point = _ref.point;
+                            var currData = dataIndex < dataLen ? dataset[dataIndex] : dataset[dataLen - 1];
+                            var point = currData.point;
 
                             var percent = t % categoryTicks / categoryTicks;
 
@@ -2796,15 +4019,22 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                                 if (lastDataIndex < dataLen && lastx) {
                                     ctx.save();
-                                    ctx.beginPath();
                                     // TODO: optimize clear check!!
-                                    ctx.lineWidth = borderWidth;
-                                    ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
-                                    ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
-                                    ctx.fillRect(lastx, lasty, lastWidth, lastHeight);
+                                    if (backgroundColor) {
+                                        ctx.beginPath();
+                                        ctx.lineWidth = borderWidth;
+                                        ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+                                        ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+                                        ctx.fillRect(lastx, lasty, lastWidth, lastHeight);
+                                    } else {
+                                        ctx.clearRect(lastx, lasty, lastWidth, lastHeight);
+                                    }
                                     if (borderWidth) {
                                         ctx.beginPath();
-                                        if (stacked && hasNeg && borderWidth) {
+                                        ctx.lineWidth = borderWidth + 0.5;
+                                        ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+                                        ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+                                        if (stacked && hasNeg) {
                                             ctx.rect(lastx, lasty, lastWidth, lastHeight);
                                         } else {
                                             ctx.moveTo(lastx, lasty + lastHeight);
@@ -2814,17 +4044,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                         }
                                         ctx.stroke();
                                     }
-
                                     ctx.draw();
                                     ctx.restore();
                                 }
 
                                 if (lastDataIndex !== dataIndex && !!lastPercent) {
                                     // End the lasted bar
-                                    var _ref2 = lastDataIndex < dataLen ? dataset[lastDataIndex] : dataset[dataLen - 1],
-                                        lastPoint = _ref2.point;
-
-                                    me.__drawBar(lastPoint, 1, legend, stacked, hasNeg);
+                                    var _lastData = lastDataIndex < dataLen ? dataset[lastDataIndex] : dataset[dataLen - 1];
+                                    me.__drawBar(_lastData, 1, box, legend, stacked, hasNeg, true);
                                 }
                             }
 
@@ -2833,7 +4060,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 width = void 0,
                                 height = void 0;
                             if (dataIndex < dataLen && (!!percent || !point)) {
-                                var _me$__drawBar = me.__drawBar(point, percent, legend, stacked, hasNeg);
+                                var _me$__drawBar = me.__drawBar(currData, percent, box, legend, stacked, hasNeg);
 
                                 px = _me$__drawBar.px;
                                 py = _me$__drawBar.py;
@@ -2858,7 +4085,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var me = this,
                             stacked = me.chartConfig.stacked,
                             ctx = me.ctx;
-                        var legend = barData.legend,
+                        var box = barData.box,
+                            legend = barData.legend,
                             dataset = barData.dataset;
                         var display = legend.display,
                             borderWidth = legend.borderWidth,
@@ -2872,15 +4100,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         }
 
                         dataset.forEach(function (d) {
-                            var value = d.value,
-                                data = d.data,
-                                point = d.point;
-
-                            if (!point) {
-                                return;
-                            }
-
-                            me.__drawBar(point, 1, legend, stacked, hasNeg);
+                            me.__drawBar(d, 1, box, legend, stacked, hasNeg, true);
                             // if (stacked && hasNeg) {
                             //     ctx.beginPath();
                             //     ctx.rect(point.x ,point.y ,point.barWidth, point.barHeight);
@@ -3094,10 +4314,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                 }, {
                     key: '_drawScale',
-                    value: function _drawScale() {
+                    value: function _drawScale(wxLayout) {
                         var box = void 0,
-                            me = this,
-                            wxLayout = me.wxLayout;
+                            me = this;
 
                         box = wxLayout.adjustBox();
                         var xDatasets = me.xScaleAxisDatas(),
@@ -3215,7 +4434,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxBar;
-        }, { "../core/animation": 14, "../core/layout": 16, "../core/legend": 17, "../core/scale": 18, "../core/title": 19, "../scale/scale.category": 20, "../scale/scale.crosshelp": 21, "../scale/scale.liner": 22, "../scale/scale.stackhelp": 23, "../util/helper": 24, "../util/randomColor": 26, "../util/tinycolor": 27, "../util/wxCanvas": 29, "./wxChart": 13, "es6-mixins": 5 }], 11: [function (require, module, exports) {
+        }, { "../core/animation": 15, "../core/layout": 17, "../core/legend": 18, "../core/scale": 19, "../core/title": 20, "../scale/scale.category": 21, "../scale/scale.crosshelp": 22, "../scale/scale.liner": 23, "../scale/scale.stackhelp": 24, "../util/helper": 25, "../util/randomColor": 27, "../util/wxCanvas": 29, "./wxChart": 14, "es6-mixins": 5, "tinycolor2": 10 }], 12: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3350,6 +4569,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
              * legend: [Object] legend options
              */
             var WX_DOUGHNUT_ITEM_DEFAULT_CONFIG = {
+                showItem: true,
+                // format: // title format function
                 display: true,
                 fontSize: 11,
                 percentage: 100
@@ -3404,7 +4625,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 /**
                  * Update a datesets of chart and reDraw
                  * @param {Object[]} datasets
-                 * @param {string} [datasets[].hidden=false] - Display or not.
+                 * @param {string} [datasets[].display=true] - Display or not.
                  * @param {string} datasets[].label - The label text of an dataset.
                  * @param {function} datasets[].format - The label text format function.
                  * @param {number} datasets[].value - The value of an dataset.
@@ -3476,14 +4697,14 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             var legend = dataset.legend;
                             if (!legend || _helper.is.String(legend)) {
                                 legendDatasets.push({
-                                    hidden: dataset.hidden || false,
+                                    display: dataset.display,
                                     text: _helper.is.String(legend) ? legend : dataset.label,
                                     fillStyle: dataset.color,
                                     strokeStyle: rBorderColor[0]
                                 });
                             } else if (_helper.is.PureObject(legend)) {
                                 legendDatasets.push((0, _helper.extend)({
-                                    hidden: dataset.hidden
+                                    display: dataset.display
                                 }, legend));
                             }
                         });
@@ -3523,6 +4744,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             pointY = y + outerHeight / 2;
 
                         var opt = {
+                            box: box,
                             pointX: pointX,
                             pointY: pointY,
                             innerRadius: innerRadius,
@@ -3567,9 +4789,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             color = dataset.color,
                             borderColor = dataset.borderColor,
                             percentage = dataset.percentage,
-                            hidden = dataset.hidden;
+                            display = dataset.display;
 
-                        if (!!hidden) {
+                        if (!display) {
                             return endAngle;
                         }
 
@@ -3616,9 +4838,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             fontSize = dataset.fontSize,
                             percentage = dataset.percentage,
                             format = dataset.format,
-                            hidden = dataset.hidden;
+                            showItem = dataset.showItem,
+                            display = dataset.display;
 
-                        if (!!hidden) {
+                        if (!display || !showItem) {
                             return;
                         }
 
@@ -3695,7 +4918,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             ctx = me.ctx,
                             animateOpt = me.chartConfig.animateOptions,
                             backgroundColor = me.config.backgroundColor;
-                        var pointX = opt.pointX,
+                        var box = opt.box,
+                            pointX = opt.pointX,
                             pointY = opt.pointY,
                             totalValue = opt.totalValue,
                             rotation = opt.rotation,
@@ -3712,17 +4936,25 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             // Clear
                             ctx.save();
                             ctx.beginPath();
-                            ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
-                            ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
-                            ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
-                            ctx.fill();
-                            if (borderWidth) {
-                                ctx.beginPath();
-                                ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
-                                ctx.lineJoin = 'bevel';
-                                ctx.lineWidth = borderWidth;
-                                ctx.stroke();
+
+                            var bdWidth = borderWidth || 0;
+                            if (backgroundColor) {
+                                ctx.fillStyle = backgroundColor;
+                                ctx.strokeStyle = backgroundColor;
+                                ctx.fillRect(box.x, box.y, box.outerWidth, box.outerHeight);
+                            } else {
+                                ctx.clearRect(box.x, box.y, box.outerWidth, box.outerHeight);
                             }
+
+                            // ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+                            // ctx.fill();
+                            // if (borderWidth) {
+                            //     ctx.beginPath();
+                            //     ctx.arc(pointX, pointY, outerRadius, 0, totalAngle);
+                            //     ctx.lineJoin = 'bevel';
+                            //     ctx.lineWidth = borderWidth;
+                            //     ctx.stroke();
+                            // }
                             ctx.draw();
 
                             if (animateOpt.end === t) {
@@ -3834,7 +5066,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_wxChart2.default);
 
             exports.default = WxDoughnut;
-        }, { "../core/animation": 14, "../core/layout": 16, "../core/legend": 17, "../core/title": 19, "../util/helper": 24, "../util/randomColor": 26, "../util/wxCanvas": 29, "./wxChart": 13 }], 12: [function (require, module, exports) {
+        }, { "../core/animation": 15, "../core/layout": 17, "../core/legend": 18, "../core/title": 20, "../util/helper": 25, "../util/randomColor": 27, "../util/wxCanvas": 29, "./wxChart": 14 }], 13: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -3945,6 +5177,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             var Bezier = require('bezier-js');
+            var tinycolor = require("tinycolor2");
 
             // Line legend's default config
             var WX_LINE_LEGEND_DEFAULT_CONFIG = {
@@ -4004,6 +5237,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             };
 
             var WX_LINER_ITEM_DEFAULT_CONFIG = {
+                showItem: true,
+                // format: // title format function
                 pointRadius: 2,
                 pointStyle: 'circle', // Support triangle, rect and Image object
                 pointBorderWidth: 1,
@@ -4193,11 +5428,13 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         wxLayout.addBox(me.legend.box);
 
                         // Thirdly, draw scale
-                        me._drawScale();
+                        me._drawScale(wxLayout);
 
+                        box = wxLayout.adjustBox();
                         // Finally, draw line
                         var lineConfigs = me.legends.map(function (legend, legendIndex) {
                             var config = {
+                                box: box,
                                 legend: legend
                             };
                             var key = legend.key;
@@ -4234,7 +5471,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         });
 
                         lineConfigs.reduce(function (pre, curr) {
-                            me.drawLine(curr, pre, lineConfigs);
+                            me.drawLine(curr, pre);
                             return curr;
                         }, null);
 
@@ -4255,17 +5492,18 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     }
 
                     /**
+                     * /**
                      * Draw the scale of chart
                      *
+                     * @param wxLayout
                      * @private
                      */
 
                 }, {
                     key: '_drawScale',
-                    value: function _drawScale() {
+                    value: function _drawScale(wxLayout) {
                         var box = void 0,
-                            me = this,
-                            wxLayout = me.wxLayout;
+                            me = this;
 
                         box = wxLayout.adjustBox();
                         var xDatasets = me.xScaleAxisDatas(),
@@ -4324,21 +5562,21 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     /**
                      * Draw one line
                      * @param {Object} lineData - Line dataset
+                     * @param {Object} lineData.box - Draw box config
                      * @param {Object} lineData.legend - Legend's config
-                     * @param {Object[]} lineData[].value - Data of each line point
-                     * @param {Object[]} lineData[].data - The data object
-                     * @param {Object[]} lineData[].point - The point for rending.
-                     * @param {Object} preData - Previous line dataset
-                     * @param {Object} total - All datasets
+                     * @param {Object[]} lineData.dataset[].value - Data of each line point
+                     * @param {Object[]} lineData.dataset[].data - The data object
+                     * @param {Object[]} lineData.dataset[].point - The point for rending.
                      * @private
                      *
                      */
-                    value: function _drawLine(lineData, preData, total) {
+                    value: function _drawLine(lineData) {
                         var _this2 = this;
 
                         var me = this,
                             ctx = me.ctx;
-                        var legend = lineData.legend,
+                        var box = lineData.box,
+                            legend = lineData.legend,
                             dataset = lineData.dataset;
                         var display = legend.display,
                             spanGaps = legend.spanGaps,
@@ -4401,19 +5639,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         ctx.beginPath();
 
                         // Draw line
-                        var prePoint = void 0,
-                            pointStack = [];
+                        var prePoint = void 0;
                         dataset.forEach(function (d, index) {
-                            var value = d.value,
-                                point = d.point,
-                                data = d.data;
-                            var pointBorderColor = data.pointBorderColor,
-                                pointBorderWidth = data.pointBorderWidth,
-                                pointRadius = data.pointRadius,
-                                pointStyle = data.pointStyle,
-                                label = data.label;
-
-                            pointStack.push({ point: point, pointBorderColor: pointBorderColor, pointBorderWidth: pointBorderWidth, pointRadius: pointRadius, pointStyle: pointStyle });
+                            var point = d.point;
 
                             if (point) {
                                 _this2._lineToPoint(prePoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
@@ -4430,29 +5658,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         ctx.stroke();
 
                         // Draw Point
-                        pointStack.forEach(function (p) {
-                            var point = p.point,
-                                pointBorderColor = p.pointBorderColor,
-                                pointBorderWidth = p.pointBorderWidth,
-                                pointRadius = p.pointRadius,
-                                pointStyle = p.pointStyle;
-
-                            if (!point) {
-                                return;
-                            }
-
-                            ctx.beginPath();
-                            // TODO: pointStyle NOT IMPLEMENT, Only can render line
-                            if (pointRadius) {
-                                ctx.arc(point.x, point.y, pointRadius, 0, 2 * Math.PI);
-                                ctx.fill();
-                            }
-
-                            if (pointBorderWidth) {
-                                ctx.lineWidth = pointBorderWidth;
-                                ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
-                                ctx.stroke();
-                            }
+                        dataset.forEach(function (d, index) {
+                            me._drawPoint(ctx, box, d);
                         });
 
                         ctx.draw();
@@ -4464,19 +5671,19 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     /**
                      * Draw one line
                      * @param {Object} lineData - Line dataset
+                     * @param {Object} lineData.box - Draw box config
                      * @param {Object} lineData.legend - Legend's config
-                     * @param {Object[]} lineData[].value - Data of each line point
-                     * @param {Object[]} lineData[].data - The data object
-                     * @param {Object[]} lineData[].point - The point for rending.
+                     * @param {Object[]} lineData.dataset[].value - Data of each line point
+                     * @param {Object[]} lineData.dataset[].data - The data object
+                     * @param {Object[]} lineData.dataset[].point - The point for rending.
                      * @param {Object} preData - Previous line dataset
-                     * @param {Object} total - All datasets
                      * @private
                      *
                      */
 
                 }, {
                     key: 'drawLine',
-                    value: function drawLine(lineData, preData, total) {
+                    value: function drawLine(lineData, preData) {
                         var me = this,
                             animate = me.chartConfig.animate,
                             animateOpt = me.chartConfig.animateOptions;
@@ -4489,11 +5696,11 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             me.wxAnimation.pushActions(actionAnimation);
                             me.wxAnimation.pushActions(function (t) {
                                 if (animateOpt.end === t) {
-                                    me._drawLine(lineData, preData, total);
+                                    me._drawLine(lineData);
                                 }
                             });
                         } else {
-                            me._drawLine(lineData, preData, total);
+                            me._drawLine(lineData);
                         }
                     }
                     /**
@@ -4722,13 +5929,73 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     ctx.globalAlpha = 1;
                 };
 
+                this._drawPoint = function (ctx, box, p) {
+                    if (!p || !p.point) {
+                        return;
+                    }
+
+                    var _p$data = p.data,
+                        pointBorderColor = _p$data.pointBorderColor,
+                        pointBorderWidth = _p$data.pointBorderWidth,
+                        pointRadius = _p$data.pointRadius,
+                        pointStyle = _p$data.pointStyle,
+                        label = _p$data.label,
+                        showItem = _p$data.showItem,
+                        format = _p$data.format;
+                    var _p$point = p.point,
+                        pointX = _p$point.x,
+                        pointY = _p$point.y;
+
+                    // TODO: pointStyle NOT IMPLEMENT, Only can render line
+
+                    if (pointRadius) {
+                        ctx.beginPath();
+                        ctx.arc(pointX, pointY, pointRadius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+
+                    if (!!showItem) {
+                        var curFillStyle = ctx.fillStyle;
+                        ctx.textBaseline = "bottom";
+                        ctx.fillStyle = tinycolor(curFillStyle).darken(15).toString();
+                        ctx.fillStyle = curFillStyle;
+
+                        var barItem = _helper.is.Function(format) ? format.call(_this3, label, p.value, p.index) : p.value + '';
+                        var boxX = box.x,
+                            boxY = box.y;
+
+                        var itemX = pointX - ctx.measureText(barItem).width / 2,
+                            itemY = pointY - ctx.fontSize / 6 - (pointRadius || 0) - (pointBorderWidth || 0);
+
+                        // Check box's X,Y
+                        if (itemX < box.x) {
+                            itemX = box.x;
+                        }
+                        if (itemY < box.y) {
+                            itemY = pointX + ctx.fontSize / 6 + (pointRadius || 0) + (pointBorderWidth || 0);
+                            ctx.textBaseline = "top";
+                        }
+
+                        ctx.fillText(barItem, itemX, itemY);
+                    }
+
+                    if (pointBorderWidth) {
+                        ctx.beginPath();
+                        ctx.arc(pointX, pointY, pointRadius, 0, 2 * Math.PI);
+                        ctx.lineWidth = pointBorderWidth;
+                        ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
+                        ctx.stroke();
+                    }
+                };
+
                 this._getAnimationDrawLine = function (lineData, preData) {
                     var me = _this3,
                         animate = me.chartConfig.animate,
                         animateOpt = me.chartConfig.animateOptions,
                         ctx = me.ctx;
 
-                    var legend = lineData.legend,
+                    var box = lineData.box,
+                        legend = lineData.legend,
                         dataset = lineData.dataset;
                     var display = legend.display,
                         spanGaps = legend.spanGaps,
@@ -4811,27 +6078,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         }
 
                         if (pret == 0 && pre && pre.point) {
-                            var _pre$data = pre.data,
-                                pointBorderColor = _pre$data.pointBorderColor,
-                                pointBorderWidth = _pre$data.pointBorderWidth,
-                                pointRadius = _pre$data.pointRadius,
-                                pointStyle = _pre$data.pointStyle,
-                                label = _pre$data.label;
-                            // TODO: pointStyle NOT IMPLEMENT, Only can render line
-
-                            if (pointRadius) {
-                                ctx.beginPath();
-                                ctx.arc(pre.point.x, pre.point.y, pointRadius, 0, 2 * Math.PI);
-                                ctx.fill();
-                            }
-
-                            if (pointBorderWidth) {
-                                ctx.beginPath();
-                                ctx.arc(pre.point.x, pre.point.y, pointRadius, 0, 2 * Math.PI);
-                                ctx.lineWidth = pointBorderWidth;
-                                ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
-                                ctx.stroke();
-                            }
+                            me._drawPoint(ctx, box, (0, _helper.extend)({}, pre, { showItem: false }));
                         }
 
                         ctx.draw();
@@ -4848,7 +6095,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             };
 
             exports.default = WxLiner;
-        }, { "../core/animation": 14, "../core/layout": 16, "../core/legend": 17, "../core/scale": 18, "../core/title": 19, "../scale/scale.category": 20, "../scale/scale.crosshelp": 21, "../scale/scale.liner": 22, "../scale/scale.stackhelp": 23, "../util/helper": 24, "../util/randomColor": 26, "../util/wxCanvas": 29, "./wxChart": 13, "bezier-js": 1, "es6-mixins": 5 }], 13: [function (require, module, exports) {
+        }, { "../core/animation": 15, "../core/layout": 17, "../core/legend": 18, "../core/scale": 19, "../core/title": 20, "../scale/scale.category": 21, "../scale/scale.crosshelp": 22, "../scale/scale.liner": 23, "../scale/scale.stackhelp": 24, "../util/helper": 25, "../util/randomColor": 27, "../util/wxCanvas": 29, "./wxChart": 14, "bezier-js": 1, "es6-mixins": 5, "tinycolor2": 10 }], 14: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -5147,7 +6394,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxChart;
-        }, { "../core/layout": 16, "../util/helper": 24, "../util/wxCanvas": 29, "es6-mixins": 5, "mitt": 7 }], 14: [function (require, module, exports) {
+        }, { "../core/layout": 17, "../util/helper": 25, "../util/wxCanvas": 29, "es6-mixins": 5, "mitt": 7 }], 15: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -5426,7 +6673,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxAnimation;
-        }, { "../util/helper": 24, "../util/tweezer": 28, "es6-mixins": 5, "ez.js": 6, "mitt": 7 }], 15: [function (require, module, exports) {
+        }, { "../util/helper": 25, "../util/tweezer": 28, "es6-mixins": 5, "ez.js": 6, "mitt": 7 }], 16: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -5667,7 +6914,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxBaseComponent;
-        }, { "../charts/wxChart": 13, "../util/helper": 24, "../util/wxCanvas": 29, "./layout": 16 }], 16: [function (require, module, exports) {
+        }, { "../charts/wxChart": 14, "../util/helper": 25, "../util/wxCanvas": 29, "./layout": 17 }], 17: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -5973,7 +7220,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxLayout;
-        }, { "../util/helper": 24, "./base": 15 }], 17: [function (require, module, exports) {
+        }, { "../util/helper": 25, "./base": 16 }], 18: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -6360,7 +7607,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxLegend;
-        }, { "../util/helper": 24, "./base": 15, "./layout": 16 }], 18: [function (require, module, exports) {
+        }, { "../util/helper": 25, "./base": 16, "./layout": 17 }], 19: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -6991,7 +8238,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_base2.default);
 
             exports.default = WxScale;
-        }, { "../util/helper": 24, "../util/wxCanvas": 29, "./base": 15, "./layout": 16 }], 19: [function (require, module, exports) {
+        }, { "../util/helper": 25, "../util/wxCanvas": 29, "./base": 16, "./layout": 17 }], 20: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -7165,7 +8412,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
             exports.default = WxTitle;
             ;
-        }, { "../util/helper": 24, "./base": 15, "./layout": 16 }], 20: [function (require, module, exports) {
+        }, { "../util/helper": 25, "./base": 16, "./layout": 17 }], 21: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -7267,7 +8514,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxCategoryScale;
-        }, { "../core/scale": 18, "../util/helper": 24 }], 21: [function (require, module, exports) {
+        }, { "../core/scale": 19, "../util/helper": 25 }], 22: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -7399,7 +8646,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxCrossScale;
-        }, { "../core/layout": 16, "../core/scale": 18, "../util/helper": 24 }], 22: [function (require, module, exports) {
+        }, { "../core/layout": 17, "../core/scale": 19, "../util/helper": 25 }], 23: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -7591,7 +8838,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }(_scale2.default);
 
             exports.default = WxLinerScale;
-        }, { "../core/scale": 18, "../util/helper": 24 }], 23: [function (require, module, exports) {
+        }, { "../core/scale": 19, "../util/helper": 25 }], 24: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -7722,7 +8969,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = WxStackMixin;
-        }, {}], 24: [function (require, module, exports) {
+        }, {}], 25: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -8096,7 +9343,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     canvas.style.width = width + 'px';
                 }
             }
-        }, {}], 25: [function (require, module, exports) {
+        }, {}], 26: [function (require, module, exports) {
             (function (global) {
                 /* global module, wx, getApp, window: false, global:false, document: false */
                 'use strict';
@@ -8188,7 +9435,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     root.cancelAnimationFrame = caf;
                 };
             }).call(this, typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {});
-        }, { "../util/helper": 24, "performance-now": 8 }], 26: [function (require, module, exports) {
+        }, { "../util/helper": 25, "performance-now": 8 }], 27: [function (require, module, exports) {
             'use strict';
 
             Object.defineProperty(exports, "__esModule", {
@@ -8585,1196 +9832,6 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }
 
             exports.default = randomColor;
-        }, {}], 27: [function (require, module, exports) {
-            "use strict";
-
-            Object.defineProperty(exports, "__esModule", {
-                value: true
-            });
-
-            var _typeof = typeof Symbol === "function" && _typeof2(Symbol.iterator) === "symbol" ? function (obj) {
-                return typeof obj === "undefined" ? "undefined" : _typeof2(obj);
-            } : function (obj) {
-                return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj === "undefined" ? "undefined" : _typeof2(obj);
-            };
-
-            // TinyColor v1.4.1
-            // https://github.com/bgrins/TinyColor
-            // Brian Grinstead, MIT License
-
-
-            var trimLeft = /^\s+/,
-                trimRight = /\s+$/,
-                tinyCounter = 0,
-                mathRound = Math.round,
-                mathMin = Math.min,
-                mathMax = Math.max,
-                mathRandom = Math.random;
-
-            function tinycolor(color, opts) {
-
-                color = color ? color : '';
-                opts = opts || {};
-
-                // If input is already a tinycolor, return itself
-                if (color instanceof tinycolor) {
-                    return color;
-                }
-                // If we are called as a function, call using new instead
-                if (!(this instanceof tinycolor)) {
-                    return new tinycolor(color, opts);
-                }
-
-                var rgb = inputToRGB(color);
-                this._originalInput = color, this._r = rgb.r, this._g = rgb.g, this._b = rgb.b, this._a = rgb.a, this._roundA = mathRound(100 * this._a) / 100, this._format = opts.format || rgb.format;
-                this._gradientType = opts.gradientType;
-
-                // Don't let the range of [0,255] come back in [0,1].
-                // Potentially lose a little bit of precision here, but will fix issues where
-                // .5 gets interpreted as half of the total, instead of half of 1
-                // If it was supposed to be 128, this was already taken care of by `inputToRgb`
-                if (this._r < 1) {
-                    this._r = mathRound(this._r);
-                }
-                if (this._g < 1) {
-                    this._g = mathRound(this._g);
-                }
-                if (this._b < 1) {
-                    this._b = mathRound(this._b);
-                }
-
-                this._ok = rgb.ok;
-                this._tc_id = tinyCounter++;
-            }
-
-            tinycolor.prototype = {
-                isDark: function isDark() {
-                    return this.getBrightness() < 128;
-                },
-                isLight: function isLight() {
-                    return !this.isDark();
-                },
-                isValid: function isValid() {
-                    return this._ok;
-                },
-                getOriginalInput: function getOriginalInput() {
-                    return this._originalInput;
-                },
-                getFormat: function getFormat() {
-                    return this._format;
-                },
-                getAlpha: function getAlpha() {
-                    return this._a;
-                },
-                getBrightness: function getBrightness() {
-                    //http://www.w3.org/TR/AERT#color-contrast
-                    var rgb = this.toRgb();
-                    return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-                },
-                getLuminance: function getLuminance() {
-                    //http://www.w3.org/TR/2008/REC-WCAG20-20081211/#relativeluminancedef
-                    var rgb = this.toRgb();
-                    var RsRGB, GsRGB, BsRGB, R, G, B;
-                    RsRGB = rgb.r / 255;
-                    GsRGB = rgb.g / 255;
-                    BsRGB = rgb.b / 255;
-
-                    if (RsRGB <= 0.03928) {
-                        R = RsRGB / 12.92;
-                    } else {
-                        R = Math.pow((RsRGB + 0.055) / 1.055, 2.4);
-                    }
-                    if (GsRGB <= 0.03928) {
-                        G = GsRGB / 12.92;
-                    } else {
-                        G = Math.pow((GsRGB + 0.055) / 1.055, 2.4);
-                    }
-                    if (BsRGB <= 0.03928) {
-                        B = BsRGB / 12.92;
-                    } else {
-                        B = Math.pow((BsRGB + 0.055) / 1.055, 2.4);
-                    }
-                    return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-                },
-                setAlpha: function setAlpha(value) {
-                    this._a = boundAlpha(value);
-                    this._roundA = mathRound(100 * this._a) / 100;
-                    return this;
-                },
-                toHsv: function toHsv() {
-                    var hsv = rgbToHsv(this._r, this._g, this._b);
-                    return { h: hsv.h * 360, s: hsv.s, v: hsv.v, a: this._a };
-                },
-                toHsvString: function toHsvString() {
-                    var hsv = rgbToHsv(this._r, this._g, this._b);
-                    var h = mathRound(hsv.h * 360),
-                        s = mathRound(hsv.s * 100),
-                        v = mathRound(hsv.v * 100);
-                    return this._a == 1 ? "hsv(" + h + ", " + s + "%, " + v + "%)" : "hsva(" + h + ", " + s + "%, " + v + "%, " + this._roundA + ")";
-                },
-                toHsl: function toHsl() {
-                    var hsl = rgbToHsl(this._r, this._g, this._b);
-                    return { h: hsl.h * 360, s: hsl.s, l: hsl.l, a: this._a };
-                },
-                toHslString: function toHslString() {
-                    var hsl = rgbToHsl(this._r, this._g, this._b);
-                    var h = mathRound(hsl.h * 360),
-                        s = mathRound(hsl.s * 100),
-                        l = mathRound(hsl.l * 100);
-                    return this._a == 1 ? "hsl(" + h + ", " + s + "%, " + l + "%)" : "hsla(" + h + ", " + s + "%, " + l + "%, " + this._roundA + ")";
-                },
-                toHex: function toHex(allow3Char) {
-                    return rgbToHex(this._r, this._g, this._b, allow3Char);
-                },
-                toHexString: function toHexString(allow3Char) {
-                    return '#' + this.toHex(allow3Char);
-                },
-                toHex8: function toHex8(allow4Char) {
-                    return rgbaToHex(this._r, this._g, this._b, this._a, allow4Char);
-                },
-                toHex8String: function toHex8String(allow4Char) {
-                    return '#' + this.toHex8(allow4Char);
-                },
-                toRgb: function toRgb() {
-                    return { r: mathRound(this._r), g: mathRound(this._g), b: mathRound(this._b), a: this._a };
-                },
-                toRgbString: function toRgbString() {
-                    return this._a == 1 ? "rgb(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ")" : "rgba(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ", " + this._roundA + ")";
-                },
-                toPercentageRgb: function toPercentageRgb() {
-                    return {
-                        r: mathRound(bound01(this._r, 255) * 100) + "%",
-                        g: mathRound(bound01(this._g, 255) * 100) + "%",
-                        b: mathRound(bound01(this._b, 255) * 100) + "%",
-                        a: this._a
-                    };
-                },
-                toPercentageRgbString: function toPercentageRgbString() {
-                    return this._a == 1 ? "rgb(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%)" : "rgba(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%, " + this._roundA + ")";
-                },
-                toName: function toName() {
-                    if (this._a === 0) {
-                        return "transparent";
-                    }
-
-                    if (this._a < 1) {
-                        return false;
-                    }
-
-                    return hexNames[rgbToHex(this._r, this._g, this._b, true)] || false;
-                },
-                toFilter: function toFilter(secondColor) {
-                    var hex8String = '#' + rgbaToArgbHex(this._r, this._g, this._b, this._a);
-                    var secondHex8String = hex8String;
-                    var gradientType = this._gradientType ? "GradientType = 1, " : "";
-
-                    if (secondColor) {
-                        var s = tinycolor(secondColor);
-                        secondHex8String = '#' + rgbaToArgbHex(s._r, s._g, s._b, s._a);
-                    }
-
-                    return "progid:DXImageTransform.Microsoft.gradient(" + gradientType + "startColorstr=" + hex8String + ",endColorstr=" + secondHex8String + ")";
-                },
-                toString: function toString(format) {
-                    var formatSet = !!format;
-                    format = format || this._format;
-
-                    var formattedString = false;
-                    var hasAlpha = this._a < 1 && this._a >= 0;
-                    var needsAlphaFormat = !formatSet && hasAlpha && (format === "hex" || format === "hex6" || format === "hex3" || format === "hex4" || format === "hex8" || format === "name");
-
-                    if (needsAlphaFormat) {
-                        // Special case for "transparent", all other non-alpha formats
-                        // will return rgba when there is transparency.
-                        if (format === "name" && this._a === 0) {
-                            return this.toName();
-                        }
-                        return this.toRgbString();
-                    }
-                    if (format === "rgb") {
-                        formattedString = this.toRgbString();
-                    }
-                    if (format === "prgb") {
-                        formattedString = this.toPercentageRgbString();
-                    }
-                    if (format === "hex" || format === "hex6") {
-                        formattedString = this.toHexString();
-                    }
-                    if (format === "hex3") {
-                        formattedString = this.toHexString(true);
-                    }
-                    if (format === "hex4") {
-                        formattedString = this.toHex8String(true);
-                    }
-                    if (format === "hex8") {
-                        formattedString = this.toHex8String();
-                    }
-                    if (format === "name") {
-                        formattedString = this.toName();
-                    }
-                    if (format === "hsl") {
-                        formattedString = this.toHslString();
-                    }
-                    if (format === "hsv") {
-                        formattedString = this.toHsvString();
-                    }
-
-                    return formattedString || this.toHexString();
-                },
-                clone: function clone() {
-                    return tinycolor(this.toString());
-                },
-
-                _applyModification: function _applyModification(fn, args) {
-                    var color = fn.apply(null, [this].concat([].slice.call(args)));
-                    this._r = color._r;
-                    this._g = color._g;
-                    this._b = color._b;
-                    this.setAlpha(color._a);
-                    return this;
-                },
-                lighten: function lighten() {
-                    return this._applyModification(_lighten, arguments);
-                },
-                brighten: function brighten() {
-                    return this._applyModification(_brighten, arguments);
-                },
-                darken: function darken() {
-                    return this._applyModification(_darken, arguments);
-                },
-                desaturate: function desaturate() {
-                    return this._applyModification(_desaturate, arguments);
-                },
-                saturate: function saturate() {
-                    return this._applyModification(_saturate, arguments);
-                },
-                greyscale: function greyscale() {
-                    return this._applyModification(_greyscale, arguments);
-                },
-                spin: function spin() {
-                    return this._applyModification(_spin, arguments);
-                },
-
-                _applyCombination: function _applyCombination(fn, args) {
-                    return fn.apply(null, [this].concat([].slice.call(args)));
-                },
-                analogous: function analogous() {
-                    return this._applyCombination(_analogous, arguments);
-                },
-                complement: function complement() {
-                    return this._applyCombination(_complement, arguments);
-                },
-                monochromatic: function monochromatic() {
-                    return this._applyCombination(_monochromatic, arguments);
-                },
-                splitcomplement: function splitcomplement() {
-                    return this._applyCombination(_splitcomplement, arguments);
-                },
-                triad: function triad() {
-                    return this._applyCombination(_triad, arguments);
-                },
-                tetrad: function tetrad() {
-                    return this._applyCombination(_tetrad, arguments);
-                }
-            };
-
-            // If input is an object, force 1 into "1.0" to handle ratios properly
-            // String input requires "1.0" as input, so 1 will be treated as 1
-            tinycolor.fromRatio = function (color, opts) {
-                if ((typeof color === "undefined" ? "undefined" : _typeof(color)) == "object") {
-                    var newColor = {};
-                    for (var i in color) {
-                        if (color.hasOwnProperty(i)) {
-                            if (i === "a") {
-                                newColor[i] = color[i];
-                            } else {
-                                newColor[i] = convertToPercentage(color[i]);
-                            }
-                        }
-                    }
-                    color = newColor;
-                }
-
-                return tinycolor(color, opts);
-            };
-
-            // Given a string or object, convert that input to RGB
-            // Possible string inputs:
-            //
-            //     "red"
-            //     "#f00" or "f00"
-            //     "#ff0000" or "ff0000"
-            //     "#ff000000" or "ff000000"
-            //     "rgb 255 0 0" or "rgb (255, 0, 0)"
-            //     "rgb 1.0 0 0" or "rgb (1, 0, 0)"
-            //     "rgba (255, 0, 0, 1)" or "rgba 255, 0, 0, 1"
-            //     "rgba (1.0, 0, 0, 1)" or "rgba 1.0, 0, 0, 1"
-            //     "hsl(0, 100%, 50%)" or "hsl 0 100% 50%"
-            //     "hsla(0, 100%, 50%, 1)" or "hsla 0 100% 50%, 1"
-            //     "hsv(0, 100%, 100%)" or "hsv 0 100% 100%"
-            //
-            function inputToRGB(color) {
-
-                var rgb = { r: 0, g: 0, b: 0 };
-                var a = 1;
-                var s = null;
-                var v = null;
-                var l = null;
-                var ok = false;
-                var format = false;
-
-                if (typeof color == "string") {
-                    color = stringInputToObject(color);
-                }
-
-                if ((typeof color === "undefined" ? "undefined" : _typeof(color)) == "object") {
-                    if (isValidCSSUnit(color.r) && isValidCSSUnit(color.g) && isValidCSSUnit(color.b)) {
-                        rgb = rgbToRgb(color.r, color.g, color.b);
-                        ok = true;
-                        format = String(color.r).substr(-1) === "%" ? "prgb" : "rgb";
-                    } else if (isValidCSSUnit(color.h) && isValidCSSUnit(color.s) && isValidCSSUnit(color.v)) {
-                        s = convertToPercentage(color.s);
-                        v = convertToPercentage(color.v);
-                        rgb = hsvToRgb(color.h, s, v);
-                        ok = true;
-                        format = "hsv";
-                    } else if (isValidCSSUnit(color.h) && isValidCSSUnit(color.s) && isValidCSSUnit(color.l)) {
-                        s = convertToPercentage(color.s);
-                        l = convertToPercentage(color.l);
-                        rgb = hslToRgb(color.h, s, l);
-                        ok = true;
-                        format = "hsl";
-                    }
-
-                    if (color.hasOwnProperty("a")) {
-                        a = color.a;
-                    }
-                }
-
-                a = boundAlpha(a);
-
-                return {
-                    ok: ok,
-                    format: color.format || format,
-                    r: mathMin(255, mathMax(rgb.r, 0)),
-                    g: mathMin(255, mathMax(rgb.g, 0)),
-                    b: mathMin(255, mathMax(rgb.b, 0)),
-                    a: a
-                };
-            }
-
-            // Conversion Functions
-            // --------------------
-
-            // `rgbToHsl`, `rgbToHsv`, `hslToRgb`, `hsvToRgb` modified from:
-            // <http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript>
-
-            // `rgbToRgb`
-            // Handle bounds / percentage checking to conform to CSS color spec
-            // <http://www.w3.org/TR/css3-color/>
-            // *Assumes:* r, g, b in [0, 255] or [0, 1]
-            // *Returns:* { r, g, b } in [0, 255]
-            function rgbToRgb(r, g, b) {
-                return {
-                    r: bound01(r, 255) * 255,
-                    g: bound01(g, 255) * 255,
-                    b: bound01(b, 255) * 255
-                };
-            }
-
-            // `rgbToHsl`
-            // Converts an RGB color value to HSL.
-            // *Assumes:* r, g, and b are contained in [0, 255] or [0, 1]
-            // *Returns:* { h, s, l } in [0,1]
-            function rgbToHsl(r, g, b) {
-
-                r = bound01(r, 255);
-                g = bound01(g, 255);
-                b = bound01(b, 255);
-
-                var max = mathMax(r, g, b),
-                    min = mathMin(r, g, b);
-                var h,
-                    s,
-                    l = (max + min) / 2;
-
-                if (max == min) {
-                    h = s = 0; // achromatic
-                } else {
-                    var d = max - min;
-                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                    switch (max) {
-                        case r:
-                            h = (g - b) / d + (g < b ? 6 : 0);
-                            break;
-                        case g:
-                            h = (b - r) / d + 2;
-                            break;
-                        case b:
-                            h = (r - g) / d + 4;
-                            break;
-                    }
-
-                    h /= 6;
-                }
-
-                return { h: h, s: s, l: l };
-            }
-
-            // `hslToRgb`
-            // Converts an HSL color value to RGB.
-            // *Assumes:* h is contained in [0, 1] or [0, 360] and s and l are contained [0, 1] or [0, 100]
-            // *Returns:* { r, g, b } in the set [0, 255]
-            function hslToRgb(h, s, l) {
-                var r, g, b;
-
-                h = bound01(h, 360);
-                s = bound01(s, 100);
-                l = bound01(l, 100);
-
-                function hue2rgb(p, q, t) {
-                    if (t < 0) t += 1;
-                    if (t > 1) t -= 1;
-                    if (t < 1 / 6) return p + (q - p) * 6 * t;
-                    if (t < 1 / 2) return q;
-                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-                    return p;
-                }
-
-                if (s === 0) {
-                    r = g = b = l; // achromatic
-                } else {
-                    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                    var p = 2 * l - q;
-                    r = hue2rgb(p, q, h + 1 / 3);
-                    g = hue2rgb(p, q, h);
-                    b = hue2rgb(p, q, h - 1 / 3);
-                }
-
-                return { r: r * 255, g: g * 255, b: b * 255 };
-            }
-
-            // `rgbToHsv`
-            // Converts an RGB color value to HSV
-            // *Assumes:* r, g, and b are contained in the set [0, 255] or [0, 1]
-            // *Returns:* { h, s, v } in [0,1]
-            function rgbToHsv(r, g, b) {
-
-                r = bound01(r, 255);
-                g = bound01(g, 255);
-                b = bound01(b, 255);
-
-                var max = mathMax(r, g, b),
-                    min = mathMin(r, g, b);
-                var h,
-                    s,
-                    v = max;
-
-                var d = max - min;
-                s = max === 0 ? 0 : d / max;
-
-                if (max == min) {
-                    h = 0; // achromatic
-                } else {
-                    switch (max) {
-                        case r:
-                            h = (g - b) / d + (g < b ? 6 : 0);
-                            break;
-                        case g:
-                            h = (b - r) / d + 2;
-                            break;
-                        case b:
-                            h = (r - g) / d + 4;
-                            break;
-                    }
-                    h /= 6;
-                }
-                return { h: h, s: s, v: v };
-            }
-
-            // `hsvToRgb`
-            // Converts an HSV color value to RGB.
-            // *Assumes:* h is contained in [0, 1] or [0, 360] and s and v are contained in [0, 1] or [0, 100]
-            // *Returns:* { r, g, b } in the set [0, 255]
-            function hsvToRgb(h, s, v) {
-
-                h = bound01(h, 360) * 6;
-                s = bound01(s, 100);
-                v = bound01(v, 100);
-
-                var i = Math.floor(h),
-                    f = h - i,
-                    p = v * (1 - s),
-                    q = v * (1 - f * s),
-                    t = v * (1 - (1 - f) * s),
-                    mod = i % 6,
-                    r = [v, q, p, p, t, v][mod],
-                    g = [t, v, v, q, p, p][mod],
-                    b = [p, p, t, v, v, q][mod];
-
-                return { r: r * 255, g: g * 255, b: b * 255 };
-            }
-
-            // `rgbToHex`
-            // Converts an RGB color to hex
-            // Assumes r, g, and b are contained in the set [0, 255]
-            // Returns a 3 or 6 character hex
-            function rgbToHex(r, g, b, allow3Char) {
-
-                var hex = [pad2(mathRound(r).toString(16)), pad2(mathRound(g).toString(16)), pad2(mathRound(b).toString(16))];
-
-                // Return a 3 character hex if possible
-                if (allow3Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1)) {
-                    return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0);
-                }
-
-                return hex.join("");
-            }
-
-            // `rgbaToHex`
-            // Converts an RGBA color plus alpha transparency to hex
-            // Assumes r, g, b are contained in the set [0, 255] and
-            // a in [0, 1]. Returns a 4 or 8 character rgba hex
-            function rgbaToHex(r, g, b, a, allow4Char) {
-
-                var hex = [pad2(mathRound(r).toString(16)), pad2(mathRound(g).toString(16)), pad2(mathRound(b).toString(16)), pad2(convertDecimalToHex(a))];
-
-                // Return a 4 character hex if possible
-                if (allow4Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1) && hex[3].charAt(0) == hex[3].charAt(1)) {
-                    return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0) + hex[3].charAt(0);
-                }
-
-                return hex.join("");
-            }
-
-            // `rgbaToArgbHex`
-            // Converts an RGBA color to an ARGB Hex8 string
-            // Rarely used, but required for "toFilter()"
-            function rgbaToArgbHex(r, g, b, a) {
-
-                var hex = [pad2(convertDecimalToHex(a)), pad2(mathRound(r).toString(16)), pad2(mathRound(g).toString(16)), pad2(mathRound(b).toString(16))];
-
-                return hex.join("");
-            }
-
-            // `equals`
-            // Can be called with any tinycolor input
-            tinycolor.equals = function (color1, color2) {
-                if (!color1 || !color2) {
-                    return false;
-                }
-                return tinycolor(color1).toRgbString() == tinycolor(color2).toRgbString();
-            };
-
-            tinycolor.random = function () {
-                return tinycolor.fromRatio({
-                    r: mathRandom(),
-                    g: mathRandom(),
-                    b: mathRandom()
-                });
-            };
-
-            // Modification Functions
-            // ----------------------
-            // Thanks to less.js for some of the basics here
-            // <https://github.com/cloudhead/less.js/blob/master/lib/less/functions.js>
-
-            function _desaturate(color, amount) {
-                amount = amount === 0 ? 0 : amount || 10;
-                var hsl = tinycolor(color).toHsl();
-                hsl.s -= amount / 100;
-                hsl.s = clamp01(hsl.s);
-                return tinycolor(hsl);
-            }
-
-            function _saturate(color, amount) {
-                amount = amount === 0 ? 0 : amount || 10;
-                var hsl = tinycolor(color).toHsl();
-                hsl.s += amount / 100;
-                hsl.s = clamp01(hsl.s);
-                return tinycolor(hsl);
-            }
-
-            function _greyscale(color) {
-                return tinycolor(color).desaturate(100);
-            }
-
-            function _lighten(color, amount) {
-                amount = amount === 0 ? 0 : amount || 10;
-                var hsl = tinycolor(color).toHsl();
-                hsl.l += amount / 100;
-                hsl.l = clamp01(hsl.l);
-                return tinycolor(hsl);
-            }
-
-            function _brighten(color, amount) {
-                amount = amount === 0 ? 0 : amount || 10;
-                var rgb = tinycolor(color).toRgb();
-                rgb.r = mathMax(0, mathMin(255, rgb.r - mathRound(255 * -(amount / 100))));
-                rgb.g = mathMax(0, mathMin(255, rgb.g - mathRound(255 * -(amount / 100))));
-                rgb.b = mathMax(0, mathMin(255, rgb.b - mathRound(255 * -(amount / 100))));
-                return tinycolor(rgb);
-            }
-
-            function _darken(color, amount) {
-                amount = amount === 0 ? 0 : amount || 10;
-                var hsl = tinycolor(color).toHsl();
-                hsl.l -= amount / 100;
-                hsl.l = clamp01(hsl.l);
-                return tinycolor(hsl);
-            }
-
-            // Spin takes a positive or negative amount within [-360, 360] indicating the change of hue.
-            // Values outside of this range will be wrapped into this range.
-            function _spin(color, amount) {
-                var hsl = tinycolor(color).toHsl();
-                var hue = (hsl.h + amount) % 360;
-                hsl.h = hue < 0 ? 360 + hue : hue;
-                return tinycolor(hsl);
-            }
-
-            // Combination Functions
-            // ---------------------
-            // Thanks to jQuery xColor for some of the ideas behind these
-            // <https://github.com/infusion/jQuery-xcolor/blob/master/jquery.xcolor.js>
-
-            function _complement(color) {
-                var hsl = tinycolor(color).toHsl();
-                hsl.h = (hsl.h + 180) % 360;
-                return tinycolor(hsl);
-            }
-
-            function _triad(color) {
-                var hsl = tinycolor(color).toHsl();
-                var h = hsl.h;
-                return [tinycolor(color), tinycolor({ h: (h + 120) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 240) % 360, s: hsl.s, l: hsl.l })];
-            }
-
-            function _tetrad(color) {
-                var hsl = tinycolor(color).toHsl();
-                var h = hsl.h;
-                return [tinycolor(color), tinycolor({ h: (h + 90) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 180) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 270) % 360, s: hsl.s, l: hsl.l })];
-            }
-
-            function _splitcomplement(color) {
-                var hsl = tinycolor(color).toHsl();
-                var h = hsl.h;
-                return [tinycolor(color), tinycolor({ h: (h + 72) % 360, s: hsl.s, l: hsl.l }), tinycolor({ h: (h + 216) % 360, s: hsl.s, l: hsl.l })];
-            }
-
-            function _analogous(color, results, slices) {
-                results = results || 6;
-                slices = slices || 30;
-
-                var hsl = tinycolor(color).toHsl();
-                var part = 360 / slices;
-                var ret = [tinycolor(color)];
-
-                for (hsl.h = (hsl.h - (part * results >> 1) + 720) % 360; --results;) {
-                    hsl.h = (hsl.h + part) % 360;
-                    ret.push(tinycolor(hsl));
-                }
-                return ret;
-            }
-
-            function _monochromatic(color, results) {
-                results = results || 6;
-                var hsv = tinycolor(color).toHsv();
-                var h = hsv.h,
-                    s = hsv.s,
-                    v = hsv.v;
-                var ret = [];
-                var modification = 1 / results;
-
-                while (results--) {
-                    ret.push(tinycolor({ h: h, s: s, v: v }));
-                    v = (v + modification) % 1;
-                }
-
-                return ret;
-            }
-
-            // Utility Functions
-            // ---------------------
-
-            tinycolor.mix = function (color1, color2, amount) {
-                amount = amount === 0 ? 0 : amount || 50;
-
-                var rgb1 = tinycolor(color1).toRgb();
-                var rgb2 = tinycolor(color2).toRgb();
-
-                var p = amount / 100;
-
-                var rgba = {
-                    r: (rgb2.r - rgb1.r) * p + rgb1.r,
-                    g: (rgb2.g - rgb1.g) * p + rgb1.g,
-                    b: (rgb2.b - rgb1.b) * p + rgb1.b,
-                    a: (rgb2.a - rgb1.a) * p + rgb1.a
-                };
-
-                return tinycolor(rgba);
-            };
-
-            // Readability Functions
-            // ---------------------
-            // <http://www.w3.org/TR/2008/REC-WCAG20-20081211/#contrast-ratiodef (WCAG Version 2)
-
-            // `contrast`
-            // Analyze the 2 colors and returns the color contrast defined by (WCAG Version 2)
-            tinycolor.readability = function (color1, color2) {
-                var c1 = tinycolor(color1);
-                var c2 = tinycolor(color2);
-                return (Math.max(c1.getLuminance(), c2.getLuminance()) + 0.05) / (Math.min(c1.getLuminance(), c2.getLuminance()) + 0.05);
-            };
-
-            // `isReadable`
-            // Ensure that foreground and background color combinations meet WCAG2 guidelines.
-            // The third argument is an optional Object.
-            //      the 'level' property states 'AA' or 'AAA' - if missing or invalid, it defaults to 'AA';
-            //      the 'size' property states 'large' or 'small' - if missing or invalid, it defaults to 'small'.
-            // If the entire object is absent, isReadable defaults to {level:"AA",size:"small"}.
-
-            // *Example*
-            //    tinycolor.isReadable("#000", "#111") => false
-            //    tinycolor.isReadable("#000", "#111",{level:"AA",size:"large"}) => false
-            tinycolor.isReadable = function (color1, color2, wcag2) {
-                var readability = tinycolor.readability(color1, color2);
-                var wcag2Parms, out;
-
-                out = false;
-
-                wcag2Parms = validateWCAG2Parms(wcag2);
-                switch (wcag2Parms.level + wcag2Parms.size) {
-                    case "AAsmall":
-                    case "AAAlarge":
-                        out = readability >= 4.5;
-                        break;
-                    case "AAlarge":
-                        out = readability >= 3;
-                        break;
-                    case "AAAsmall":
-                        out = readability >= 7;
-                        break;
-                }
-                return out;
-            };
-
-            // `mostReadable`
-            // Given a base color and a list of possible foreground or background
-            // colors for that base, returns the most readable color.
-            // Optionally returns Black or White if the most readable color is unreadable.
-            // *Example*
-            //    tinycolor.mostReadable(tinycolor.mostReadable("#123", ["#124", "#125"],{includeFallbackColors:false}).toHexString(); // "#112255"
-            //    tinycolor.mostReadable(tinycolor.mostReadable("#123", ["#124", "#125"],{includeFallbackColors:true}).toHexString();  // "#ffffff"
-            //    tinycolor.mostReadable("#a8015a", ["#faf3f3"],{includeFallbackColors:true,level:"AAA",size:"large"}).toHexString(); // "#faf3f3"
-            //    tinycolor.mostReadable("#a8015a", ["#faf3f3"],{includeFallbackColors:true,level:"AAA",size:"small"}).toHexString(); // "#ffffff"
-            tinycolor.mostReadable = function (baseColor, colorList, args) {
-                var bestColor = null;
-                var bestScore = 0;
-                var readability;
-                var includeFallbackColors, level, size;
-                args = args || {};
-                includeFallbackColors = args.includeFallbackColors;
-                level = args.level;
-                size = args.size;
-
-                for (var i = 0; i < colorList.length; i++) {
-                    readability = tinycolor.readability(baseColor, colorList[i]);
-                    if (readability > bestScore) {
-                        bestScore = readability;
-                        bestColor = tinycolor(colorList[i]);
-                    }
-                }
-
-                if (tinycolor.isReadable(baseColor, bestColor, { "level": level, "size": size }) || !includeFallbackColors) {
-                    return bestColor;
-                } else {
-                    args.includeFallbackColors = false;
-                    return tinycolor.mostReadable(baseColor, ["#fff", "#000"], args);
-                }
-            };
-
-            // Big List of Colors
-            // ------------------
-            // <http://www.w3.org/TR/css3-color/#svg-color>
-            var names = tinycolor.names = {
-                aliceblue: "f0f8ff",
-                antiquewhite: "faebd7",
-                aqua: "0ff",
-                aquamarine: "7fffd4",
-                azure: "f0ffff",
-                beige: "f5f5dc",
-                bisque: "ffe4c4",
-                black: "000",
-                blanchedalmond: "ffebcd",
-                blue: "00f",
-                blueviolet: "8a2be2",
-                brown: "a52a2a",
-                burlywood: "deb887",
-                burntsienna: "ea7e5d",
-                cadetblue: "5f9ea0",
-                chartreuse: "7fff00",
-                chocolate: "d2691e",
-                coral: "ff7f50",
-                cornflowerblue: "6495ed",
-                cornsilk: "fff8dc",
-                crimson: "dc143c",
-                cyan: "0ff",
-                darkblue: "00008b",
-                darkcyan: "008b8b",
-                darkgoldenrod: "b8860b",
-                darkgray: "a9a9a9",
-                darkgreen: "006400",
-                darkgrey: "a9a9a9",
-                darkkhaki: "bdb76b",
-                darkmagenta: "8b008b",
-                darkolivegreen: "556b2f",
-                darkorange: "ff8c00",
-                darkorchid: "9932cc",
-                darkred: "8b0000",
-                darksalmon: "e9967a",
-                darkseagreen: "8fbc8f",
-                darkslateblue: "483d8b",
-                darkslategray: "2f4f4f",
-                darkslategrey: "2f4f4f",
-                darkturquoise: "00ced1",
-                darkviolet: "9400d3",
-                deeppink: "ff1493",
-                deepskyblue: "00bfff",
-                dimgray: "696969",
-                dimgrey: "696969",
-                dodgerblue: "1e90ff",
-                firebrick: "b22222",
-                floralwhite: "fffaf0",
-                forestgreen: "228b22",
-                fuchsia: "f0f",
-                gainsboro: "dcdcdc",
-                ghostwhite: "f8f8ff",
-                gold: "ffd700",
-                goldenrod: "daa520",
-                gray: "808080",
-                green: "008000",
-                greenyellow: "adff2f",
-                grey: "808080",
-                honeydew: "f0fff0",
-                hotpink: "ff69b4",
-                indianred: "cd5c5c",
-                indigo: "4b0082",
-                ivory: "fffff0",
-                khaki: "f0e68c",
-                lavender: "e6e6fa",
-                lavenderblush: "fff0f5",
-                lawngreen: "7cfc00",
-                lemonchiffon: "fffacd",
-                lightblue: "add8e6",
-                lightcoral: "f08080",
-                lightcyan: "e0ffff",
-                lightgoldenrodyellow: "fafad2",
-                lightgray: "d3d3d3",
-                lightgreen: "90ee90",
-                lightgrey: "d3d3d3",
-                lightpink: "ffb6c1",
-                lightsalmon: "ffa07a",
-                lightseagreen: "20b2aa",
-                lightskyblue: "87cefa",
-                lightslategray: "789",
-                lightslategrey: "789",
-                lightsteelblue: "b0c4de",
-                lightyellow: "ffffe0",
-                lime: "0f0",
-                limegreen: "32cd32",
-                linen: "faf0e6",
-                magenta: "f0f",
-                maroon: "800000",
-                mediumaquamarine: "66cdaa",
-                mediumblue: "0000cd",
-                mediumorchid: "ba55d3",
-                mediumpurple: "9370db",
-                mediumseagreen: "3cb371",
-                mediumslateblue: "7b68ee",
-                mediumspringgreen: "00fa9a",
-                mediumturquoise: "48d1cc",
-                mediumvioletred: "c71585",
-                midnightblue: "191970",
-                mintcream: "f5fffa",
-                mistyrose: "ffe4e1",
-                moccasin: "ffe4b5",
-                navajowhite: "ffdead",
-                navy: "000080",
-                oldlace: "fdf5e6",
-                olive: "808000",
-                olivedrab: "6b8e23",
-                orange: "ffa500",
-                orangered: "ff4500",
-                orchid: "da70d6",
-                palegoldenrod: "eee8aa",
-                palegreen: "98fb98",
-                paleturquoise: "afeeee",
-                palevioletred: "db7093",
-                papayawhip: "ffefd5",
-                peachpuff: "ffdab9",
-                peru: "cd853f",
-                pink: "ffc0cb",
-                plum: "dda0dd",
-                powderblue: "b0e0e6",
-                purple: "800080",
-                rebeccapurple: "663399",
-                red: "f00",
-                rosybrown: "bc8f8f",
-                royalblue: "4169e1",
-                saddlebrown: "8b4513",
-                salmon: "fa8072",
-                sandybrown: "f4a460",
-                seagreen: "2e8b57",
-                seashell: "fff5ee",
-                sienna: "a0522d",
-                silver: "c0c0c0",
-                skyblue: "87ceeb",
-                slateblue: "6a5acd",
-                slategray: "708090",
-                slategrey: "708090",
-                snow: "fffafa",
-                springgreen: "00ff7f",
-                steelblue: "4682b4",
-                tan: "d2b48c",
-                teal: "008080",
-                thistle: "d8bfd8",
-                tomato: "ff6347",
-                turquoise: "40e0d0",
-                violet: "ee82ee",
-                wheat: "f5deb3",
-                white: "fff",
-                whitesmoke: "f5f5f5",
-                yellow: "ff0",
-                yellowgreen: "9acd32"
-            };
-
-            // Make it easy to access colors via `hexNames[hex]`
-            var hexNames = tinycolor.hexNames = flip(names);
-
-            // Utilities
-            // ---------
-
-            // `{ 'name1': 'val1' }` becomes `{ 'val1': 'name1' }`
-            function flip(o) {
-                var flipped = {};
-                for (var i in o) {
-                    if (o.hasOwnProperty(i)) {
-                        flipped[o[i]] = i;
-                    }
-                }
-                return flipped;
-            }
-
-            // Return a valid alpha value [0,1] with all invalid values being set to 1
-            function boundAlpha(a) {
-                a = parseFloat(a);
-
-                if (isNaN(a) || a < 0 || a > 1) {
-                    a = 1;
-                }
-
-                return a;
-            }
-
-            // Take input from [0, n] and return it as [0, 1]
-            function bound01(n, max) {
-                if (isOnePointZero(n)) {
-                    n = "100%";
-                }
-
-                var processPercent = isPercentage(n);
-                n = mathMin(max, mathMax(0, parseFloat(n)));
-
-                // Automatically convert percentage into number
-                if (processPercent) {
-                    n = parseInt(n * max, 10) / 100;
-                }
-
-                // Handle floating point rounding errors
-                if (Math.abs(n - max) < 0.000001) {
-                    return 1;
-                }
-
-                // Convert into [0, 1] range if it isn't already
-                return n % max / parseFloat(max);
-            }
-
-            // Force a number between 0 and 1
-            function clamp01(val) {
-                return mathMin(1, mathMax(0, val));
-            }
-
-            // Parse a base-16 hex value into a base-10 integer
-            function parseIntFromHex(val) {
-                return parseInt(val, 16);
-            }
-
-            // Need to handle 1.0 as 100%, since once it is a number, there is no difference between it and 1
-            // <http://stackoverflow.com/questions/7422072/javascript-how-to-detect-number-as-a-decimal-including-1-0>
-            function isOnePointZero(n) {
-                return typeof n == "string" && n.indexOf('.') != -1 && parseFloat(n) === 1;
-            }
-
-            // Check to see if string passed in is a percentage
-            function isPercentage(n) {
-                return typeof n === "string" && n.indexOf('%') != -1;
-            }
-
-            // Force a hex value to have 2 characters
-            function pad2(c) {
-                return c.length == 1 ? '0' + c : '' + c;
-            }
-
-            // Replace a decimal with it's percentage value
-            function convertToPercentage(n) {
-                if (n <= 1) {
-                    n = n * 100 + "%";
-                }
-
-                return n;
-            }
-
-            // Converts a decimal to a hex value
-            function convertDecimalToHex(d) {
-                return Math.round(parseFloat(d) * 255).toString(16);
-            }
-            // Converts a hex value to a decimal
-            function convertHexToDecimal(h) {
-                return parseIntFromHex(h) / 255;
-            }
-
-            var matchers = function () {
-
-                // <http://www.w3.org/TR/css3-values/#integers>
-                var CSS_INTEGER = "[-\\+]?\\d+%?";
-
-                // <http://www.w3.org/TR/css3-values/#number-value>
-                var CSS_NUMBER = "[-\\+]?\\d*\\.\\d+%?";
-
-                // Allow positive/negative integer/number.  Don't capture the either/or, just the entire outcome.
-                var CSS_UNIT = "(?:" + CSS_NUMBER + ")|(?:" + CSS_INTEGER + ")";
-
-                // Actual matching.
-                // Parentheses and commas are optional, but not required.
-                // Whitespace can take the place of commas or opening paren
-                var PERMISSIVE_MATCH3 = "[\\s|\\(]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")\\s*\\)?";
-                var PERMISSIVE_MATCH4 = "[\\s|\\(]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")\\s*\\)?";
-
-                return {
-                    CSS_UNIT: new RegExp(CSS_UNIT),
-                    rgb: new RegExp("rgb" + PERMISSIVE_MATCH3),
-                    rgba: new RegExp("rgba" + PERMISSIVE_MATCH4),
-                    hsl: new RegExp("hsl" + PERMISSIVE_MATCH3),
-                    hsla: new RegExp("hsla" + PERMISSIVE_MATCH4),
-                    hsv: new RegExp("hsv" + PERMISSIVE_MATCH3),
-                    hsva: new RegExp("hsva" + PERMISSIVE_MATCH4),
-                    hex3: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
-                    hex6: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/,
-                    hex4: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
-                    hex8: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/
-                };
-            }();
-
-            // `isValidCSSUnit`
-            // Take in a single string / number and check to see if it looks like a CSS unit
-            // (see `matchers` above for definition).
-            function isValidCSSUnit(color) {
-                return !!matchers.CSS_UNIT.exec(color);
-            }
-
-            // `stringInputToObject`
-            // Permissive string parsing.  Take in a number of formats, and output an object
-            // based on detected format.  Returns `{ r, g, b }` or `{ h, s, l }` or `{ h, s, v}`
-            function stringInputToObject(color) {
-
-                color = color.replace(trimLeft, '').replace(trimRight, '').toLowerCase();
-                var named = false;
-                if (names[color]) {
-                    color = names[color];
-                    named = true;
-                } else if (color == 'transparent') {
-                    return { r: 0, g: 0, b: 0, a: 0, format: "name" };
-                }
-
-                // Try to match string input using regular expressions.
-                // Keep most of the number bounding out of this function - don't worry about [0,1] or [0,100] or [0,360]
-                // Just return an object and let the conversion functions handle that.
-                // This way the result will be the same whether the tinycolor is initialized with string or object.
-                var match;
-                if (match = matchers.rgb.exec(color)) {
-                    return { r: match[1], g: match[2], b: match[3] };
-                }
-                if (match = matchers.rgba.exec(color)) {
-                    return { r: match[1], g: match[2], b: match[3], a: match[4] };
-                }
-                if (match = matchers.hsl.exec(color)) {
-                    return { h: match[1], s: match[2], l: match[3] };
-                }
-                if (match = matchers.hsla.exec(color)) {
-                    return { h: match[1], s: match[2], l: match[3], a: match[4] };
-                }
-                if (match = matchers.hsv.exec(color)) {
-                    return { h: match[1], s: match[2], v: match[3] };
-                }
-                if (match = matchers.hsva.exec(color)) {
-                    return { h: match[1], s: match[2], v: match[3], a: match[4] };
-                }
-                if (match = matchers.hex8.exec(color)) {
-                    return {
-                        r: parseIntFromHex(match[1]),
-                        g: parseIntFromHex(match[2]),
-                        b: parseIntFromHex(match[3]),
-                        a: convertHexToDecimal(match[4]),
-                        format: named ? "name" : "hex8"
-                    };
-                }
-                if (match = matchers.hex6.exec(color)) {
-                    return {
-                        r: parseIntFromHex(match[1]),
-                        g: parseIntFromHex(match[2]),
-                        b: parseIntFromHex(match[3]),
-                        format: named ? "name" : "hex"
-                    };
-                }
-                if (match = matchers.hex4.exec(color)) {
-                    return {
-                        r: parseIntFromHex(match[1] + '' + match[1]),
-                        g: parseIntFromHex(match[2] + '' + match[2]),
-                        b: parseIntFromHex(match[3] + '' + match[3]),
-                        a: convertHexToDecimal(match[4] + '' + match[4]),
-                        format: named ? "name" : "hex8"
-                    };
-                }
-                if (match = matchers.hex3.exec(color)) {
-                    return {
-                        r: parseIntFromHex(match[1] + '' + match[1]),
-                        g: parseIntFromHex(match[2] + '' + match[2]),
-                        b: parseIntFromHex(match[3] + '' + match[3]),
-                        format: named ? "name" : "hex"
-                    };
-                }
-
-                return false;
-            }
-
-            function validateWCAG2Parms(parms) {
-                // return valid WCAG2 parms for isReadable.
-                // If input parms are invalid, return {"level":"AA", "size":"small"}
-                var level, size;
-                parms = parms || { "level": "AA", "size": "small" };
-                level = (parms.level || "AA").toUpperCase();
-                size = (parms.size || "small").toLowerCase();
-                if (level !== "AA" && level !== "AAA") {
-                    level = "AA";
-                }
-                if (size !== "small" && size !== "large") {
-                    size = "small";
-                }
-                return { "level": level, "size": size };
-            }
-
-            exports.default = tinycolor;
         }, {}], 28: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
@@ -9916,7 +9973,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             }();
 
             exports.default = Tweezer;
-        }, { "./raf": 25 }], 29: [function (require, module, exports) {
+        }, { "./raf": 26 }], 29: [function (require, module, exports) {
             /* global module, wx, window: false, document: false */
             'use strict';
 
@@ -10776,7 +10833,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                 return WxCanvasRenderingContext2D;
             }();
-        }, { "./helper": 24 }], 30: [function (require, module, exports) {
+        }, { "./helper": 25 }], 30: [function (require, module, exports) {
             "use strict";
 
             Object.defineProperty(exports, "__esModule", {
@@ -10809,5 +10866,5 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             exports.WxDoughnut = _doughnut2.default;
             exports.WxLiner = _liner2.default;
             exports.WxBar = _bar2.default;
-        }, { "./charts/bar": 10, "./charts/doughnut": 11, "./charts/liner": 12, "./charts/wxChart": 13 }] }, {}, [30])(30);
+        }, { "./charts/bar": 11, "./charts/doughnut": 12, "./charts/liner": 13, "./charts/wxChart": 14 }] }, {}, [30])(30);
 });

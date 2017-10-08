@@ -45,7 +45,7 @@ describe('WxDoughnut component test', () => {
         }]);
 
         wxDoughnut.on('draw',function() {
-            done();
+            setTimeout(done, 200);
         });
     });
 
@@ -74,7 +74,7 @@ describe('WxDoughnut component test', () => {
         }]);
 
         wxDoughnut.on('draw',() => {
-            done();
+            setTimeout(done, 200);
         });
     });
 
@@ -107,7 +107,7 @@ describe('WxDoughnut component test', () => {
             percentage: 100
         }]);
         wxDoughnut.on('draw',() => {
-            done();
+            setTimeout(done, 200);
         });
     });
 

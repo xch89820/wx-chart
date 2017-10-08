@@ -21,6 +21,7 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 ##### 近期计划支持图表
 - [x] 增加动画效果
 - [x] Canvas中间层优化
+- [x] 增加bar，line点展示
 - [ ] 增加Tooltip
 - [ ] 雷达图
 - [ ] 泡状图
@@ -28,15 +29,16 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 - [ ] 支持React Native
 
 ## 实际效果以及Demo
-微信场景下
+#### PC场景下
+![all](https://user-images.githubusercontent.com/4920540/31314620-66222d5a-ac37-11e7-836f-82b346bae3c2.gif)
 
-<img src="https://user-images.githubusercontent.com/4920540/31174162-0b20786e-a93d-11e7-873a-cda9151d732d.gif" width="500">
+#### 微信场景下
+
+<img src="https://user-images.githubusercontent.com/4920540/31314633-8c5d9b76-ac37-11e7-8be6-95ef3113c143.gif" width="500">
 <img src="https://user-images.githubusercontent.com/4920540/31167947-56dc348a-a926-11e7-959a-bb9aed012ccc.gif" width="500">
 <img src="https://user-images.githubusercontent.com/4920540/31167946-56d7f41a-a926-11e7-9918-d30666ce0874.gif" width="500">
-<img src="https://user-images.githubusercontent.com/4920540/31167948-56dd334e-a926-11e7-962b-1d68e4d08ff3.gif" width="500">
+<img src="https://user-images.githubusercontent.com/4920540/31314621-6ccd0f30-ac37-11e7-9379-e594771f5d12.gif" width="500">
 
-PC场景下
-![all](https://user-images.githubusercontent.com/4920540/31167949-56e700b8-a926-11e7-8035-f5b3d10fbe88.gif)
 
 ## 快速使用
 
@@ -121,6 +123,9 @@ https://github.com/xch89820/wx-chart-react
 https://www.kancloud.cn/xchhhh/wx-chart
 
 ## ChangeLog
+v0.3.3
+增加bar，line点展示
+
 v0.3.2
 增加动画效果
 

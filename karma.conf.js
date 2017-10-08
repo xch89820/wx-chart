@@ -20,7 +20,7 @@ module.exports = function(config) {
         'verdor/**',
         'src/**',
         'test/**.Spec.js',
-        // 'test/chart.wxDoughnut.Spec.js'
+        // 'test/chart.wxBar.Spec.js'
     ],
 
 

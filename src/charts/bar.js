@@ -3,7 +3,6 @@
 
 import mixins from 'es6-mixins';
 import {extend, is, splineCurve, shadeBlendConvert} from '../util/helper';
-import tinycolor from '../util/tinycolor';
 import randomColor from '../util/randomColor';
 
 import WxCanvas from '../util/wxCanvas';
@@ -18,6 +17,7 @@ import WxLegend from '../core/legend';
 import WxLayout, {BoxInstance} from '../core/layout';
 import WxAnimation from '../core/animation';
 
+let tinycolor = require("tinycolor2");
 // Bar legend's default config
 const WX_BAR_LEGEND_DEFAULT_CONFIG = {
     borderWidth: 1,
@@ -82,6 +82,8 @@ const WX_BAR_DEFAULT_CONFIG = {
 };
 
 const WX_BAR_ITEM_DEFAULT_CONFIG = {
+    showItem: true,
+    // format: // title format function
     //borderWidth: 1,
     //fillArea: true,
     //fillAlpha: 0.5,
@@ -277,14 +279,16 @@ export default class WxBar extends WxChart {
         wxLayout.addBox(me.legend.box);
 
         // Thirdly, draw scale
-        me._drawScale();
+        me._drawScale(wxLayout);
 
+        box = wxLayout.adjustBox();
         // Calculate bar ruler
         me.barRuler = me.calculateBarRuler();
         // Finally, draw bar
         let hasNeg = false;
         let barConfigs = me.legends.map(function(legend, legendIndex) {
             let config = {
+                box: box,
                 legend: legend
             };
             let key = legend.key;
@@ -293,7 +297,8 @@ export default class WxBar extends WxChart {
                 return {
                     value: data[key],
                     data: data,
-                    point: me.calculateBarRect(index, legendIndex)
+                    point: me.calculateBarRect(index, legendIndex),
+                    index
                 }
             });
             return config;
@@ -341,31 +346,39 @@ export default class WxBar extends WxChart {
         ctx.restore();
     }
 
-    __drawBar = (point, percent, legend, stacked, hasNeg) => {
+    __drawBar = (p, percent, box, legend, stacked, hasNeg, setBarItem) => {
         let ctx = this.ctx;
+        let px, py, width, height;
+
+        let { value, data, point, index } = p;
         let {
-            display,
             borderWidth,
             fillStyle,
             strokeStyle,
             fillArea,
             fillAlpha
         } = legend;
-        let px, py, width, height;
-        if (!point) {
+        let {
+            showItem,
+            format,
+            label
+        } = data;
+
+        if (!p || !p.point) {
             return { px, py, width, height };
         }
 
+        let { x: pointX, y: pointY, barWidth, barHeight } = p.point;
         if (stacked && hasNeg) {
-            width = point.barWidth;
-            height = point.barHeight * percent;
-            px = point.x;
-            py = point.y + (point.barHeight) / 2 - height / 2;
+            width = barWidth;
+            height = barHeight * percent;
+            px = pointX;
+            py = pointY + barHeight / 2 - height / 2;
         } else {
-            px = point.x;
-            width = point.barWidth;
-            height = point.barHeight * percent;
-            py = point.y + point.barHeight * (1-percent);
+            px = pointX;
+            width = barWidth;
+            height = barHeight * percent;
+            py = pointY + barHeight * (1-percent);
         }
 
         ctx.save();
@@ -395,6 +408,35 @@ export default class WxBar extends WxChart {
             ctx.stroke();
         }
 
+        // Show bar item
+        if (!!setBarItem && !!showItem && !stacked) {
+            let curFillStyle = ctx.fillStyle;
+            ctx.textBaseline = "bottom";
+            ctx.fillStyle = tinycolor(curFillStyle).darken(15).toString();
+            ctx.fillStyle = curFillStyle;
+
+            let barItem = is.Function(format)
+                ? format.call(this, label, value, index)
+                : p.value+'';
+
+            let boxX = box.x,
+                boxY = box.y;
+
+            let itemX = px + barWidth/2 - ctx.measureText(barItem).width/2,
+                itemY = py - ctx.fontSize/4;
+
+            // Check box's X,Y
+            if (itemX < box.x) {
+                itemX = box.x;
+            }
+            if (itemY < box.y) {
+                itemY = box.y;
+            }
+
+
+            ctx.fillText(barItem, itemX, itemY);
+        }
+
         ctx.draw();
         ctx.restore();
 
@@ -416,7 +458,7 @@ export default class WxBar extends WxChart {
             animateOpt = me.chartConfig.animateOptions,
             ctx = me.ctx;
 
-        let {legend, dataset} = barData;
+        let {box, legend, dataset} = barData;
         let {
             display,
             borderWidth,
@@ -436,7 +478,8 @@ export default class WxBar extends WxChart {
 
         return (t, lastData, toNext) => {
             let dataIndex = Math.floor(t/categoryTicks);
-            let { point }= dataIndex < dataLen ? dataset[dataIndex] : dataset[dataLen-1];
+            let currData = dataIndex < dataLen ? dataset[dataIndex] : dataset[dataLen-1];
+            let { point } = currData;
             let percent = (t % categoryTicks) / categoryTicks;
 
             if (lastData) {
@@ -452,15 +495,22 @@ export default class WxBar extends WxChart {
 
                 if (lastDataIndex < dataLen && lastx) {
                     ctx.save();
-                    ctx.beginPath();
                     // TODO: optimize clear check!!
-                    ctx.lineWidth = borderWidth;
-                    ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
-                    ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
-                    ctx.fillRect(lastx, lasty, lastWidth, lastHeight);
+                    if (backgroundColor) {
+                        ctx.beginPath();
+                        ctx.lineWidth = borderWidth;
+                        ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+                        ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+                        ctx.fillRect(lastx, lasty, lastWidth, lastHeight);
+                    } else {
+                        ctx.clearRect(lastx, lasty, lastWidth, lastHeight);
+                    }
                     if (borderWidth) {
                         ctx.beginPath();
-                        if (stacked && hasNeg && borderWidth) {
+                        ctx.lineWidth = borderWidth+0.5;
+                        ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
+                        ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
+                        if (stacked && hasNeg) {
                             ctx.rect(lastx, lasty, lastWidth, lastHeight);
                         } else {
                             ctx.moveTo(lastx, lasty + lastHeight);
@@ -471,21 +521,20 @@ export default class WxBar extends WxChart {
                         }
                         ctx.stroke();
                     }
-
                     ctx.draw();
                     ctx.restore();
                 }
 
                 if (lastDataIndex !== dataIndex && !!lastPercent) {
                     // End the lasted bar
-                    let { point: lastPoint }  = lastDataIndex < dataLen ? dataset[lastDataIndex] : dataset[dataLen-1];
-                    me.__drawBar(lastPoint, 1, legend, stacked, hasNeg);
+                    let lastData  = lastDataIndex < dataLen ? dataset[lastDataIndex] : dataset[dataLen-1];
+                    me.__drawBar(lastData, 1, box, legend, stacked, hasNeg, true);
                 }
             }
 
             let px, py, width, height;
             if (dataIndex < dataLen && (!!percent || !point)) {
-                ({px, py, width, height} = me.__drawBar(point, percent, legend, stacked, hasNeg));
+                ({px, py, width, height} = me.__drawBar(currData, percent, box, legend, stacked, hasNeg));
             }
 
             return {
@@ -504,7 +553,7 @@ export default class WxBar extends WxChart {
         let me = this,
             stacked = me.chartConfig.stacked,
             ctx = me.ctx;
-        let {legend, dataset} = barData;
+        let {box, legend, dataset} = barData;
         let {
             display,
             borderWidth,
@@ -518,14 +567,8 @@ export default class WxBar extends WxChart {
             return;
         }
 
-
         dataset.forEach(d => {
-            let { value, data, point } = d;
-            if (!point) {
-                return;
-            }
-
-            me.__drawBar(point, 1, legend, stacked, hasNeg);
+            me.__drawBar(d, 1, box, legend, stacked, hasNeg, true);
             // if (stacked && hasNeg) {
             //     ctx.beginPath();
             //     ctx.rect(point.x ,point.y ,point.barWidth, point.barHeight);
@@ -726,10 +769,9 @@ export default class WxBar extends WxChart {
      *
      * @private
      */
-    _drawScale() {
+    _drawScale(wxLayout) {
         let box,
-            me = this,
-            wxLayout = me.wxLayout;
+            me = this;
 
         box = wxLayout.adjustBox();
         let xDatasets = me.xScaleAxisDatas(),
