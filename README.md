@@ -36,8 +36,8 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 
 <img src="https://user-images.githubusercontent.com/4920540/31314633-8c5d9b76-ac37-11e7-8be6-95ef3113c143.gif" width="500">
 <img src="https://user-images.githubusercontent.com/4920540/31167947-56dc348a-a926-11e7-959a-bb9aed012ccc.gif" width="500">
-<img src="https://user-images.githubusercontent.com/4920540/31167946-56d7f41a-a926-11e7-9918-d30666ce0874.gif" width="500">
 <img src="https://user-images.githubusercontent.com/4920540/31314621-6ccd0f30-ac37-11e7-9379-e594771f5d12.gif" width="500">
+<img src="https://user-images.githubusercontent.com/4920540/31167948-56dd334e-a926-11e7-962b-1d68e4d08ff3.gif" width="500">
 
 
 ## 快速使用
@@ -121,6 +121,9 @@ https://github.com/xch89820/wx-chart-react
 
 ## 文档
 https://www.kancloud.cn/xchhhh/wx-chart
+
+## 实现原理（持续更新中...）
+[微信小程序开发跨平台图表库：part1](https://segmentfault.com/a/1190000011469347)
 
 ## ChangeLog
 v0.3.4
