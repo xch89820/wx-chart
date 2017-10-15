@@ -123,6 +123,10 @@ https://github.com/xch89820/wx-chart-react
 https://www.kancloud.cn/xchhhh/wx-chart
 
 ## ChangeLog
+v0.3.4
+对微信新接口兼容
+增加坐标轴转换类
+
 v0.3.3
 增加bar，line点展示
 

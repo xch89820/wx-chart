@@ -2,7 +2,7 @@
 'use strict';
 import { is, wxConverToPx, extend } from '../src/util/helper'
 import WxCanvas, { WxCanvasRenderingContext2D } from '../src/util/wxCanvas'
-import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas } from './createWXEnv'
+import { createWXEnv, initCanvasElement, destoryCanvasElement, getCanvas, getRealCanvas, getVersionAsArray } from './createWXEnv'
 
 describe('Util wxCanvas', () => {
     beforeEach(() => {
@@ -105,13 +105,13 @@ describe('Util wxCanvas', () => {
 
         // Set textBaseline = middle
         wxCanvasContext.textBaseline = 'middle';
-        expect(realContext.textBaseline).to.equal('alphabetic');
+        expect(realContext.textBaseline).to.equal('middle');
         assert.equal(wxCanvasContext._calculateYForTextBaseline(0, 'text'), 4.5,
             'calculate Y at fontSize = 10, textBaseline = middle');
 
         // Set textBaseline = top
         wxCanvasContext.textBaseline = 'top';
-        expect(realContext.textBaseline).to.equal('alphabetic');
+        expect(realContext.textBaseline).to.equal('top');
         assert.equal(wxCanvasContext._calculateYForTextBaseline(0, 'text'), 9,
             'calculate Y at fontSize = 10, textBaseline = top');
 
@@ -119,13 +119,13 @@ describe('Util wxCanvas', () => {
 
         // Set textAlign = end
         wxCanvasContext.textAlign = 'end';
-        expect(realContext.textAlign).to.equal('start');
+        expect(realContext.textAlign).to.equal('end');
         assert.equal(wxCanvasContext._calculateXFortextAlign(0, 'text'), -22.5,
             'calculate X at fontSize = 10, textAlign = end');
 
         // Set textAlign = middle
         wxCanvasContext.textAlign = 'center';
-        expect(realContext.textAlign).to.equal('start');
+        expect(realContext.textAlign).to.equal('center');
         assert.equal(wxCanvasContext._calculateXFortextAlign(0, 'text'), -11.25,
             'calculate X at fontSize = 10, textAlign = end');
 

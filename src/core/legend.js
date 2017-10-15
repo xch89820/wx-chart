@@ -268,7 +268,7 @@ export default class WxLegend extends WxBaseComponent {
             }
 
             // Set style
-            ctx.textBaseline = 'top';
+            ctx.textBaseline = 'middle';
             ctx.textAlign = 'start';
             ctx.fillStyle = fillStyle;
             ctx.fontSize = fontSize;
@@ -284,7 +284,7 @@ export default class WxLegend extends WxBaseComponent {
             }
             let thisX = currentX;
             // draw rect
-            if (ctx.lineWidth != 0) {
+            if (lineWidth != 0) {
                 ctx.strokeRect(currentX, currentY, boxWidth, boxHeight);
             }
             ctx.globalAlpha = fillAlpha;
@@ -293,7 +293,7 @@ export default class WxLegend extends WxBaseComponent {
 
             // draw text
             currentX += boxWidth + (fontSize / 2);
-            ctx.fillText(text, currentX, currentY);
+            ctx.fillText(text, currentX, currentY + boxHeight/2 - lineWidth);
 
             // draw hidden strike through
             if (!display) {

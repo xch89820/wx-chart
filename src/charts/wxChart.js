@@ -38,7 +38,7 @@ export function getChartInstances(id) {
 export default class WxChart {
     /**
      * @constructor
-     * @param {string} id - Canvas id ,DOM ID or HTMLElement
+     * @param {string|HTMLCanvasElement} id - Canvas id ,DOM ID or HTMLElement
      * @param {Object|number} [config] - The config of Canvas or the width of chart.
      * @param {number} [config.width] - The width of canvas.
      * @param {number} [config.height] - The height of canvas.

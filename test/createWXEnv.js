@@ -20,6 +20,9 @@ export function randomId(len = 32) {
 }
 // Create WeiXin virtual environment
 export function createWXEnv() {
+    if ( __GLOBAL__DEBUG__WX__ === false) {
+        return;
+    }
     if (typeof wx != 'undefined') {
         return;
     } else {
@@ -27,6 +30,7 @@ export function createWXEnv() {
     }
     // Defined global wx
     let wx = window.wx || {};
+
 
     // getSystemInfoSync
     wx.getSystemInfoSync = () => ({
@@ -37,20 +41,42 @@ export function createWXEnv() {
         'language': 'zh_CN',
         'version': '6.3.9',
         'system': 'iOS 10.0.1',
-        'platform': 'Android'
+        'platform': 'Android',
+        'SDKVersion': '1.4.0'
     });
 
     wx.createCanvasContext = (id) => {
         let el = document.getElementById(id);
         if (el) {
-            let context = el.getContext('2d');
-            return context;
+            return el.getContext('2d');
         }
     };
 
+    wx.canIUse = (name) => {
+        let ver = getVersionAsArray();
+        switch(name) {
+            case 'canvasContext.setTextBaseline':
+                return (ver[0] === 1 && ver[1] >= 4);
+            case 'canvasContext.setTextAlign':
+                return (ver[0] === 1 && ver[1] >= 1);
+        }
+        return true;
+    };
+
+    let ver = getVersionAsArray();
     // Set some function to CanvasRenderingContext2D
-    if (typeof  CanvasRenderingContext2D != 'undefined') {
-        ['fillStyle', 'lineCap', 'lineJoin', 'miterLimit', 'lineWidth', 'strokeStyle', 'globalAlpha'].forEach((v) => {
+    if (typeof CanvasRenderingContext2D != 'undefined') {
+        [
+            'fillStyle',
+            'lineCap',
+            'lineJoin',
+            'miterLimit',
+            'lineWidth',
+            'strokeStyle',
+            'globalAlpha',
+            'textAlign',
+            'textBaseline'
+        ].forEach((v) => {
             let fnName = 'set' + v.replace(/(\w)/, v => v.toUpperCase());
             CanvasRenderingContext2D.prototype[fnName] = function(val) {
                 this[v] = val;
@@ -75,14 +101,22 @@ export function createWXEnv() {
         };
 
         // Disable some attribute
-        Object.defineProperty(CanvasRenderingContext2D.prototype, 'textAlign', {
-            get: function() { return 'start'; },
-            set: function(newValue) { return 'start' },
-        });
-        Object.defineProperty(CanvasRenderingContext2D.prototype, 'textBaseline', {
-            get: function() { return 'alphabetic'; },
-            set: function(newValue) { return 'alphabetic' },
-        });
+        if (ver[0] === 1 && ver[1] < 1) {
+            Object.defineProperty(CanvasRenderingContext2D.prototype, 'textAlign', {
+                get: function() { return 'start'; },
+                set: function(newValue) { return 'start' },
+            });
+        }
+        if (ver[0] === 1 && ver[1] < 4) {
+            Object.defineProperty(CanvasRenderingContext2D.prototype, 'textBaseline', {
+                get: function () {
+                    return 'alphabetic';
+                },
+                set: function (newValue) {
+                    return 'alphabetic'
+                },
+            });
+        }
     }
 }
 
@@ -100,11 +134,14 @@ export let initCanvasElement = function(height = 500, width = 800, id='myCanvas'
         return;
     }
 
-    canvas.height = height*pixelRatio;
-    canvas.width = width*pixelRatio;
-    ctx.scale(pixelRatio, pixelRatio);
-    canvas.style.height = height + 'px';
-    canvas.style.width = width + 'px';
+    if ( __GLOBAL__DEBUG__WX__ === true ) {
+        // In WX, can not resize the canvas
+        canvas.height = height*pixelRatio;
+        canvas.width = width*pixelRatio;
+        ctx.scale(pixelRatio, pixelRatio);
+        canvas.style.height = height + 'px';
+        canvas.style.width = width + 'px';
+    }
 
     return canvas;
 };
@@ -127,4 +164,12 @@ export let getRealCanvas = function(id = 'myCanvas') {
     let realCanvas = document.getElementById(id);
     let realContext = realCanvas.getContext('2d');
     return {realCanvas, realContext};
+};
+
+export let getVersionAsArray = () => {
+    let info = wx.getSystemInfoSync();
+    let SDKVersion = info.SDKVersion;
+    let vs = SDKVersion.match(/(\d+)\.(\d+)\.(\d+)/);
+
+    return vs ? [+vs[1], +vs[2], +vs[3]]: [1, 0 ,0];
 };

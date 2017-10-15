@@ -29,9 +29,34 @@ let header = "/*!\n" +
     " * https://github.com/xch89820/wx-chart/blob/master/LICENSE.md\n" +
     " */\n";
 
+
 gulp.task('build',function(){
     // Bundled library
-    let bundled = browserify('./src/wx-chart.js', { standalone: 'WxChart' })
+    let bundled = browserify('./src/wx-chart.js', {
+        standalone: 'WxChart',
+        "transform": [
+            [
+                "babelify"
+            ],
+            [
+                "browserify-replace",
+                {
+                    "replace": [
+                        {
+                            "from": /__GLOBAL__DEBUG__WX__/g,
+                            "to": false
+                        },
+                        {
+                            "from": /__GDEBUG__/g,
+                            "to": false
+                        }
+                    ]
+                }
+            ],
+            [
+                "browserify-shim"
+            ]
+        ]})
         .transform(browserifyshim)
         //.plugin(collapse)
         .bundle()

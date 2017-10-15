@@ -309,7 +309,11 @@ export class WxCanvasRenderingContext2D {
     }
 
     // Property
-    _wxSetPropertyCallable(value, propertyName, wxSetName = 'set' + propertyName.replace(/(\w)/, v => v.toUpperCase())) {
+    _wxSetPropertyCallable(value,
+                           propertyName,
+                           wxSetProperty = 'set' + propertyName.replace(/(\w)/, v => v.toUpperCase()),
+                           wxSetValue = value
+    ) {
         let me = this;
 
         if (is.Null(value) || is.Undefined(value)) {
@@ -322,7 +326,7 @@ export class WxCanvasRenderingContext2D {
         }
 
         if (me.isWeiXinAPP) {
-            me._ctx[wxSetName](value);
+            me._ctx[wxSetProperty](wxSetValue);
             me.cp[propertyName] = value;
         } else {
             me._ctx[propertyName] = value;
@@ -332,7 +336,7 @@ export class WxCanvasRenderingContext2D {
     }
 
     // Normally property weixin app not support
-    _wxSetProperty(value, propertyName, setWX = true) {
+    _wxNotSupportSetProperty(value, propertyName, setBrowser = true) {
         let me = this;
 
         if (is.Null(value) || is.Undefined(value)) {
@@ -346,7 +350,7 @@ export class WxCanvasRenderingContext2D {
 
         if (me.isWeiXinAPP) {
             me.cp[propertyName] = value;
-            setWX
+            setBrowser
                 ? me._ctx[propertyName] = value
                 : null;
         } else {
@@ -354,6 +358,21 @@ export class WxCanvasRenderingContext2D {
             me.cp[propertyName] = me._ctx[propertyName];
         }
         return value;
+    }
+
+    // Test wx env
+    _wxCompatibiltySetProperty(value,
+                               propertyName,
+                               wxSetProperty = 'set' + propertyName.replace(/(\w)/, v => v.toUpperCase()),
+                               wxSetValue = value
+    ) {
+        if (this.isWeiXinAPP) {
+            let pName = 'canvasContext.' + wxSetProperty;
+            if (wx.canIUse(pName)) {
+                return this._wxSetPropertyCallable(value, propertyName, wxSetProperty, wxSetValue)
+            }
+        }
+        return this._wxNotSupportSetProperty(value, propertyName);
     }
 
     createStyleProperty() {
@@ -406,15 +425,35 @@ export class WxCanvasRenderingContext2D {
     createTextProperty() {
         let me = this;
 
-        ['textAlign', 'textBaseline'].forEach(p => {
-            Object.defineProperty(me, p, {
-                get: () => {
-                    return me.cp[p];
-                },
-                set: (value) => {
-                    return me._wxSetProperty(value, p);
-                }
-            });
+        let taProperty = 'textAlign';
+        Object.defineProperty(me, taProperty, {
+            get: () => {
+                return me.cp[taProperty];
+            },
+            set: (value) => {
+                // WeiXin setTextAlign just support 'left' 'center' and 'right'
+                if (value === 'left' || value === 'right' || value === 'center')
+                    return me._wxCompatibiltySetProperty(value, taProperty);
+                else if (value === 'start' || value === 'end')
+                    return me._wxCompatibiltySetProperty(value, taProperty, undefined, value === 'start' ? 'left' : 'right');
+                else
+                    return me._wxNotSupportSetProperty(value, taProperty);
+            }
+        });
+
+        let tblProperty = 'textBaseline';
+        Object.defineProperty(me, tblProperty, {
+            get: () => {
+                return me.cp[tblProperty];
+            },
+            set: (value) => {
+                if (value === 'hanging')
+                    return me._wxNotSupportSetProperty(value, tblProperty);
+                else if (value === 'alphabetic')
+                    return me._wxCompatibiltySetProperty(value, tblProperty, undefined, 'normal');
+                else
+                    return me._wxCompatibiltySetProperty(value, tblProperty);
+            }
         });
 
         Object.defineProperty(me, 'font', {
@@ -506,6 +545,7 @@ export class WxCanvasRenderingContext2D {
                 culY = fontSize * baseNum / 20 + y;
                 break;
             case 'alphabetic':
+            case 'normal': // Only WeiXin has
                 break;
         }
         return culY;
@@ -520,12 +560,14 @@ export class WxCanvasRenderingContext2D {
         let textAlign = me.textAlign;
         switch (textAlign) {
             case 'end':
+            case 'right': // ignore RTL-browsers
                 culX = x - me.measureText(text).width;
                 break;
             case 'center':
                 culX = x - me.measureText(text).width / 2;
                 break;
             case 'start':
+            case 'left': // ignore RTL-browsers
                 break;
         }
         return culX;
@@ -548,10 +590,15 @@ export class WxCanvasRenderingContext2D {
                 ? options[1]
                 : WX_BASE_TEXT_SIZE;
         if (me.isWeiXinAPP) {
-            let culX,
-                culY;
-            culY = me._calculateYForTextBaseline(y, text, baseNum);
-            culX = me._calculateXFortextAlign(x, text, baseNum);
+            let culX = x,
+                culY = y;
+            if (!wx.canIUse('canvasContext.setTextBaseline')) {
+                culY = me._calculateYForTextBaseline(y, text, baseNum);
+            }
+            if (!wx.canIUse('canvasContext.setTextAlign')) {
+                culX = me._calculateXFortextAlign(x, text, baseNum);
+            }
+
             return me._ctx.fillText(text, culX, culY);
         } else {
             return me._ctx.fillText(text, x, y, maxWidth);
@@ -587,7 +634,7 @@ export class WxCanvasRenderingContext2D {
                     return me.cp[p];
                 },
                 set: (value) => {
-                    return me._wxSetProperty(value, p);
+                    return me._wxNotSupportSetProperty(value, p);
                 }
             });
         });

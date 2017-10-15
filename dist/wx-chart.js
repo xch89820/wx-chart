@@ -1,7 +1,7 @@
 /*!
  * wx-chart.js
  * Chart for WeiXin application
- * Version: 0.3.2
+ * Version: 0.3.3
  *
  * Copyright 2016 Jone Casper
  * Released under the MIT license
@@ -6166,7 +6166,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
             var WxChart = function () {
                 /**
                  * @constructor
-                 * @param {string} id - Canvas id ,DOM ID or HTMLElement
+                 * @param {string|HTMLCanvasElement} id - Canvas id ,DOM ID or HTMLElement
                  * @param {Object|number} [config] - The config of Canvas or the width of chart.
                  * @param {number} [config.width] - The width of canvas.
                  * @param {number} [config.height] - The height of canvas.
@@ -7556,7 +7556,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             }
 
                             // Set style
-                            ctx.textBaseline = 'top';
+                            ctx.textBaseline = 'middle';
                             ctx.textAlign = 'start';
                             ctx.fillStyle = fillStyle;
                             ctx.fontSize = fontSize;
@@ -7572,7 +7572,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             }
                             var thisX = currentX;
                             // draw rect
-                            if (ctx.lineWidth != 0) {
+                            if (lineWidth != 0) {
                                 ctx.strokeRect(currentX, currentY, boxWidth, boxHeight);
                             }
                             ctx.globalAlpha = fillAlpha;
@@ -7581,7 +7581,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                             // draw text
                             currentX += boxWidth + fontSize / 2;
-                            ctx.fillText(text, currentX, currentY);
+                            ctx.fillText(text, currentX, currentY + boxHeight / 2 - lineWidth);
 
                             // draw hidden strike through
                             if (!display) {
@@ -8064,6 +8064,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var text = void 0;
                         if (tick && tick.text && _helper.is.String(tick.text)) {
                             ctx.save();
+                            console.log('tick');
                             me._initDrawATickText();
                             text = tick.format ? tick.format.call(me, tick.text, tick, x, y, me.fontRadians) : tick.text;
                             var textWidth = tick.textWidth ? tick.textWidth : ctx.measureText(text).width;
@@ -10372,9 +10373,10 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                 }, {
                     key: '_wxSetPropertyCallable',
                     value: function _wxSetPropertyCallable(value, propertyName) {
-                        var wxSetName = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'set' + propertyName.replace(/(\w)/, function (v) {
+                        var wxSetProperty = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'set' + propertyName.replace(/(\w)/, function (v) {
                             return v.toUpperCase();
                         });
+                        var wxSetValue = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : value;
 
                         var me = this;
 
@@ -10388,7 +10390,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         }
 
                         if (me.isWeiXinAPP) {
-                            me._ctx[wxSetName](value);
+                            me._ctx[wxSetProperty](wxSetValue);
                             me.cp[propertyName] = value;
                         } else {
                             me._ctx[propertyName] = value;
@@ -10400,9 +10402,9 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     // Normally property weixin app not support
 
                 }, {
-                    key: '_wxSetProperty',
-                    value: function _wxSetProperty(value, propertyName) {
-                        var setWX = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+                    key: '_wxNotSupportSetProperty',
+                    value: function _wxNotSupportSetProperty(value, propertyName) {
+                        var setBrowser = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
 
                         var me = this;
 
@@ -10417,12 +10419,33 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
 
                         if (me.isWeiXinAPP) {
                             me.cp[propertyName] = value;
-                            setWX ? me._ctx[propertyName] = value : null;
+                            setBrowser ? me._ctx[propertyName] = value : null;
                         } else {
                             me._ctx[propertyName] = value;
                             me.cp[propertyName] = me._ctx[propertyName];
                         }
                         return value;
+                    }
+
+                    // Test wx env
+
+                }, {
+                    key: '_wxCompatibiltySetProperty',
+                    value: function _wxCompatibiltySetProperty(value, propertyName) {
+                        var wxSetProperty = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'set' + propertyName.replace(/(\w)/, function (v) {
+                            return v.toUpperCase();
+                        });
+                        var wxSetValue = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : value;
+
+                        if (this.isWeiXinAPP) {
+                            var pName = 'canvasContext.' + wxSetProperty;
+                            console.log('canIUse : ' + pName);
+                            if (wx.canIUse(pName)) {
+                                console.log('call ' + wxSetProperty + ' -> ' + wxSetValue);
+                                return this._wxSetPropertyCallable(value, propertyName, wxSetProperty, wxSetValue);
+                            }
+                        }
+                        return this._wxNotSupportSetProperty(value, propertyName);
                     }
                 }, {
                     key: 'createStyleProperty',
@@ -10482,15 +10505,25 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                     value: function createTextProperty() {
                         var me = this;
 
-                        ['textAlign', 'textBaseline'].forEach(function (p) {
-                            Object.defineProperty(me, p, {
-                                get: function get() {
-                                    return me.cp[p];
-                                },
-                                set: function set(value) {
-                                    return me._wxSetProperty(value, p);
-                                }
-                            });
+                        var taProperty = 'textAlign';
+                        Object.defineProperty(me, taProperty, {
+                            get: function get() {
+                                return me.cp[taProperty];
+                            },
+                            set: function set(value) {
+                                // WeiXin setTextAlign just support 'left' 'center' and 'right'
+                                if (value === 'left' || value === 'right' || value === 'center') return me._wxCompatibiltySetProperty(value, taProperty);else if (value === 'start' || value === 'end') return me._wxCompatibiltySetProperty(value, taProperty, undefined, value === 'start' ? 'left' : 'right');else return me._wxNotSupportSetProperty(value, taProperty);
+                            }
+                        });
+
+                        var tblProperty = 'textBaseline';
+                        Object.defineProperty(me, tblProperty, {
+                            get: function get() {
+                                return me.cp[tblProperty];
+                            },
+                            set: function set(value) {
+                                if (value === 'hanging') return me._wxNotSupportSetProperty(value, tblProperty);else if (value === 'alphabetic') return me._wxCompatibiltySetProperty(value, tblProperty, undefined, 'normal');else return me._wxCompatibiltySetProperty(value, tblProperty);
+                            }
                         });
 
                         Object.defineProperty(me, 'font', {
@@ -10587,6 +10620,8 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                 culY = fontSize * baseNum / 20 + y;
                                 break;
                             case 'alphabetic':
+                            case 'normal':
+                                // Only WeiXin has
                                 break;
                         }
                         return culY;
@@ -10605,12 +10640,16 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                         var textAlign = me.textAlign;
                         switch (textAlign) {
                             case 'end':
+                            case 'right':
+                                // ignore RTL-browsers
                                 culX = x - me.measureText(text).width;
                                 break;
                             case 'center':
                                 culX = x - me.measureText(text).width / 2;
                                 break;
                             case 'start':
+                            case 'left':
+                                // ignore RTL-browsers
                                 break;
                         }
                         return culX;
@@ -10636,10 +10675,15 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                             maxWidth = 0 in options ? options[0] : undefined,
                             baseNum = 1 in options ? options[1] : WX_BASE_TEXT_SIZE;
                         if (me.isWeiXinAPP) {
-                            var culX = void 0,
-                                culY = void 0;
-                            culY = me._calculateYForTextBaseline(y, text, baseNum);
-                            culX = me._calculateXFortextAlign(x, text, baseNum);
+                            var culX = x,
+                                culY = y;
+                            if (!wx.canIUse('canvasContext.setTextBaseline')) {
+                                culY = me._calculateYForTextBaseline(y, text, baseNum);
+                            }
+                            if (!wx.canIUse('canvasContext.setTextAlign')) {
+                                culX = me._calculateXFortextAlign(x, text, baseNum);
+                            }
+                            console.log('fillText ' + text + ' -> ' + culX + ' ' + culY);
                             return me._ctx.fillText(text, culX, culY);
                         } else {
                             return me._ctx.fillText(text, x, y, maxWidth);
@@ -10687,7 +10731,7 @@ var _typeof2 = typeof Symbol === "function" && typeof Symbol.iterator === "symbo
                                     return me.cp[p];
                                 },
                                 set: function set(value) {
-                                    return me._wxSetProperty(value, p);
+                                    return me._wxNotSupportSetProperty(value, p);
                                 }
                             });
                         });
