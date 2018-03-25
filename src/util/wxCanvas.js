@@ -13,6 +13,7 @@ const WX_CANVAS_CTX_DEFAULT_PROPERTY = {
     fillStyle: '#000000',
     lineCap: 'butt',
     lineJoin: 'miter',
+    lineDashOffset: 0.0,
     miterLimit: 10,
     lineWidth: 1,
     strokeStyle: '#000000',
@@ -22,13 +23,39 @@ const WX_CANVAS_CTX_DEFAULT_PROPERTY = {
     shadowColor: '#000000',
     font: '10px',
     textBaseline: 'alphabetic', // only support top, middle and alphabetic
-    textAlign: 'start' // only support start, end and center
+    textAlign: 'left'
 };
 
 // Base text size
 const WX_BASE_TEXT_SIZE = 9;
 
 const pxReg = /([\d.]+)px/;
+
+function wxCompareVersion(v1, v2) {
+    v1 = v1.split('.');
+    v2 = v2.split('.');
+    let len = Math.max(v1.length, v2.length);
+
+    while (v1.length < len) {
+        v1.push('0')
+    }
+    while (v2.length < len) {
+        v2.push('0')
+    }
+
+    for (let i = 0; i < len; i++) {
+        let num1 = parseInt(v1[i]);
+        let num2 = parseInt(v2[i]);
+
+        if (num1 > num2) {
+            return 1
+        } else if (num1 < num2) {
+            return -1
+        }
+    }
+
+    return 0
+}
 /**
  * Compatible canvas object
  */
@@ -40,13 +67,26 @@ export default class WxCanvas {
         me._config = extend({}, WX_CANVAS_DEFAULT_PROPERTY, me.initConfig(config));
 
         // Acquire canvas context
-        let {canvas, context} = this.acquireContext(id, config);
+        let {domID, canvas, context} = this.acquireContext(id, config);
+        me.domID = id;
 
         me._canvas = canvas;
         me._ctx = context;
         me.wxCanvasRenderingContext2D = new WxCanvasRenderingContext2D(canvas, context, contextOptions);
 
         return me;
+    }
+
+    get config() {
+        return this._config;
+    }
+
+    get contextInstance() {
+        return this._ctx;
+    }
+
+    get canvasInstance() {
+        return this._canvas;
     }
 
     /**
@@ -76,6 +116,7 @@ export default class WxCanvas {
      */
     acquireContext(id, config) {
         let me = this,
+            domID,
             canvas,
             context;
         // Outer canvas config
@@ -84,16 +125,22 @@ export default class WxCanvas {
         if (me.isWeiXinAPP) {
             if (is.String(id)) {
                 canvas = context = wx.createCanvasContext(id);
+                domID = id;
             } else {
                 throw new Error('Should set an id');
             }
         } else {
-            if (handlerCanvas) canvas = handlerCanvas;
-            else
-                canvas = is.String(id) ? document.getElementById(id) :
-                    (typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement) ?
-                        id:
-                        null;
+            if (handlerCanvas) {
+                canvas = handlerCanvas;
+            } else {
+                if (is.String(id)) {
+                    canvas = document.getElementById(id);
+                    domID = id;
+                } else if (typeof HTMLCanvasElement != 'undefined' && id instanceof HTMLCanvasElement) {
+                    canvas = id;
+                    domID = id.id;
+                }
+            }
             if (typeof canvas != 'undefined') {
                 context = canvas.getContext && canvas.getContext('2d');
             }
@@ -104,7 +151,7 @@ export default class WxCanvas {
         }
 
         this.initCanvas(canvas);
-        return {canvas, context};
+        return {domID, canvas, context};
     }
 
     /**
@@ -222,11 +269,14 @@ export default class WxCanvas {
     }
 
     // Property
-    get height() {
+    /**
+     * Canvas DOM height
+     */
+    get renderHeight() {
         if (this.isWeiXinAPP) {
-            return this._config.height;
+            return this.height;
         } else {
-            let renderHeight = wxConverToPx(this._canvas.getAttribute('height'));
+            let renderHeight = wxConverToPx(this.canvasInstance.getAttribute('height'));
             if (renderHeight === null || renderHeight === '') {
                 return readUsedSize(canvas, 'height');
             }
@@ -234,19 +284,29 @@ export default class WxCanvas {
         }
     }
 
-    set height(val) {
+    set renderHeight(val) {
         if (this.isWeiXinAPP) {
             // Can not set WeiXin app height
         } else {
-            this._canvas.height = val;
+            this.canvasInstance.height = val;
         }
     }
 
-    get width() {
+    /**
+     * Canvas height
+     */
+    get height() {
+        return this.config.height;
+    }
+
+    /**
+     * Canvas DOM width
+     */
+    get renderWidth() {
         if (this.isWeiXinAPP) {
-            return this._config.width;
+            return this.width;
         } else {
-            let renderWidth = wxConverToPx(this._canvas.getAttribute('width'));
+            let renderWidth = wxConverToPx(this.canvasInstance.getAttribute('width'));
             if (renderWidth === null || renderWidth === '') {
                 return readUsedSize(canvas, 'width');
             }
@@ -254,12 +314,19 @@ export default class WxCanvas {
         }
     }
 
-    set width(val) {
+    set renderWidth(val) {
         if (this.isWeiXinAPP) {
             // Can not set WeiXin app height
         } else {
-            this._canvas.width = val;
+            this.canvasInstance.width = val;
         }
+    }
+
+    /**
+     * Canvas height
+     */
+    get width() {
+        return this.config.width;
     }
 }
 export class WxCanvasRenderingContext2D {
@@ -269,12 +336,16 @@ export class WxCanvasRenderingContext2D {
         me.canvas = canvas;
         me._ctx = context;
         me.isWeiXinAPP = checkWX();
+        if (me.isWeiXinAPP) {
+            me.systemInfo = wx.getSystemInfoSync();
+        }
 
         // Canvas property cache stack
         me._ctxOptions = options;
         me._propertyCache = [extend({}, WX_CANVAS_CTX_DEFAULT_PROPERTY, options)];
         me.cp = me._propertyCache[0];
 
+        // Inject property
         me.createStyleProperty();
         me.createShadowsProperty();
         me.createTextProperty();
@@ -284,6 +355,8 @@ export class WxCanvasRenderingContext2D {
         me.createPathProperty();
         me.createTransformationProperty();
         me.createGlobalAlphaProperty();
+        me.createFileImageProperty();
+        me.createGlobalCompositeOperation();
         return me;
     }
 
@@ -291,7 +364,8 @@ export class WxCanvasRenderingContext2D {
     save() {
         let me = this;
         me._ctx.save();
-        let nProperty = extend({}, WX_CANVAS_CTX_DEFAULT_PROPERTY, me._ctxOptions);
+        // 2018.1 Fix bug - 'save' function will inherit 'Drawing state'(#see:https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/save)
+        let nProperty = extend({}, WX_CANVAS_CTX_DEFAULT_PROPERTY, me.cp, me._ctxOptions);
         me._propertyCache.push(nProperty);
         me.cp = nProperty;
         return me.cp;
@@ -327,16 +401,16 @@ export class WxCanvasRenderingContext2D {
 
         if (me.isWeiXinAPP) {
             me._ctx[wxSetProperty](wxSetValue);
-            me.cp[propertyName] = value;
         } else {
             me._ctx[propertyName] = value;
-            me.cp[propertyName] = me._ctx[propertyName];
         }
+        me.cp[propertyName] = value;
+
         return value;
     }
 
     // Normally property weixin app not support
-    _wxNotSupportSetProperty(value, propertyName, setBrowser = true) {
+    _wxSetProperty(value, propertyName, setWxCTX = false) {
         let me = this;
 
         if (is.Null(value) || is.Undefined(value)) {
@@ -349,14 +423,42 @@ export class WxCanvasRenderingContext2D {
         }
 
         if (me.isWeiXinAPP) {
-            me.cp[propertyName] = value;
-            setBrowser
-                ? me._ctx[propertyName] = value
-                : null;
+            if (setWxCTX) me._ctx[propertyName] = value;
         } else {
             me._ctx[propertyName] = value;
-            me.cp[propertyName] = me._ctx[propertyName];
         }
+        me.cp[propertyName] = value;
+
+        return value;
+    }
+
+    _wxCompatibiltyProperty(value, propertyName, setWxCTX = true, wxSetValue = value) {
+        let me = this;
+
+        if (is.Null(value) || is.Undefined(value)) {
+            return value;
+        }
+
+        //performance
+        if (me.cp[propertyName] === value) {
+            return value;
+        }
+
+        if (me.isWeiXinAPP) {
+            let pName = 'canvasContext.' + propertyName;
+            if (wx.canIUse(pName)) {
+                me._ctx[propertyName] = wxSetValue;
+            } else {
+                if (setWxCTX) {
+                    me._ctx[propertyName] = wxSetValue;
+                }
+                throw new Error(`WeiXin APP not support "${propertyName}" property!`);
+            }
+        } else {
+            me._ctx[propertyName] = value;
+        }
+        me.cp[propertyName] = value;
+
         return value;
     }
 
@@ -372,7 +474,33 @@ export class WxCanvasRenderingContext2D {
                 return this._wxSetPropertyCallable(value, propertyName, wxSetProperty, wxSetValue)
             }
         }
-        return this._wxNotSupportSetProperty(value, propertyName);
+        return this._wxSetProperty(value, propertyName, true);
+    }
+
+    _wxCallableMaker(fnName, wxFnName = fnName) {
+        let me = this;
+        return function(...args) {
+            if (me.isWeiXinAPP) {
+                return me._ctx[wxFnName](...args);
+            } else {
+                return me._ctx[fnName](...args);
+            }
+        }
+    }
+
+    _wxCompatibiltyCallableMaker(fnName, wxFnName = fnName) {
+        let me = this;
+        return function(...args) {
+            if (me.isWeiXinAPP) {
+                if (wx.canIUse('canvasContext.' + fnName)) {
+                    return me._ctx[wxFnName](...args);
+                } else {
+                    throw new Error(`WeiXinAPP not support "${fnName}(${wxFnName})" function!`);
+                }
+            } else {
+                return me._ctx[fnName](...args);
+            }
+        }
     }
 
     createStyleProperty() {
@@ -385,8 +513,10 @@ export class WxCanvasRenderingContext2D {
                     return me.cp[p];
                 },
                 set: (value) => {
-                    if (value) {
-                        return me._wxSetPropertyCallable(value.toLowerCase(), p)
+                    try {
+                        return me._wxCompatibiltyProperty(value, p)
+                    } catch (e) {
+                        return me._wxSetPropertyCallable(value, p)
                     }
                 }
             })
@@ -403,18 +533,22 @@ export class WxCanvasRenderingContext2D {
                 },
                 set: (value) => {
                     let me = this;
+
+                    if (is.Null(value) || is.Undefined(value)) {
+                        return value;
+                    }
                     // performance
                     if (me.cp[p] === value) {
                         return;
                     }
 
                     if (me.isWeiXinAPP) {
-                        me.cp[p] = value;
                         me._ctx.setShadow(me.cp['shadowOffsetX'] || 0, me.cp['shadowOffsetY'] || 0, me.cp['shadowBlur'] || 0, me.cp['shadowColor'] || '#000000');
-                    } else if (!is.Null(value) && !is.Undefined(value)) {
+                    } else {
                         me._ctx[p] = value;
-                        me.cp[p] = value;
                     }
+                    me.cp[p] = value;
+
                     return value;
                 }
             })
@@ -432,12 +566,15 @@ export class WxCanvasRenderingContext2D {
             },
             set: (value) => {
                 // WeiXin setTextAlign just support 'left' 'center' and 'right'
-                if (value === 'left' || value === 'right' || value === 'center')
-                    return me._wxCompatibiltySetProperty(value, taProperty);
-                else if (value === 'start' || value === 'end')
-                    return me._wxCompatibiltySetProperty(value, taProperty, undefined, value === 'start' ? 'left' : 'right');
-                else
-                    return me._wxNotSupportSetProperty(value, taProperty);
+                let wxVal = value;
+                if (value === 'start' || value === 'end') {
+                    wxVal = value === 'start' ? 'left' : 'right';
+                }
+                try {
+                    return me._wxCompatibiltyProperty(value, taProperty, undefined, wxVal)
+                } catch (e) {
+                    return me._wxCompatibiltySetProperty(value, taProperty, undefined, wxVal);
+                }
             }
         });
 
@@ -447,12 +584,18 @@ export class WxCanvasRenderingContext2D {
                 return me.cp[tblProperty];
             },
             set: (value) => {
-                if (value === 'hanging')
-                    return me._wxNotSupportSetProperty(value, tblProperty);
-                else if (value === 'alphabetic')
-                    return me._wxCompatibiltySetProperty(value, tblProperty, undefined, 'normal');
-                else
-                    return me._wxCompatibiltySetProperty(value, tblProperty);
+                let wxVal = value;
+                if (value === 'hanging') {
+                    return me._wxSetProperty(value, tblProperty);
+                }
+                if (value === 'alphabetic') {
+                    wxVal = 'normal';
+                }
+                try {
+                    return me._wxCompatibiltyProperty(value, tblProperty, undefined, wxVal)
+                } catch (e) {
+                    return me._wxCompatibiltySetProperty(value, tblProperty, undefined, wxVal);
+                }
             }
         });
 
@@ -462,17 +605,21 @@ export class WxCanvasRenderingContext2D {
             },
             set: (value) => {
                 if (me.isWeiXinAPP) {
-                    let m = value.match(pxReg);
-                    if (!!m && me.cp.font !== value) {
-                        let fontSize = +m[1];
-                        me._ctx.setFontSize(fontSize);
-                        me.cp.font = value;
-                    }
-                } else {
-                    if (me.cp.font !== value) {
+                    if (wx.canIUse('canvasContext.font') && me.cp.font !== value) {
                         me._ctx.font = value;
                         me.cp.font = value;
+                    } else {
+                        let m = value.match(pxReg);
+                        if (!!m && me.cp.font !== value) {
+                            let fontSize = +m[1];
+                            me._ctx.setFontSize(fontSize);
+                            me.cp.font = value;
+                        }
                     }
+
+                } else if (me.cp.font !== value) {
+                    me._ctx.font = value;
+                    me.cp.font = value;
                 }
                 return me.cp.font;
             }
@@ -497,31 +644,55 @@ export class WxCanvasRenderingContext2D {
                 }
                 if (me.isWeiXinAPP) {
                     me._ctx.setFontSize(fontSize);
-                    me.cp.font = currentFont;
                 } else {
                     me._ctx.font = currentFont;
-                    me.cp.font = currentFont;
                 }
+                me.cp.font = currentFont;
+
                 return me.cp.font;
             }
         });
     }
+
+    measureTextByFontSize(text, fontSize) {
+        let me = this;
+        if (!fontSize) {
+            return this.measureText(text);
+        } else {
+            me.save();
+            me.fontSize = fontSize;
+            let mt = this.measureText(text);
+            me.restore();
+            return mt;
+        }
+    }
+
+    _measureTextWidth(text, fontSize = this.fontSize) {
+        let textLen = text.length;
+        let hanzi = text.match(new RegExp(REG_HANZI, 'g'));
+        let hanziNum = !!hanzi
+            ? hanzi.length
+            : 0;
+        let otherNum = textLen - hanziNum;
+        return fontSize * (otherNum + hanziNum * 2 + 2) / 2 + fontSize / 4;
+    }
     // Wrapper 'measureText' function for WeiXin APP
-    measureText(text, fontSize = this.fontSize) {
+    measureText(text) {
         let me = this;
         if (me.isWeiXinAPP) {
             if (!text) {
                 return 0;
             }
-            let textLen = text.length;
-            let hanzi = text.match(new RegExp(REG_HANZI, 'g'));
-            let hanziNum = !!hanzi
-                ? hanzi.length
-                : 0;
-            let otherNum = textLen - hanziNum;
+            // Compatible
+            if (wx.canIUse('canvasContext.measureText')) {
+                return me._ctx.measureText(text);
+            }
+
+            let fontSize = me.fontSize;
+            let size = me._measureTextWidth(text, fontSize);
 
             return {
-                'width': fontSize * (otherNum + hanziNum * 2) / 2 + fontSize / 4
+                'width': size
             };
         } else {
             return me._ctx.measureText(text);
@@ -592,13 +763,24 @@ export class WxCanvasRenderingContext2D {
         if (me.isWeiXinAPP) {
             let culX = x,
                 culY = y;
-            if (!wx.canIUse('canvasContext.setTextBaseline')) {
+            if (!wx.canIUse('canvasContext.setTextBaseline') && !wx.canIUse('canvasContext.textBaseline')) {
                 culY = me._calculateYForTextBaseline(y, text, baseNum);
             }
-            if (!wx.canIUse('canvasContext.setTextAlign')) {
+            if (!wx.canIUse('canvasContext.setTextAlign') && !wx.canIUse('canvasContext.textAlign')) {
                 culX = me._calculateXFortextAlign(x, text, baseNum);
             }
-
+            if (wx.canIUse('canvasContext.measureText') && wx.getSystemInfoSync().system.match(/^iOS/)) {
+                // iOS fillText bug
+                let res, ta = me.textAlign;
+                if (ta === 'start' || ta === 'left') {
+                    me.textAlign = 'center';
+                    res = me._ctx.fillText(text, (culX + me.measureText(text).width / 2), culY);
+                    me.textAlign = ta;
+                } else {
+                    res = me._ctx.fillText(text, culX, culY);
+                }
+                return res;
+            }
             return me._ctx.fillText(text, culX, culY);
         } else {
             return me._ctx.fillText(text, x, y, maxWidth);
@@ -607,7 +789,11 @@ export class WxCanvasRenderingContext2D {
     strokeText(text, x, y, ...options) {
         let me = this;
         if (me.isWeiXinAPP) {
-            return me.fillText(text, x, y, ...options);
+            if (wx.canIUse('canvasContext.strokeText')) {
+                return me.strokeText(text, x, y, ...options);
+            } else {
+                return me.fillText(text, x, y, ...options);
+            }
         } else {
             return me._ctx.strokeText(text, x, y, ...options);
         }
@@ -623,43 +809,86 @@ export class WxCanvasRenderingContext2D {
                     return me.cp[p];
                 },
                 set: (value) => {
-                    return me._wxSetPropertyCallable(value, p)
+                    try {
+                        return me._wxCompatibiltyProperty(value, p)
+                    } catch (e) {
+                        return me._wxSetPropertyCallable(value, p)
+                    }
                 }
             })
         });
 
-        ['lineDashOffset'].forEach(p => {
-            Object.defineProperty(me, p, {
-                get: () => {
-                    return me.cp[p];
-                },
-                set: (value) => {
-                    return me._wxNotSupportSetProperty(value, p);
+        let lineDashOffset = 'lineDashOffset';
+        Object.defineProperty(me, lineDashOffset, {
+            get: () => {
+                return me.cp[lineDashOffset];
+            },
+            set: (value) => {
+                if (is.Null(value) || is.Undefined(value)) {
+                    return value;
                 }
-            });
+
+                //performance
+                if (me.cp[lineDashOffset] === value) {
+                    return value;
+                }
+
+                me.cp[lineDashOffset] = value;
+                if (me.isWeiXinAPP) {
+                    if (wx.canIUse('canvasContext.lineDashOffset')) {
+                        me._ctx[lineDashOffset] = value;
+                    }
+                    if (wx.canIUse('canvasContext.setLineDash')) {
+                        let lineDash = me.cp['lineDash'];
+                        if (!lineDash) {
+                            // Just set property and return
+                            return value;
+                        }
+                        return me._ctx.setLineDash(lineDash, value);
+                    }
+                } else {
+                    me._ctx[lineDashOffset] = value;
+                }
+            }
         });
     }
-    setLineDash() {}
-    getLineDash() {}
+
+    setLineDash(value) {
+        let me = this;
+        if (is.Null(value) || is.Undefined(value)) {
+            return value;
+        }
+        //performance
+        if (me.cp['lineDashOffset'] === value) {
+            return value;
+        }
+
+        me.cp['lineDash'] = value;
+        if (me.isWeiXinAPP) {
+            let lineDashOffset = me.lineDashOffset;
+            return me._ctx['setLineDash'](value, lineDashOffset);
+        } else {
+            return me._ctx['setLineDash'](value);
+        }
+    }
+
+    getLineDash() {
+        return this.cp['lineDash'] || [];
+    }
 
     // Drawing rectangles
     createRectProperty() {
         let me = this;
         ['clearRect', 'fillRect', 'strokeRect'].forEach(function(functionName) {
-            me[functionName] = function(...args) {
-                return me._ctx[functionName](...args);
-            }
+            me[functionName] = me._wxCallableMaker(functionName);
         })
     }
 
     // Gradient
     createGradientProperty() {
         let me = this;
-        ['createLinearGradient'].forEach(function(functionName) {
-            me[functionName] = function(...args) {
-                return me._ctx[functionName](...args);
-            }
-        })
+        me.createLinearGradient = me._wxCallableMaker('createLinearGradient');
+        me.addColorStop = me._wxCallableMaker('addColorStop');
     }
     createRadialGradient(x0, y0, r0, x1, y1, r1) {
         let me = this;
@@ -683,41 +912,32 @@ export class WxCanvasRenderingContext2D {
             'arc',
             'rect'
         ].forEach(function(functionName) {
-            me[functionName] = function(...args) {
-                return me._ctx[functionName](...args);
-            }
+            me[functionName] = me._wxCallableMaker(functionName);
         });
+        me.arcTo = me._wxCompatibiltyCallableMaker('arcTo');
 
         ['fill', 'stroke'].forEach(function(functionName) {
             me[functionName] = function(...args) {
                 return me._ctx[functionName](...args);
             }
-        })
-    }
-    clip(...args) {
-        let me = this;
-        if (me.isWeiXinAPP) {
-            throw new Error('WeiXin APP not support "clip" function yet!')
-        } else {
-            return me._ctx.clip(...args);
-        }
+        });
+
+        this.clip = me._wxCompatibiltyCallableMaker('clip');
     }
 
     // Transformations
     createTransformationProperty() {
         let me = this;
         ['rotate', 'scale', 'translate'].forEach(function(functionName) {
-            me[functionName] = function(...args) {
-                return me._ctx[functionName](...args);
-            }
+            me[functionName] = me._wxCompatibiltyCallableMaker(functionName);
         });
     }
-    transform() {
+    transform(...args) {
         let me = this;
-        if (me.isWeiXinAPP) {
-            throw new Error('WeiXin APP not support "transform" function yet!')
-        } else {
-            return me._ctx.transform(...args);
+        try {
+            return me._wxCompatibiltyCallableMaker(value, 'setTransform');
+        } catch (e) {
+            return me._wxCompatibiltyCallableMaker(value, 'transform');
         }
     }
 
@@ -730,7 +950,11 @@ export class WxCanvasRenderingContext2D {
                     return me.cp[p];
                 },
                 set: (value) => {
-                    return me._wxSetPropertyCallable(value, p)
+                    try {
+                        me._wxCompatibiltyProperty(value, p);
+                    } catch (e) {
+                        me._wxSetPropertyCallable(value, p);
+                    }
                 }
             })
         });
@@ -739,6 +963,100 @@ export class WxCanvasRenderingContext2D {
     draw(ctu = true) {
         if (this.isWeiXinAPP) {
             this._ctx.draw(ctu);
+        }
+    }
+
+    // Composite operation
+    createGlobalCompositeOperation() {
+        let me = this;
+        ['globalCompositeOperation'].forEach(p => {
+            Object.defineProperty(me, p, {
+                get: () => {
+                    return me.cp[p];
+                },
+                set: (value) => {
+                    return me._wxCompatibiltyProperty(value, p);
+                }
+            })
+        });
+    }
+
+    // create file&image function
+    // Be careful use 'canvasGetImageData' ,'canvasPutImageData';
+    // There are async-function in WeiXin
+    drawImage(...args) {
+        let me = this;
+        if (me.isWeiXinAPP) {
+            if (args.length > 4 && wxCompareVersion(me.systemInfo.SDKVersion, '1.9.0') >= 0) {
+                // Not support drawImage(sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) until 1.9.0 version
+                throw new Error(`WeiXin not support "drawImage(8 args)" function until 1.9.0 version!`);
+            } else {
+                return me._ctx.drawImage(...args);
+            }
+        } else {
+            return me._ctx.drawImage(...args);
+        }
+    }
+    createFileImageProperty() {
+        this.createPattern = this._wxCompatibiltyCallableMaker('createPattern');
+    }
+
+    getImageData(x, y, width, height, callback) {
+        let me = this;
+        if (me.isWeiXinAPP) {
+            if (wx.canIUse('wx.canvasGetImageData')) {
+                let opt = {
+                    canvasId: me.canvas.domID,
+                    x,
+                    y,
+                    width,
+                    height,
+                    success: callback
+                };
+                return wx.canvasGetImageData(opt);
+            } else {
+                throw new Error(`WeiXinAPP not support "getImageData" function!`);
+            }
+        } else {
+            let imageData = me._ctx['getImageData'](x, y, width, height);
+            if (callback) {
+                callback.call(me, imageData);
+            }
+        }
+    }
+
+    putImageData(imageData, x, y, callback) {
+        let me = this;
+        if (me.isWeiXinAPP) {
+            if (wx.canIUse('wx.canvasPutImageData')) {
+                let opt = {
+                    canvasId: me.canvas.domID,
+                    data: imageData.data,
+                    x,
+                    y,
+                    width: imageData.width,
+                    height: imageData.height,
+                    complete: callback
+                };
+                return wx.canvasPutImageData(opt);
+            } else {
+                throw new Error(`WeiXinAPP not support "getImageData" function!`);
+            }
+        } else {
+            me._ctx['putImageData'](imageData, x, y);
+            if (callback) {
+                callback.call(me, imageData);
+            }
+        }
+    }
+
+    // file operation
+    canvasToTempFilePath(...args) {
+        let me = this;
+        if (me.isWeiXinAPP) {
+            return me._ctx.canvasToTempFilePath(...args);
+        } else {
+            throw new Error('Browser not support "canvasToTempFilePath" function!')
         }
     }
 }

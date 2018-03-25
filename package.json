@@ -1,6 +1,6 @@
 {
   "name": "wx-chart",
-  "version": "0.3.4",
+  "version": "1.0.0",
   "description": "跨平台微信小程序图形库",
   "main": "src/wx-chart.js",
   "scripts": {
@@ -18,10 +18,6 @@
     "微信小程序",
     "wx"
   ],
-  "browserify-shim": {
-    "react": "global:React",
-    "react-dom": "global:ReactDOM"
-  },
   "author": "Jone Casper",
   "license": "MIT",
   "bugs": {
@@ -74,8 +70,8 @@
     "bezier-js": "^2.2.3",
     "es6-mixins": "^1.0.2",
     "ez.js": "^1.0.3",
-    "mitt": "^1.1.2",
     "performance-now": "^2.1.0",
+    "tiny-emitter": "^2.0.2",
     "tinycolor2": "^1.4.1"
   }
 }

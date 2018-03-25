@@ -111,7 +111,7 @@ export default class WxScale extends WxBaseComponent {
         return maxTextLen;
     };
 
-    calculateFixPadding(datasets, config) {
+    calculateFixPadding(config = this.config) {
         let me = this,
             ctx = me.wxChart.ctx;
         if (config.fixPadding) {
@@ -129,12 +129,11 @@ export default class WxScale extends WxBaseComponent {
 
     init(datasets, defaultOptions = WX_SCALE_DEFAULT_ITEM_CONFIG) {
         let me = this;
-        let config = me.config;
 
         datasets = super.init(datasets, defaultOptions);
         me.visDatasets = null;
         me._datasets = datasets;
-        me.fixPadding = me.calculateFixPadding(datasets, config);
+        me.fixPadding = me.calculateFixPadding();
 
         return datasets
     }
@@ -182,7 +181,7 @@ export default class WxScale extends WxBaseComponent {
         } else {
             let titleWidth = 0;
             if (config.title) {
-                titleWidth = ctx.measureText(config.title, config.titleFontSize).width - lineWidth - lineSpace - fontSize / 2;
+                titleWidth = ctx.measureTextByFontSize(config.title, config.titleFontSize).width - lineWidth - lineSpace - fontSize / 2;
             }
             minWidth = longestText + lineWidth + lineSpace + fontSize / 2;
             minWidth = minWidth > titleWidth ? minWidth : titleWidth;
@@ -274,7 +273,7 @@ export default class WxScale extends WxBaseComponent {
             ctx = me.wxChart.ctx;
         if (me.isHorizontal()) {
             titleWidth = config.title
-                ? ctx.measureText(config.title, config.titleFontSize).width
+                ? ctx.measureTextByFontSize(config.title, config.titleFontSize).width
                 : 0;
         } else {
             titleWidth = config.title
@@ -302,16 +301,13 @@ export default class WxScale extends WxBaseComponent {
     /**
      * Get position of ticket
      * @param {number} index - Begin from zero. If set -1, the function will return the actual x,y included extendLeft or extendTop
-     * @param {number} [ticketWidth=this.ticketWidth]
+     * @param {number} [tickWidth=this.tickWidth]
      * @param {BoxInstance} [area=this.box]
      */
-    getTicksPosition(index, ticketWidth, area = this.box) {
+    getTicksPosition(index, tickWidth = this.tickWidth, area = this.box) {
         let me = this,
             ctx = me.wxChart.ctx;
         let fixPadding = me.fixPadding;
-        if (!ticketWidth) {
-            ticketWidth = me.calculateTickWidth();
-        }
         let visTicks = me.visDatasets;
 
         let baseX,
@@ -321,7 +317,7 @@ export default class WxScale extends WxBaseComponent {
                 ? area.x - me.config.extendLeft + fixPadding / 2 + (me.config.extendLeft
                     ? me.config.ticks.lineWidth
                     : 0)
-                : area.lx + me._getTicksLineWidthOffset(index, visTicks) + ticketWidth * index + fixPadding / 2;
+                : area.lx + me._getTicksLineWidthOffset(index, visTicks) + tickWidth * index + fixPadding / 2;
             baseY = me.position === 'top'
                 ? area.ry - me.lineSpace
                 : area.ly + me.lineSpace;
@@ -330,7 +326,7 @@ export default class WxScale extends WxBaseComponent {
                 ? area.y - me.config.extendTop + fixPadding / 2 + (me.config.extendTop
                     ? me.config.ticks.lineWidth
                     : 0)
-                : area.ly + me.calculateTitleWidth() + me._getTicksLineWidthOffset(index, visTicks) + ticketWidth * index + fixPadding / 2;
+                : area.ly + me.calculateTitleWidth() + me._getTicksLineWidthOffset(index, visTicks) + tickWidth * index + fixPadding / 2;
             baseX = me.position === 'left'
                 ? area.rx - me.lineSpace
                 : area.lx + me.lineSpace;
@@ -426,8 +422,8 @@ export default class WxScale extends WxBaseComponent {
         let me = this,
             ctx = me.wxChart.ctx;
         let fontSize = ctx.fontSize;
-        let fixPadding = me.fixPadding,
-            tickWidth = me.calculateTickWidth(datasets, box, config);
+        let fixPadding = me.fixPadding;
+        let tickWidth = me.calculateTickWidth(datasets, box, config);
         let tickConfig = config.ticks;
         let {
             x,
@@ -441,6 +437,7 @@ export default class WxScale extends WxBaseComponent {
 
         let {x: currX, y: currY, x: baseX, y: baseY} = me.getTicksPosition(-1, tickWidth);
         ctx.save();
+        ctx.strokeStyle = config.color;
         ctx.fillStyle = tickConfig.fontColor;
         ctx.fontSize = tickConfig.fontSize;
         ctx.lineWidth = tickConfig.lineWidth;
@@ -456,23 +453,23 @@ export default class WxScale extends WxBaseComponent {
             currX = me.box.lx + fixPadding / 2;
             // Draw ticks
             visTicks.map((tick) => {
-                currX += tick.lineWidth;
+                currX += tick.lineWidth/2;
                 ctx.fillStyle = tick.fontColor;
                 ctx.lineWidth = tick.lineWidth;
                 ctx.fontSize = tick.fontSize || ctx.fontSize;
                 me._drawATickLine(currX, currY, fontSize, tick);
-                currX += tickWidth;
+                currX += (tickWidth + tick.lineWidth/2);
             });
             // Draw the last point
-            currX = me.box.ex - fixPadding / 2 - titleWidth;
+            currX = me.box.ex - fixPadding / 2 - titleWidth - visTicks[visTicks.length-1].lineWidth;
             if (me.box.marginLR) {
                 me._drawATickLine(currX, currY, fontSize);
             }
 
-            ctx.fillStyle = tickConfig.fontColor;
-            ctx.lineWidth = config.lineWidth;
             // draw axis line
             ctx.beginPath();
+            ctx.fillStyle = tickConfig.fontColor;
+            ctx.lineWidth = config.lineWidth;
             ctx.moveTo(baseX, currY);
             ctx.lineTo(currX, currY);
             ctx.stroke();
@@ -507,12 +504,12 @@ export default class WxScale extends WxBaseComponent {
             currY = me.box.ly + fixPadding / 2 + titleWidth;
             // Draw ticks
             visTicks.map((tick) => {
-                currY += tick.lineWidth;
+                currY += tick.lineWidth/2;
                 ctx.fillStyle = tick.fontColor;
                 ctx.lineWidth = tick.lineWidth;
                 ctx.fontSize = tick.fontSize || ctx.fontSize;
                 me._drawATickLine(currX, currY, fontSize, tick);
-                currY += tickWidth;
+                currY += (tickWidth + tick.lineWidth/2);
             });
             // Draw the last point
             currY = me.box.ey - fixPadding / 2;
@@ -520,16 +517,18 @@ export default class WxScale extends WxBaseComponent {
                 me._drawATickLine(currX, currY, fontSize);
             }
 
-            ctx.fillStyle = tickConfig.fontColor;
-            ctx.lineWidth = config.lineWidth;
             // draw axis line
             ctx.beginPath();
-            ctx.moveTo(currX, baseY + titleWidth);
-            ctx.lineTo(currX, currY);
+            ctx.fillStyle = tickConfig.fontColor;
+            ctx.lineWidth = config.lineWidth;
+            ctx.moveTo(currX, baseY);
+            ctx.lineTo(currX, currY - visTicks[visTicks.length-1].lineWidth);
             ctx.stroke();
         }
         ctx.draw();
         ctx.restore();
+
+        me.tickWidth = tickWidth;
     }
 
     // Empty interface

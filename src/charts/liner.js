@@ -16,6 +16,8 @@ import WxCategoryScale from '../scale/scale.category';
 import WxLegend from '../core/legend';
 import WxLayout, {BoxInstance} from '../core/layout';
 import WxAnimation from '../core/animation';
+import WxPointElement from '../elements/point';
+
 let Bezier = require('bezier-js');
 let tinycolor = require("tinycolor2");
 
@@ -25,7 +27,7 @@ const WX_LINE_LEGEND_DEFAULT_CONFIG = {
     // 'capStyle': 'butt', //Default line cap is cap,
     lineJoin: 'miter',
     fillArea: false,
-    fillAlpha: 0.5,
+    fillAlpha: 0.7,
     display: true,
     spanGaps: false, // If set true, will draw line between the null point
     tension: 0.4 // Default bezier curve tension. Set to 0 for no bezier curves.
@@ -77,11 +79,11 @@ const WX_LINER_DEFAULT_CONFIG = {
 };
 
 const WX_LINER_ITEM_DEFAULT_CONFIG = {
-    showItem: true,
+    showLabel: true,
     // format: // title format function
-    pointRadius: 2,
+    pointRadius: 4,
     pointStyle: 'circle', // Support triangle, rect and Image object
-    pointBorderWidth: 1,
+    pointBorderWidth: 2,
     pointBorderColor: '#ffffff',
     display: true
 };
@@ -97,7 +99,7 @@ export default class WxLiner extends WxChart {
      * @param {number} [config.padding=] - The padding of canvas.
      * @param {string} [config.display=block] - The display style of chart.
      *
-     * @param {Object} config.legendOptions=[] - The legend & label options.You should set 'key' to bind the attribute in datasets which is the value of the point.
+     * @param {Object} [config.legendOptions=[]] - The legend & label options.You should set 'key' to bind the attribute in datasets which is the value of the point.
      * @param {(string|Object)} [config.title=] - The title text or title options of chart.
      * @example
      * datasets:[{
@@ -129,7 +131,7 @@ export default class WxLiner extends WxChart {
         });
 
         let me = this;
-        me.chartConfig = extend({}, WX_LINER_DEFAULT_CONFIG, config);
+        me.chartConfig = extend({}, WX_LINER_DEFAULT_CONFIG, me.config);
 
         me.title = null;
         // Initialize title and legend
@@ -155,62 +157,7 @@ export default class WxLiner extends WxChart {
         if (me.chartConfig.animate)
             me.wxAnimation = new WxAnimation(me.chartConfig.animateOptions);
 
-        me.emit('init', {
-            options: me.chartConfig
-        });
-    }
-
-    // Get/Set labels
-    get labels() {
-        let me = this,
-            tmp;
-        if (me._labels) {
-            return me._labels;
-        } else if (tmp = me.chartConfig.labels) {
-            if (is.Array(tmp)) {
-                return tmp;
-            }
-        }
-        me._labels = me.visDatasets.map(dataset => dataset.label);
-        return me._labels;
-    }
-
-    get legends() {
-        let me = this;
-        if (!me._legends) {
-            me._legends = me._getLegendConfig();
-        }
-        return me._legends;
-    }
-
-    set legends(value) {
-        this._legends = value;
-    }
-
-    /**
-     * Build legends config
-     * @private
-     */
-    _getLegendConfig() {
-        let me = this,
-            defaultKey = me.chartConfig.defaultKey || 'value',
-            legendsConfig = me.chartConfig.legends;
-        if (!legendsConfig) {
-            if (me.labels && me.labels.length) {
-                legendsConfig = me.labels.map(label => {
-                    return {'text': label, 'key': defaultKey};
-                })
-            } else {
-                throw new Error('Can not get legend config!');
-            }
-        } else {
-            legendsConfig = legendsConfig.map(legend => {
-                return extend(true, {
-                    'key': defaultKey
-                }, legend);
-            })
-        }
-        return legendsConfig;
+        me.emit('init', me.chartConfig);
     }
 
     /**
@@ -224,33 +171,124 @@ export default class WxLiner extends WxChart {
      * @param {number} [datasets[].pointBorderWidth=1.5] - Point border width
      * @param {string} [datasets[].pointBorderColor='auto'] - Point border color. If not set, will same as lineColor(luminosity+50%)
      * @param {number} [datasets[].display=true] - display the point or not
+     * @param {Object} [defaultItemOpt=WX_LINER_ITEM_DEFAULT_CONFIG]
+     * @param {Boolean} [animation=true]
      * @returns {*}
      */
-    update(datasets) {
+    update(datasets, defaultItemOpt = WX_LINER_ITEM_DEFAULT_CONFIG ,animation = true) {
         let me = this;
         me._labels = null;
         me._legends = null;
-        super.update(datasets, extend({}, WX_LINER_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
+        super.update(datasets, extend({}, defaultItemOpt, me.chartConfig.point));
         me.wxLayout.removeAllBox();
         if (me.wxAnimation) me.wxAnimation.reset();
-        return me.draw();
+        return me.draw(animation);
+    }
+
+    /**
+     * Re-draw chart
+     * @param {Boolean} [animation=false]
+     * @return {*}
+     */
+    redraw(animation = false) {
+        let me = this;
+        super.update(this.datasets);
+        me.wxLayout.removeAllBox();
+        if (me.wxAnimation) me.wxAnimation.reset();
+        return me.draw(animation);
+    }
+
+    renderViews(box, legend, legendIndex) {
+        let me = this,
+            stacked = me.chartConfig.stacked,
+            discardNeg = me.chartConfig.discardNeg,
+            key = legend.key;
+        return me.visDatasets.map((data, index) => {
+            let o = me.renderView(data, index, { legend, legendIndex, stacked, discardNeg, key });
+            o.totalValue = me.getTotalValue(key);
+            o.legend = legend;
+            o.legendIndex = legendIndex;
+            o.formatValue = me.renderLabel(o.value, o.totalValue, o.element, o.data, o.legend, o.legendIndex);
+            return o;
+        });
+    }
+
+    /**
+     * Render view
+     * @param {Object} data
+     * @param {number} index
+     * @param {Object} opt
+     */
+    renderView(data, index, opt) {
+        let me = this;
+        let { legend, legendIndex, stacked, discardNeg, key } = opt;
+        let value = data[key],
+            element;
+
+        if (value) {
+            let yAxisPoint,
+                xAxisPoint = me.xAxis.getPoint(index);
+            if (stacked) {
+                if (discardNeg) {
+                    let {sumPos} = me._getStackValue(index, legendIndex);
+                    yAxisPoint = value < 0 ? me.yAxis.getPoint(sumPos) : me.yAxis.getPoint(sumPos + value);
+                } else {
+                    yAxisPoint = me._getStackPoint(index, legendIndex);
+                }
+            } else {
+                yAxisPoint = me.yAxis.getPoint(value);
+            }
+
+            // format: // title format function
+            let pointOpt = {
+                radius: data['pointRadius'],
+                style: data['pointStyle'], // Support triangle, rect and Image object
+                backgroundColor: data['pointBackgroundColor'] || legend['fillStyle'],
+                borderWidth: data['pointBorderWidth'],
+                borderColor: data['pointBorderColor'] || legend['strokeStyle'],
+                touched: {
+                    radius: data['touched'] ? data['touched']['pointRadius'] : data['pointRadius'] + 2,
+                    borderWidth: data['touched'] ? data['touched']['pointBorderWidth'] : data['pointBorderWidth'] + 1,
+                    style: data['touched'] ? data['touched']['pointStyle'] : data['pointStyle'],
+                    borderColor: data['touched'] ? data['touched']['pointBorderColor'] : data['pointBorderColor'] || legend['strokeStyle'],
+                    backgroundColor: data['pointBackgroundColor'] || legend['fillStyle']
+                }
+            };
+
+            element = new WxPointElement(xAxisPoint.x, yAxisPoint.y, pointOpt);
+        }
+
+        return {value, element, data, index};
+    }
+    /**
+     * Render labels
+     * @param {number} value
+     * @param {number|*} totalValue
+     * @param {WxElement} element
+     * @param {Object} data
+     * @param {WxLegend} legend
+     * @param {number} index
+     */
+    renderLabel(value, totalValue, element, data, legend, index) {
+        let { label, format } = data;
+        return is.Function(format)
+            ? format.call(this, label, value, index, totalValue)
+            : value+'';
     }
 
     /**
      * Draw chart
      */
-    draw() {
+    draw(animation = true) {
         let box,
             me = this,
-            animate = me.chartConfig.animate,
+            animate = animation && me.chartConfig.animate,
             stacked = me.chartConfig.stacked,
             discardNeg = me.chartConfig.discardNeg,
             wxLayout = me.wxLayout;
         let {cutoutPercentage, rotation, color, borderWidth, padding} = me.chartConfig;
 
-        me.emit('beforeDraw', {
-            options: me.chartConfig,
-        });
+        me.emit('beforeDraw', me.chartConfig);
 
         // First, we draw title
         box = wxLayout.adjustBox();
@@ -276,64 +314,35 @@ export default class WxLiner extends WxChart {
         wxLayout.addBox(me.legend.box);
 
         // Thirdly, draw scale
-        me._drawScale(wxLayout);
+        box = wxLayout.adjustBox();
+        let {xBox:xScaleBox, yBox:yScaleBox} = me._drawScale(box);
+        wxLayout.addBox(xScaleBox);
+        wxLayout.addBox(yScaleBox);
 
         box = wxLayout.adjustBox();
         // Finally, draw line
-        let lineConfigs = me.legends.map((legend, legendIndex) => {
-            let config = {
-                box: box,
-                legend: legend
-            };
-            let key = legend.key;
-            // config.dataset = me.visDatasets.map(data => {return {value: data[key], data: data}});
-            config.dataset = me.visDatasets.map((data, index) => {
-                let value = data[key],
-                    point;
-
-                if (value) {
-                    let yAxisPoint,
-                        xAxisPoint = me.xAxis.getPoint(index);
-                    if (stacked) {
-                        if (discardNeg) {
-                            let { sumPos } = me._getStackValue(index, legendIndex);
-                            yAxisPoint = value < 0 ? me.yAxis.getPoint(sumPos) : me.yAxis.getPoint(sumPos + value);
-                        } else {
-                            yAxisPoint = me._getStackPoint(index, legendIndex);
-                        }
-                    } else {
-                        yAxisPoint = me.yAxis.getPoint(value);
-                    }
-
-                    point = {
-                        x: xAxisPoint.x,
-                        y: yAxisPoint.y
-                    };
-                }
-
-                return {value, point, data, index};
-            });
-            return config;
+        let viewsArray = [];
+        me.legends.map((legend, legendIndex) => {
+            let views = me.renderViews(box, legend, legendIndex);
+            viewsArray.push(views);
         });
-
-        lineConfigs.reduce((pre, curr) => {
-            me.drawLine(curr, pre);
-            return curr;
-        }, null);
+        // Render
+        viewsArray.map(views => {
+            me.drawLine(views, box, animation);
+        });
+        wxLayout.addBox(box);
 
         if (animate) {
-            me.emit('animate', { animation: me.wxAnimation });
+            me.emit('animate', me.wxAnimation);
             me.wxAnimation.run(true);
-            me.wxAnimation.on('done', () => {
-                me.emit('draw', {
-                    options: lineConfigs,
-                });
+            me.wxAnimation.once('done', () => {
+                me.emit('draw', viewsArray);
             });
         } else {
-            me.emit('draw', {
-                options: lineConfigs,
-            });
+            me.emit('draw', viewsArray);
         }
+
+
         // lineConfigs.forEach(line => me._drawLine(line));
     }
 
@@ -341,19 +350,15 @@ export default class WxLiner extends WxChart {
      * /**
      * Draw the scale of chart
      *
-     * @param wxLayout
+     * @param box
      * @private
      */
-    _drawScale(wxLayout) {
-        let box,
-            me = this;
+    _drawScale(box) {
+        let me = this;
 
-        box = wxLayout.adjustBox();
         let xDatasets = me.xScaleAxisDatas(),
             yDatasets = me.yScaleAxisDatas(box);
-        let {xBox, yBox} = me.wxCrossScale.draw(box, xDatasets, yDatasets);
-        wxLayout.addBox(xBox);
-        wxLayout.addBox(yBox);
+        return me.wxCrossScale.draw(box, xDatasets, yDatasets);
     }
 
     /**
@@ -369,48 +374,6 @@ export default class WxLiner extends WxChart {
         return sp ? ((n % ln) + bp*ln) / (ln * sp) : 0;
     };
 
-    _getCurr = (dataset, index) => {
-        if (index > dataset.length - 1) {
-            return;
-        }
-        return dataset[index];
-    };
-
-    _getNext = (dataset, index, spanGaps) => {
-        // The end
-        if (index >= dataset.length - 1) {
-            return;
-        }
-        let nextDate = dataset[index + 1];
-        if (!nextDate.point) {
-            if (!!spanGaps)
-                return this._getNext(dataset, index + 1, spanGaps);
-            else
-                return;
-        }
-        return nextDate;
-    };
-    _getNextPoint = (dataset, index, spanGaps) => {
-        let next = this._getNext(dataset, index, spanGaps);
-        return next ? next.point : null;
-    };
-    _getPre = (dataset, index, spanGaps) => {
-        if (index <= 0) {
-            return;
-        }
-        let preDate = dataset[index - 1];
-        if (!preDate.point) {
-            if (!!spanGaps)
-                return this._getPre(dataset, index - 1, spanGaps);
-            else
-                return;
-        }
-        return preDate;
-    };
-    _getPrePoint = (dataset, index, spanGaps) => {
-        let pre = this._getPre(dataset, index, spanGaps);
-        return pre ? pre.point : null;
-    };
 
     /**
      * Draw a line
@@ -438,12 +401,12 @@ export default class WxLiner extends WxChart {
 
     /**
      * Draw a animate line
-     * @param pre
-     * @param p
-     * @param next
-     * @param pert
-     * @param curt
-     * @param tension
+     * @param {WxElement} pre
+     * @param {WxElement} p
+     * @param {WxElement} next
+     * @param {WxElement} pert
+     * @param {number} curt
+     * @param {number} tension
      * @return {*}
      * @private
      */
@@ -508,70 +471,76 @@ export default class WxLiner extends WxChart {
         ctx.globalAlpha = 1;
     };
 
-    _drawPoint = (ctx, box, p) => {
-        if (!p || !p.point) {
+    /**
+     * Draw point and point text
+     * @param {WxElement} element
+     * @param {Object} view
+     * @param {BoxInstance} box
+     * @private
+     */
+    _drawPoint(element, view, box) {
+        let ctx = this.ctx;
+
+        if (!view || !element) {
             return;
         }
 
-        let {pointBorderColor, pointBorderWidth, pointRadius, pointStyle, label, showItem ,format} = p.data;
-        let { x: pointX, y: pointY } = p.point;
+        element.draw(ctx);
+        this._drawLabel(view, box);
+    };
 
-        // TODO: pointStyle NOT IMPLEMENT, Only can render line
-        if (pointRadius) {
-            ctx.beginPath();
-            ctx.arc(pointX, pointY, pointRadius, 0, 2 * Math.PI);
-            ctx.fill();
+    _drawLabel(view, box) {
+        let me = this,
+            ctx = me.ctx;
+        let { showLabel, element, data, formatValue } = view;
+
+        if (!showLabel) {
+            return;
         }
 
-        if (!!showItem) {
-            let curFillStyle = ctx.fillStyle;
-            ctx.textBaseline = "bottom";
-            ctx.fillStyle = tinycolor(curFillStyle).darken(15).toString();
-            ctx.fillStyle = curFillStyle;
+        ctx.save();
+        ctx.textBaseline = "bottom";
+        ctx.fillStyle = tinycolor(element.options.backgroundColor).darken(15).toString();
+        if (data.fontSize) ctx.fontSize = data.fontSize;
 
-            let barItem = is.Function(format)
-                ? format.call(this, label, p.value, p.index)
-                : p.value+'';
-            let boxX = box.x,
-                boxY = box.y;
+        let boxX = box.x,
+            boxY = box.y;
 
-            let itemX = pointX - ctx.measureText(barItem).width/2,
-                itemY = pointY - ctx.fontSize/6 - (pointRadius||0) - (pointBorderWidth||0);
+        let itemX = element.x - ctx.measureText(formatValue).width/2,
+            itemY = element.y - ctx.fontSize/6 - (element.radius||0) - (element.options.borderWidth||0);
 
-            // Check box's X,Y
-            if (itemX < box.x) {
-                itemX = box.x;
-            }
-            if (itemY < box.y) {
-                itemY = pointX + ctx.fontSize/6 + (pointRadius||0) + (pointBorderWidth||0);
-                ctx.textBaseline = "top";
-            }
-
-            ctx.fillText(barItem, itemX, itemY);
+        // Check box's X,Y
+        if (itemX < boxX) {
+            itemX = boxX;
+        }
+        if (itemY < boxY) {
+            itemY = element.y  + ctx.fontSize/6 + (element.radius||0) + (element.options.borderWidth||0);
+            ctx.textBaseline = "top";
         }
 
-        if (pointBorderWidth) {
-            ctx.beginPath();
-            ctx.arc(pointX, pointY, pointRadius, 0, 2 * Math.PI);
-            ctx.lineWidth = pointBorderWidth;
-            ctx.strokeStyle = pointBorderColor || legend.strokeStyle;
-            ctx.stroke();
-        }
+        ctx.fillText(formatValue, itemX, itemY);
+        ctx.restore();
     };
     /**
      * Return a animate tick func
-     * @param lineData
-     * @param preData
-     * @return {function(*, *, *)|null}
+     * @param {Object[]} views - liner's view
+     * @param {number} views[].index - Index of view
+     * @param {Object} views[].legend - Legend's config
+     * @param {number} views[].value - Data of each line point
+     * @param {Object[]} views[].data - The data object
+     * @param {WxElement} views[].element - The point for rending.
+     * @param {BoxInstance} box
+     * @return {function(*, *, *)|null|undefined}
      * @private
      */
-    _getAnimationDrawLine = (lineData, preData) => {
+    _getAnimationDrawLine(views, box) {
         let me = this,
-            animate = me.chartConfig.animate,
             animateOpt = me.chartConfig.animateOptions,
             ctx = me.ctx;
 
-        let {box, legend, dataset} = lineData;
+        if (!views.length) {
+            return;
+        }
         let {
             display,
             spanGaps,
@@ -582,15 +551,15 @@ export default class WxLiner extends WxChart {
             strokeStyle,
             fillArea,
             fillAlpha
-        } = legend;
-
-        // Animation dynamic options
-        let dataLen = dataset.length,
-            categoryTicks = (animateOpt.end - animateOpt.start) / (dataLen - 1);
+        } = views[0].legend;
 
         if (!display) {
             return;
         }
+        // Animation dynamic options
+        let viewsLen = views.length,
+            categoryTicks = (animateOpt.end - animateOpt.start) / (viewsLen - 1);
+
 
         return (t, lastt, toNext) => {
             ctx.save();
@@ -604,37 +573,37 @@ export default class WxLiner extends WxChart {
                 : Math.floor(t/categoryTicks) + 1;
             let point, drawCurrPoint, index, data,
                 pret = lastt? lastt.t: 0, curt = 0,
-                curr = me._getCurr(dataset, dataIndex),
-                next = me._getNext(dataset, dataIndex, spanGaps),
-                pre = me._getPre(dataset, dataIndex, spanGaps),
+                curr = me.getCurrView(views, dataIndex),
+                next = me.getNextViewHasElement(views, dataIndex, spanGaps),
+                pre = me.getPreViewHasElement(views, dataIndex, spanGaps),
                 ppPoint,
                 diffIndex = lastt ? dataIndex - lastt.index : 0;
 
             if (curr) {
-                drawCurrPoint = curr.point;
-                point = curr.point;
+                drawCurrPoint = curr.element;
+                point = curr.element;
                 index = curr.index;
                 data = curr.data;
                 curt = me._animateLineTick(t, categoryTicks, index - (pre?pre.index:0), dataIndex - (pre?pre.index:0) - 1);
             }
 
             if (pre) {
-                ppPoint = me._getPrePoint(dataset, pre.index, spanGaps);
+                ppPoint = me.getPreElement(views, pre.index, spanGaps);
             }
 
             if (!drawCurrPoint && next) {
-                drawCurrPoint = next.point;
+                drawCurrPoint = next.element;
                 index = next.index;
-                next = me._getNext(dataset, next.index, spanGaps);
+                next = me.getNextViewHasElement(views, next.index, spanGaps);
             }
 
             if (diffIndex == 1) {
                 // Draw line
-                if (pre && pre.point) {
+                if (pre && pre.element) {
                     ctx.beginPath();
                     me._animateLineToPoint(
                         ppPoint,
-                        pre.point,
+                        pre.element,
                         drawCurrPoint,
                         pret,
                         1,
@@ -652,9 +621,9 @@ export default class WxLiner extends WxChart {
                 if (drawCurrPoint) {
                     ctx.beginPath();
                     me._animateLineToPoint(
-                        pre ? pre.point: null,
+                        pre ? pre.element: null,
                         drawCurrPoint,
-                        next ? next.point: null,
+                        next ? next.element: null,
                         pret,
                         curt,
                         tension
@@ -663,8 +632,8 @@ export default class WxLiner extends WxChart {
                 }
             }
 
-            if (pret == 0 && pre && pre.point) {
-                me._drawPoint(ctx, box, extend({}, pre, {showItem:false}));
+            if (pret == 0 && pre && pre.element) {
+                pre.element.draw(ctx);
             }
 
             ctx.draw();
@@ -681,19 +650,25 @@ export default class WxLiner extends WxChart {
 
     /**
      * Draw one line
-     * @param {Object} lineData - Line dataset
-     * @param {Object} lineData.box - Draw box config
-     * @param {Object} lineData.legend - Legend's config
-     * @param {Object[]} lineData.dataset[].value - Data of each line point
-     * @param {Object[]} lineData.dataset[].data - The data object
-     * @param {Object[]} lineData.dataset[].point - The point for rending.
+     * @param {Object[]} views - liner's view
+     * @param {number} views[].index - Index of view
+     * @param {Object} views[].legend - Legend's config
+     * @param {number} views[].value - Data of each line point
+     * @param {Object[]} views[].data - The data object
+     * @param {WxElement} views[].element - The point for rending.
+     *
+     * @param {BoxInstance} box
      * @private
      *
      */
-      _drawLine(lineData) {
+      _drawLine(views, box) {
         let me = this,
             ctx = me.ctx;
-        let {box, legend, dataset} = lineData;
+
+        if (!views.length) {
+            return;
+        }
+
         let {
             display,
             spanGaps,
@@ -704,7 +679,7 @@ export default class WxLiner extends WxChart {
             strokeStyle,
             fillArea,
             fillAlpha
-        } = legend;
+        } = views[0].legend;
 
         let xAxisY = me.xAxis.getPoint(0).y - me.xAxis.config.lineWidth/2;
         if (!display) {
@@ -723,11 +698,11 @@ export default class WxLiner extends WxChart {
 
             let firstPoint,
                 currPoint;
-            dataset.forEach((d, index) => {
-                let {point} = d;
+            views.forEach((view, index) => {
+                let { element: point } = view;
                 if (!!currPoint) {
                     if (point) {
-                        this._lineToPoint(currPoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
+                        this._lineToPoint(currPoint, point, me.getNextElement(views, index, spanGaps), tension);
                     } else if (!spanGaps) {
                         // Not spanGap, close path and fill
                         this.__fillInHere(firstPoint, currPoint, xAxisY, fillAlpha);
@@ -740,7 +715,7 @@ export default class WxLiner extends WxChart {
                 } else {
                     if (point) {
                         //ctx.moveTo(point.x, point.y);
-                        this._lineToPoint(currPoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
+                        this._lineToPoint(currPoint, point, me.getNextElement(views, index, spanGaps), tension);
                         firstPoint = point;
                     }
                 }
@@ -752,14 +727,13 @@ export default class WxLiner extends WxChart {
         }
 
         ctx.beginPath();
-
         // Draw line
         let prePoint;
-        dataset.forEach((d, index) => {
-            let { point } = d;
+        views.forEach((view, index) => {
+            let { element: point } = view;
 
             if (point) {
-                this._lineToPoint(prePoint, point, me._getNextPoint(dataset, index, spanGaps), tension);
+                this._lineToPoint(prePoint, point, me.getNextElement(views, index, spanGaps), tension);
                 //!!currPoint ? ctx.lineTo(point.x, point.y): ctx.moveTo(point.x, point.y);
                 // !!currPoint ?
                 //     lineToPoint(currPoint, point, getNextPoint(dataset, index, spanGaps)):
@@ -773,46 +747,44 @@ export default class WxLiner extends WxChart {
         ctx.stroke();
 
         // Draw Point
-        dataset.forEach((d, index) => {
-            me._drawPoint(ctx, box, d);
+        views.forEach((view, index) => {
+            me._drawPoint(view.element, view, box);
         });
 
         ctx.draw();
         ctx.restore();
-
-        return;
     }
 
     /**
      * Draw one line
-     * @param {Object} lineData - Line dataset
-     * @param {Object} lineData.box - Draw box config
-     * @param {Object} lineData.legend - Legend's config
-     * @param {Object[]} lineData.dataset[].value - Data of each line point
-     * @param {Object[]} lineData.dataset[].data - The data object
-     * @param {Object[]} lineData.dataset[].point - The point for rending.
-     * @param {Object} preData - Previous line dataset
-     * @private
      *
+     * @param {Object[]} views - liner's view
+     * @param {number} views[].index - Index of view
+     * @param {Object} views[].legend - Legend's config
+     * @param {number} views[].value - Data of each line point
+     * @param {Object[]} views[].data - The data object
+     * @param {WxElement} views[].element - The point for rending.
+     * @param {BoxInstance} box - Box for draw
+     * @param {Boolean} [animation=true]
      */
-    drawLine(lineData, preData) {
+    drawLine(views, box, animation = true) {
         let me = this,
-            animate = me.chartConfig.animate,
+            animate = animation && me.chartConfig.animate,
             animateOpt = me.chartConfig.animateOptions;
 
         if (animate) {
-            let actionAnimation = me._getAnimationDrawLine(lineData, preData);
+            let actionAnimation = me._getAnimationDrawLine(views, box);
             if (!actionAnimation) {
                 return;
             }
             me.wxAnimation.pushActions(actionAnimation);
             me.wxAnimation.pushActions((t) => {
                 if (animateOpt.end === t) {
-                    me._drawLine(lineData);
+                    me._drawLine(views, box);
                 }
             });
         } else {
-            me._drawLine(lineData);
+            me._drawLine(views, box);
         }
     }
     /**
@@ -871,5 +843,89 @@ export default class WxLiner extends WxChart {
         });
 
         return me.xAxis.buildDatasets(xScaleConfig);
+    }
+
+    /**
+     * Tooltip 'Element' model
+     * @param {WxEvent} event
+     * @param {Object[][]} viewsArr
+     */
+    elementTooltip(event, viewsArr) {
+        let me = this;
+        let tc = me.chartConfig.tooltip;
+        let { content } = tc;
+
+        let position, text, view;
+        for (let i=0; i< viewsArr.length; i++) {
+            let views = viewsArr[i];
+            for (let j=0; j< views.length; j++) {
+                view = views[j];
+                let element = view.element;
+                if (element && element.inRange(event.x, event.y)) {
+                    position = tc.mouseFollow ?
+                        { x: event.x, y: event.y, padding: element.padding } :
+                        element.tooltipPosition(event.x, event.y);
+                    text = is.Function(content) ? content.call(me, view, me.labels) : content.toString();
+                    break;
+                }
+            }
+        }
+
+        return { position, text, views: view }
+    }
+
+    /**
+     * Tooltip 'Axis' model
+     * @param {WxEvent} event
+     * @param {Object[][]} viewsArr
+     * @return {Object} position and text
+     */
+    axisTooltip(event, viewsArr) {
+        let me = this;
+        let tc = me.chartConfig.tooltip;
+        let { axisMark, content } = tc;
+
+        // Get all axis views
+        let marchIndex = -1, axisViews=[];
+        for (let i=0; i< viewsArr.length; i++) {
+            let views = viewsArr[i];
+            for (let j=0; j< views.length; j++) {
+                let view = views[j];
+                let element = view.element;
+                if (marchIndex > -1 && view.index == marchIndex) {
+                    axisViews.push(view);
+                } else if (element && element.inXRange(event.x)) {
+                    marchIndex = view.index;
+                    axisViews.push(view);
+                }
+            }
+        }
+
+        let position, text, labels, checker, before;
+        if (marchIndex >= 0) {
+            let xP = me.xAxis.getPoint(marchIndex);
+            position = { x: xP.x, y: event.y, padding: axisViews[0].element.padding };
+            text = is.Function(content) ? content.call(me, axisViews, me.labels) : content.toString();
+
+            // prepare
+            let ctx = event.canvas.contextInstance;
+            checker = (opt, lastOpt) => {
+                return opt && lastOpt && opt.views[0].index === lastOpt.views[0].index;
+            };
+            before = () => {
+
+                let startY = me.yAxis.getPoint(me.yAxis.visDatasets[me.yAxis.visDatasets.length - 1].value),
+                    endY = me.yAxis.getPoint(me.yAxis.visDatasets[0].value);
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = axisMark.lineWidth;
+                ctx.strokeStyle = axisMark.strokeStyle || me.yAxis.config.color;
+                ctx.moveTo(xP.x, endY.y);
+                ctx.lineTo(xP.x, startY.y);
+                ctx.stroke();
+                ctx.restore();
+            };
+        }
+        return { position, text, views: axisViews, checker, before }
     }
 }

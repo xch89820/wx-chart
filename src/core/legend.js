@@ -72,7 +72,7 @@ export default class WxLegend extends WxBaseComponent {
         }
 
         datasets = datasets.map(function(dataset) {
-            let textWidth = ctx.measureText(dataset.text).width;
+            let textWidth = ctx.measureTextByFontSize(dataset.text, fontSize).width;
 
             let width = boxWidth + (fontSize / 2) + textWidth;
             dataset._prop = {
@@ -95,8 +95,7 @@ export default class WxLegend extends WxBaseComponent {
             width,
             height;
         let wxChart = me.wxChart,
-            ctx = wxChart.ctx,
-            fontSize = ctx.fontSize;
+            fontSize = config.labels.fontSize || 10;
         let x = area.x,
             y = area.y;
         let padding = config.labels.padding || 10;
@@ -293,24 +292,25 @@ export default class WxLegend extends WxBaseComponent {
 
             // draw text
             currentX += boxWidth + (fontSize / 2);
+            // WeiXin APP in iOS hava an bug, so set textAlign = center
             ctx.fillText(text, currentX, currentY + boxHeight/2 - lineWidth);
+            // ctx.fillText(text, currentX + textWidth/2, currentY + boxHeight/2 - lineWidth);
 
             // draw hidden strike through
             if (!display) {
-                ctx.save();
                 // Strike through the text if hidden
                 ctx.beginPath();
+                let lw = ctx.lineWidth;
                 ctx.lineWidth = 1;
                 ctx.moveTo(currentX, currentY + (fontSize / 2));
-                ctx.lineTo(currentX + textWidth, currentY + (fontSize / 2));
+                ctx.lineTo(currentX + textWidth + 1, currentY + (fontSize / 2));
                 ctx.stroke();
-                ctx.restore();
+                ctx.lineWidth = lw;
             }
 
             currentX = thisX + outerWidth;
         });
-        ctx.restore();
-
         ctx.draw();
+        ctx.restore();
     }
 }

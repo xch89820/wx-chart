@@ -1,13 +1,14 @@
 /* global module, wx, window: false, document: false */
 'use strict';
+
 import Tweezer from '../util/tweezer';
 import * as ez from 'ez.js';
 import {
     is,
     extend
 } from '../util/helper';
-import mitt from 'mitt';
-import mixins from 'es6-mixins';
+import Emitter from '../util/emitter';
+
 
 export function wxAnimationActLinker() {
     let actions = [],
@@ -27,7 +28,7 @@ export function wxAnimationActLinker() {
     }
 }
 
-export default class WxAnimation {
+export default class WxAnimation extends Emitter {
     // Tweenzer instance
     tweenzerHandler;
 
@@ -65,6 +66,8 @@ export default class WxAnimation {
      * @constructor
      */
     constructor(options) {
+        super();
+
         let easeFun = ez.easeInOutQuad;
         if (options.easeType) {
             if (typeof ez[options.easeType] != 'undefined') {
@@ -77,12 +80,6 @@ export default class WxAnimation {
         );
 
         this.actions = [];
-
-        let mit = mitt();
-        mixins([mit], this, {
-            // Mixins will create a new method to nested call all duplicate method
-            mergeDuplicates: false
-        });
     }
 
     /**
@@ -115,7 +112,7 @@ export default class WxAnimation {
             action = me.actions[caindex],
             nextAction = caindex+1 <= me.actions.length ? me.actions[caindex+1]: null;
         // try {
-        me.emit('tick', {value, preRet, toNext: me.handOverAction, nextAction, parallel: false});
+        me.emit('tick', value, preRet, me.handOverAction, nextAction, false);
         ret = action.apply(me,[value, preRet, me.handOverAction, nextAction]);
         // } catch (e) {
         //     me.error = `${e.name} : ${e.message}`;
@@ -124,7 +121,7 @@ export default class WxAnimation {
         //     me.started = false;
         //     me.currentActionIndex = 0;
         //     me.tweenzerHandler.stop();
-        //     me.emit('error', {error: me.error});
+        //     me.emit('error', me.error);
         // }
         return ret;
     };
@@ -140,7 +137,7 @@ export default class WxAnimation {
                 toNext = () => {
                 },
                 nextAction = index + 1 < actionsLen ? actions[index + 1] : null;
-            me.emit('tick', {value, preRet, toNext, nextAction, parallel: true});
+            me.emit('tick', value, preRet, toNext, nextAction, true);
             let ret = action.apply(me, [value, preRet, toNext, nextAction]);
             tickRet[index] = ret;
         });
@@ -150,7 +147,7 @@ export default class WxAnimation {
         //     // Stop all actions
         //     me.started = false;
         //     me.tweenzerHandler.stop();
-        //     me.emit('error', {error: me.error});
+        //     me.emit('error', me.error);
         // }
         return tickRet;
     };
@@ -175,7 +172,7 @@ export default class WxAnimation {
      */
     run(parallel = false) {
         let me = this;
-        me.emit('start', {parallel});
+        me.emit('start', parallel);
         me.started = true;
 
         me.tweenzerHandler
@@ -183,7 +180,7 @@ export default class WxAnimation {
             .on('done', function() {
                 me.currentActionIndex = 0;
                 me.started = false;
-                me.emit('done', {parallel});
+                me.emit('done', parallel);
             }).begin();
     }
 
@@ -192,7 +189,7 @@ export default class WxAnimation {
         this.tweenzerHandler.stop();
         this.started = false;
         this.emit('stop');
-    }
+    };
 
     reset = () => {
         this.currentActionIndex = 0;
@@ -200,7 +197,7 @@ export default class WxAnimation {
         this.started = false;
         this.resetActions();
         this.emit('reset');
-    }
+    };
 }
 
 

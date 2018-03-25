@@ -16,13 +16,14 @@ import WxCategoryScale from '../scale/scale.category';
 import WxLegend from '../core/legend';
 import WxLayout, {BoxInstance} from '../core/layout';
 import WxAnimation from '../core/animation';
+import WxRectElement from '../elements/rect';
 
 let tinycolor = require("tinycolor2");
 // Bar legend's default config
 const WX_BAR_LEGEND_DEFAULT_CONFIG = {
     borderWidth: 1,
     fillArea: true,
-    fillAlpha: 0.5,
+    fillAlpha: 0.7,
     display: true,
     // barWidth: 'auto' //Set each bar's width. If not set, the bars are sized automatically.
     barPercentage: 0.8 // Percent (0-1) of the available width each bar should be within the data point space,like the flexible layout~
@@ -82,7 +83,7 @@ const WX_BAR_DEFAULT_CONFIG = {
 };
 
 const WX_BAR_ITEM_DEFAULT_CONFIG = {
-    showItem: true,
+    showLabel: true,
     // format: // title format function
     //borderWidth: 1,
     //fillArea: true,
@@ -136,7 +137,7 @@ export default class WxBar extends WxChart {
         });
 
         let me = this;
-        me.chartConfig = extend({}, WX_BAR_DEFAULT_CONFIG, config);
+        me.chartConfig = extend({}, WX_BAR_DEFAULT_CONFIG, me.config);
 
         me.title = null;
         // Initialize title and legend
@@ -162,63 +163,9 @@ export default class WxBar extends WxChart {
         if (me.chartConfig.animate)
             me.wxAnimation = new WxAnimation(me.chartConfig.animateOptions);
 
-        me.emit('init', {
-            options: me.chartConfig
-        });
+        me.emit('init', me.chartConfig);
     }
 
-    // Get/Set labels
-    get labels() {
-        let me = this,
-            tmp;
-        if (me._labels) {
-            return me._labels;
-        } else if (tmp = me.chartConfig.labels) {
-            if (is.Array(tmp)) {
-                return tmp;
-            }
-        }
-        me._labels = me.visDatasets.map(dataset => dataset.label);
-        return me._labels;
-    }
-
-    get legends() {
-        let me = this;
-        if (!me._legends) {
-            me._legends = me._getLegendConfig();
-        }
-        return me._legends;
-    }
-
-    set legends(value) {
-        this._legends = value;
-    }
-
-    /**
-     * Build legends config
-     * @private
-     */
-    _getLegendConfig() {
-        let me = this,
-            defaultKey = me.chartConfig.defaultKey || 'value',
-            legendsConfig = me.chartConfig.legends;
-        if (!legendsConfig) {
-            if (me.labels && me.labels.length) {
-                legendsConfig = me.labels.map(label => {
-                    return {'text': label, 'key': defaultKey};
-                })
-            } else {
-                throw new Error('Can not get legend config!');
-            }
-        } else {
-            legendsConfig = legendsConfig.map(legend => {
-                return extend(true, {
-                    'key': defaultKey
-                }, legend);
-            })
-        }
-        return legendsConfig;
-    }
     /**
      * Update a datesets of chart and reDraw
      * @param {Object} datasets - data sets
@@ -228,31 +175,45 @@ export default class WxBar extends WxChart {
      * @param {number} [datasets[].fillArea=true] - Fill color or not
      * @param {number} [datasets[].fillAlpha=0.6] - Fill color Alpha
      * @param {number} [datasets[].fillStyle] - Fill color. The default color will randomly assigned by 'color' option.
+     * @param {Object} [defaultItemOpt=WX_BAR_ITEM_DEFAULT_CONFIG]
+     * @param {Boolean} [animation=true]
      * @returns {*}
      */
-    update(datasets) {
+    update(datasets, defaultItemOpt = WX_BAR_ITEM_DEFAULT_CONFIG, animation = true) {
         let me = this;
         me._labels = null;
         me._legends = null;
         super.update(datasets, extend({}, WX_BAR_ITEM_DEFAULT_CONFIG, me.chartConfig.point));
         me.wxLayout.removeAllBox();
         if (me.wxAnimation) me.wxAnimation.reset();
-        return me.draw();
+        return me.draw(animation);
     }
+
+    /**
+     * Re-draw chart
+     * @param {Boolean} [animation=false]
+     * @return {*}
+     */
+    redraw(animation = false) {
+        let me = this;
+        super.update(this.datasets);
+        me.wxLayout.removeAllBox();
+        if (me.wxAnimation) me.wxAnimation.reset();
+        return me.draw(animation);
+    }
+
     /**
      * Draw chart
      */
-    draw() {
+    draw(animation = true) {
         let box,
             me = this,
             ctx = me.ctx,
-            animate = me.chartConfig.animate,
+            animate = animation && me.chartConfig.animate,
             wxLayout = me.wxLayout;
         let {pointPercentage, minBetweenPixel, stacked, color, zeroLine} = me.chartConfig;
 
-        me.emit('beforeDraw', {
-            options: me.chartConfig,
-        });
+        me.emit('beforeDraw', me.chartConfig);
 
         // First, we draw title
         box = wxLayout.adjustBox();
@@ -279,51 +240,114 @@ export default class WxBar extends WxChart {
         wxLayout.addBox(me.legend.box);
 
         // Thirdly, draw scale
-        me._drawScale(wxLayout);
+        box = wxLayout.adjustBox();
+        let {xBox:xScaleBox, yBox:yScaleBox} = me._drawScale(box);
+        wxLayout.addBox(xScaleBox);
+        wxLayout.addBox(yScaleBox);
 
         box = wxLayout.adjustBox();
         // Calculate bar ruler
         me.barRuler = me.calculateBarRuler();
         // Finally, draw bar
-        let hasNeg = false;
-        let barConfigs = me.legends.map(function(legend, legendIndex) {
-            let config = {
-                box: box,
-                legend: legend
-            };
-            let key = legend.key;
-            config.dataset = me.visDatasets.map((data, index) => {
-                hasNeg = hasNeg || data[key]<0;
-                return {
-                    value: data[key],
-                    data: data,
-                    point: me.calculateBarRect(index, legendIndex),
-                    index
-                }
-            });
-            return config;
+        // Global neg flag
+        // May be can be remove....
+        me.hasNeg = false;
+        // Finally, draw line
+        let viewsArray = [];
+        me.legends.map((legend, legendIndex) => {
+            let views = me.renderViews(box, legend, legendIndex);
+            viewsArray.push(views);
+        });
+        // Render
+        viewsArray.map(views => {
+            me.drawBar(views, box, animation);
         });
 
-        barConfigs.forEach(bar => me.drawBar(bar, hasNeg));
-
         if (animate) {
-            me.emit('animate', { animation: me.wxAnimation });
+            me.emit('animate', me.wxAnimation);
             me.wxAnimation.run(true);
-            me.wxAnimation.on('done', () => {
+            me.wxAnimation.once('done', () => {
                 if (zeroLine)
                     me._darwZeroLine();
-                me.emit('draw', {
-                    options: barConfigs,
-                });
+                me.emit('draw', viewsArray);
             });
         } else {
             if (zeroLine)
                 me._darwZeroLine();
-            me.emit('draw', {
-                options: barConfigs,
-            });
+            me.emit('draw', viewsArray);
 
         }
+    }
+
+    renderView(data, index, opt) {
+        let me = this;
+        let { legend, legendIndex, key } = opt;
+
+        let value = data[key];
+        if (!value) {
+            return {value, element:null, data, index};
+        }
+        let point = me.calculateBarRect(index, legendIndex);
+
+        let pointOpt = {
+            width: point.barWidth,
+            height: point.barHeight,
+            backgroundColor: data['pointBackgroundColor'] || legend['fillStyle'],
+            backgroundAlpha: data['pointBackgroundAlpha'] || legend['fillAlpha'],
+            borderColor: data['pointBorderColor'] || legend['strokeStyle'],
+            borderWidth: data['pointBorderWidth'] || legend['borderWidth'],
+            border: 'top left right bottom', // space division
+        };
+
+        pointOpt.touched = {
+            width: point.barWidth,
+            height: point.barHeight,
+            backgroundColor:  data['touched'] ?
+                data['touched']['backgroundColor'] :
+                tinycolor(pointOpt['backgroundColor']).darken(10).toString(),
+            backgroundAlpha: data['touched'] ?
+                data['touched']['backgroundAlpha'] :
+                pointOpt['backgroundAlpha'],
+            borderColor : data['touched'] ?
+                data['touched']['borderColor'] :
+                pointOpt['borderColor'],
+            borderWidth: data['touched'] ?
+                data['touched']['borderWidth'] :
+                pointOpt['borderWidth'],
+        };
+        let element = new WxRectElement(point.x, point.y, pointOpt);
+
+        return {value, element, data, index};
+    }
+
+    renderViews(box, legend, legendIndex) {
+        let me = this,
+            key = legend.key;
+        return me.visDatasets.map((data, index) => {
+            let o = me.renderView(data, index, { legend, legendIndex, key });
+            if (o.value < 0) me.hasNeg = true;
+            o.totalValue = me.getTotalValue(key);
+            o.legend = legend;
+            o.legendIndex = legendIndex;
+            o.formatValue = me.renderLabel(o.value, o.totalValue, o.element, o.data, o.legend, o.legendIndex);
+            return o;
+        });
+    }
+
+    /**
+     * Render labels
+     * @param {number} value
+     * @param {number|*} totalValue
+     * @param {WxElement} element
+     * @param {Object} data
+     * @param {WxLegend} legend
+     * @param {number} index
+     */
+    renderLabel(value, totalValue, element, data, legend, index) {
+        let { label, format } = data;
+        return is.Function(format)
+            ? format.call(this, label, value, index, totalValue)
+            : value+'';
     }
 
     /**
@@ -335,301 +359,191 @@ export default class WxBar extends WxChart {
             ctx = me.ctx;
         // zero line
         ctx.save();
-        ctx.fillStyle = me.xAxis.config.color;
-        ctx.lineWidth = me.xAxis.config.lineWidth;
-
-        let baseY = me.yAxis.getPoint(0).y;
         ctx.beginPath();
+        ctx.strokeStyle = me.xAxis.config.color;
+        ctx.lineWidth = me.xAxis.config.lineWidth;
+        let baseY = me.yAxis.getPoint(0).y;
         ctx.moveTo(me.xAxis.getPoint(-1).x, baseY);
         ctx.lineTo(me.xAxis.box.ex, baseY);
         ctx.stroke();
         ctx.restore();
     }
 
-    __drawBar = (p, percent, box, legend, stacked, hasNeg, setBarItem) => {
-        let ctx = this.ctx;
-        let px, py, width, height;
+    /**
+     * Draw bars
+     *
+     * @param {Object[]} views - liner's view
+     * @param {number} views[].index - Index of view
+     * @param {Object} views[].legend - Legend's config
+     * @param {number} views[].value - Data of each line point
+     * @param {Object[]} views[].data - The data object
+     * @param {WxElement} views[].element - The point for rending.
+     * @param {WxElement} views[].totalValue - Total values.
+     * @param {BoxInstance} box - Box for draw
+     * @param {Boolean} [animation=true]
+     */
+    drawBar(views, box, animation) {
+        let me = this,
+            animate = me.chartConfig.animate && animation;
 
-        let { value, data, point, index } = p;
-        let {
-            borderWidth,
-            fillStyle,
-            strokeStyle,
-            fillArea,
-            fillAlpha
-        } = legend;
-        let {
-            showItem,
-            format,
-            label
-        } = data;
-
-        if (!p || !p.point) {
-            return { px, py, width, height };
-        }
-
-        let { x: pointX, y: pointY, barWidth, barHeight } = p.point;
-        if (stacked && hasNeg) {
-            width = barWidth;
-            height = barHeight * percent;
-            px = pointX;
-            py = pointY + barHeight / 2 - height / 2;
+        if (animate) {
+            let actionAnimation = me._getAnimationDrawBar(views, box);
+            me.wxAnimation.pushActions(actionAnimation);
         } else {
-            px = pointX;
-            width = barWidth;
-            height = barHeight * percent;
-            py = pointY + barHeight * (1-percent);
+            me._drawBar(views, box);
         }
+    }
 
+    /**
+     * Draw a bar
+     * @param {Object[]} views - liner's view
+     * @param {number} views[].index - Index of view
+     * @param {Object} views[].legend - Legend's config
+     * @param {number} views[].value - Data of each line point
+     * @param {Object[]} views[].data - The data object
+     * @param {WxElement} views[].element - The point for rending.
+     * @param {WxElement} views[].totalValue - Total values.
+     *
+     * @param {BoxInstance} box
+     * @private
+     *
+     */
+    _drawBar(views, box) {
+        let me = this,
+            ctx = me.ctx;
         ctx.save();
 
-        ctx.fillStyle = fillStyle;
-        ctx.strokeStyle = strokeStyle;
-        ctx.lineWidth = borderWidth;
-        // First, fill
-        if (fillArea) {
-            ctx.beginPath();
-            ctx.globalAlpha = fillAlpha;
-            ctx.rect(px ,py ,width, height);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-        }
-        // Next, stroke
-        if (borderWidth) {
-            ctx.beginPath();
-            if (stacked && hasNeg) {
-                ctx.rect(px ,py ,width, height);
-            } else {
-                ctx.moveTo(px, py + height);
-                ctx.lineTo(px, py);
-                ctx.lineTo(px + width, py);
-                ctx.lineTo(px + width, py + height);
+        views.forEach(function(view) {
+            if (view.element) {
+                view.element.draw(me.ctx);
+                me._drawLabel(view, box);
             }
-            ctx.stroke();
-        }
-
-        // Show bar item
-        if (!!setBarItem && !!showItem && !stacked) {
-            let curFillStyle = ctx.fillStyle;
-            ctx.textBaseline = "bottom";
-            ctx.fillStyle = tinycolor(curFillStyle).darken(15).toString();
-            ctx.fillStyle = curFillStyle;
-
-            let barItem = is.Function(format)
-                ? format.call(this, label, value, index)
-                : p.value+'';
-
-            let boxX = box.x,
-                boxY = box.y;
-
-            let itemX = px + barWidth/2 - ctx.measureText(barItem).width/2,
-                itemY = py - ctx.fontSize/4;
-
-            // Check box's X,Y
-            if (itemX < box.x) {
-                itemX = box.x;
-            }
-            if (itemY < box.y) {
-                itemY = box.y;
-            }
-
-
-            ctx.fillText(barItem, itemX, itemY);
-        }
+        });
 
         ctx.draw();
         ctx.restore();
+    }
 
-        return { px, py, width, height }
-    };
-
-    /**
-     * Return a animate tick func
-     * @param barData
-     * @param hasNeg
-     * @return {function(*, *, *)|null}
-     * @private
-     */
-    _getAnimationDrawBar(barData, hasNeg){
+    _drawLabel(view, box) {
         let me = this,
-            backgroundColor = me.config.backgroundColor,
             stacked = me.chartConfig.stacked,
-            animate = me.chartConfig.animate,
-            animateOpt = me.chartConfig.animateOptions,
             ctx = me.ctx;
+        let { showLabel, element, data, formatValue } = view;
 
-        let {box, legend, dataset} = barData;
-        let {
-            display,
-            borderWidth,
-            fillStyle,
-            strokeStyle,
-            fillArea,
-            fillAlpha
-        } = legend;
-
-        // Animation dynamic options
-        let dataLen = dataset.length,
-            categoryTicks = (animateOpt.end - animateOpt.start) / dataLen;
-
-        if (!display) {
+        if (!showLabel) {
             return;
         }
 
+        let { x: pointX, y: pointY } = element;
+
+        ctx.save();
+
+        ctx.fillStyle = tinycolor(element.options.backgroundColor).darken(15).toString();
+        if (data.fontSize) ctx.fontSize = data.fontSize;
+        let itemX, itemY;
+
+        if (stacked) {
+            ctx.textBaseline = "middle";
+            itemX = pointX + element.width/2 - ctx.measureText(formatValue).width/3;
+            itemY = pointY + element.height/2;
+        } else {
+            ctx.textBaseline = "bottom";
+            itemX = pointX + element.width/2 - ctx.measureText(formatValue).width/3;
+            itemY = pointY - ctx.fontSize/4;
+        }
+
+        // Check box's X,Y
+        if (itemX < box.x) {
+            itemX = box.x;
+        }
+        if (itemY < box.y) {
+            itemY = box.y;
+        }
+
+        ctx.fillText(formatValue, itemX, itemY);
+        ctx.restore();
+    }
+
+    /**
+     * Animation to draw bar
+     * @param {Object[]} views - liner's view
+     * @param {number} views[].index - Index of view
+     * @param {Object} views[].legend - Legend's config
+     * @param {number} views[].value - Data of each line point
+     * @param {Object[]} views[].data - The data object
+     * @param {WxElement} views[].element - The point for rending.
+     * @param {WxElement} views[].totalValue - Total values.
+     *
+     * @param {BoxInstance} box
+     * @private
+     *
+     */
+    _getAnimationDrawBar(views, box) {
+        let me = this;
+        let { backgroundColor, stacked, animate, animateOptions } = me.chartConfig;
+        let ctx = me.ctx;
+
+        // Animation dynamic options
+        let dataLen = views.length,
+            categoryTicks = (animateOptions.end - animateOptions.start) / dataLen;
+
         return (t, lastData, toNext) => {
-            let dataIndex = Math.floor(t/categoryTicks);
-            let currData = dataIndex < dataLen ? dataset[dataIndex] : dataset[dataLen-1];
-            let { point } = currData;
+            ctx.save();
+            let dataIndex = Math.floor(t / categoryTicks);
+            let view = dataIndex < dataLen ? views[dataIndex] : views[dataLen - 1];
+            let { element, dataset } = view;
             let percent = (t % categoryTicks) / categoryTicks;
 
+            let interElement;
             if (lastData) {
                 let {
                     dataIndex: lastDataIndex,
                     percent: lastPercent,
-                    t: lastt,
-                    x: lastx,
-                    y: lasty,
-                    width: lastWidth,
-                    height: lastHeight
+                    lt,
+                    interElement: ltElement,
                 } = lastData;
 
-                if (lastDataIndex < dataLen && lastx) {
-                    ctx.save();
-                    // TODO: optimize clear check!!
-                    if (backgroundColor) {
-                        ctx.beginPath();
-                        ctx.lineWidth = borderWidth;
-                        ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
-                        ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
-                        ctx.fillRect(lastx, lasty, lastWidth, lastHeight);
-                    } else {
-                        ctx.clearRect(lastx, lasty, lastWidth, lastHeight);
-                    }
-                    if (borderWidth) {
-                        ctx.beginPath();
-                        ctx.lineWidth = borderWidth+0.5;
-                        ctx.fillStyle = backgroundColor ? backgroundColor : '#ffffff';
-                        ctx.strokeStyle = backgroundColor ? backgroundColor : '#ffffff';
-                        if (stacked && hasNeg) {
-                            ctx.rect(lastx, lasty, lastWidth, lastHeight);
-                        } else {
-                            ctx.moveTo(lastx, lasty + lastHeight);
-                            ctx.lineTo(lastx, lasty);
-                            ctx.lineTo(lastx + lastWidth, lasty);
-                            ctx.lineTo(lastx + lastWidth, lasty + lastHeight);
-
-                        }
-                        ctx.stroke();
-                    }
-                    ctx.draw();
-                    ctx.restore();
+                // Draw current bar
+                if (lastDataIndex < dataLen && ltElement) {
+                    ltElement.clear(ctx, backgroundColor, true);
                 }
 
+                // Lasted bar
                 if (lastDataIndex !== dataIndex && !!lastPercent) {
                     // End the lasted bar
-                    let lastData  = lastDataIndex < dataLen ? dataset[lastDataIndex] : dataset[dataLen-1];
-                    me.__drawBar(lastData, 1, box, legend, stacked, hasNeg, true);
+                    let lastView = lastDataIndex < dataLen ? views[lastDataIndex] : views[dataLen-1];
+                    if (lastView.element) {
+                        lastView.element.draw(ctx);
+                        me._drawLabel(lastView, box);
+                    }
                 }
             }
 
-            let px, py, width, height;
-            if (dataIndex < dataLen && (!!percent || !point)) {
-                ({px, py, width, height} = me.__drawBar(currData, percent, box, legend, stacked, hasNeg));
+            if (dataIndex < dataLen && !!percent && element) {
+                let { width, height, options } = element;
+                let elementOpt = extend({}, options);
+
+                let curWidth = width,
+                    curHeight = height * percent,
+                    px = element.x,
+                    py = element.y + height - curHeight;
+
+                elementOpt.width = curWidth;
+                elementOpt.height = curHeight;
+                interElement = new WxRectElement(px, py, elementOpt);
+                interElement.draw(ctx);
             }
 
+            ctx.draw();
+            ctx.restore();
+
             return {
-                dataIndex: dataIndex,
-                percent: percent,
-                t: t,
-                x: px,
-                y: py,
-                width: width,
-                height: height
-            };
+                dataIndex,
+                percent,
+                interElement,
+                lt: t
+            }
         };
-    }
-
-    _drawBar(barData, hasNeg) {
-        let me = this,
-            stacked = me.chartConfig.stacked,
-            ctx = me.ctx;
-        let {box, legend, dataset} = barData;
-        let {
-            display,
-            borderWidth,
-            fillStyle,
-            strokeStyle,
-            fillArea,
-            fillAlpha
-        } = legend;
-
-        if (!display) {
-            return;
-        }
-
-        dataset.forEach(d => {
-            me.__drawBar(d, 1, box, legend, stacked, hasNeg, true);
-            // if (stacked && hasNeg) {
-            //     ctx.beginPath();
-            //     ctx.rect(point.x ,point.y ,point.barWidth, point.barHeight);
-            //     if (borderWidth) {
-            //         ctx.stroke();
-            //     }
-            //     if (fillArea) {
-            //         ctx.globalAlpha = fillAlpha;
-            //         ctx.fill();
-            //         ctx.globalAlpha = 1;
-            //     }
-            // } else {
-            //     // | 1 2 |
-            //     // | 0 3 |
-            //     let points = [
-            //         [point.x, point.y + point.barHeight],
-            //         [point.x, point.y],
-            //         [point.x + point.barWidth, point.y],
-            //         [point.x + point.barWidth, point.y + point.barHeight]
-            //     ];
-            //
-            //     ctx.moveTo(...points[0]);
-            //     ctx.lineTo(...points[1]);
-            //     ctx.lineTo(...points[2]);
-            //     ctx.lineTo(...points[3]);
-            //
-            //     if (borderWidth) {
-            //         ctx.stroke();
-            //     }
-            //     if (fillArea) {
-            //         ctx.globalAlpha = fillAlpha;
-            //         ctx.fill();
-            //         ctx.globalAlpha = 1;
-            //     }
-            // }
-        });
-    }
-
-    /**
-     * Draw one line
-     * @param {Object} barData - Line dataset
-     * @param {Object} barData.legend - Legend's config
-     * @param {Object[]} barData[].value - Data of each line point
-     * @param {Object[]} barData[].data - The data object
-     * @param {Object[]} barData[].point - The point for rending.
-     * @parma {boolean} hasNeg - Has negative value or not
-     * @private
-     */
-    drawBar(barData, hasNeg) {
-        let me = this,
-            animate = me.chartConfig.animate;
-
-        if (animate) {
-            let actionAnimation = me._getAnimationDrawBar(barData, hasNeg);
-            me.wxAnimation.pushActions(actionAnimation);
-            // me.wxAnimation.on('done', () => {
-            //     me._drawBar(barData, hasNeg);
-            // })
-        } else {
-            me._drawBar(barData, hasNeg);
-        }
     }
 
     /**
@@ -689,7 +603,7 @@ export default class WxBar extends WxChart {
 
                 if (legend.barWidth) {
                     // Bar fixed width...
-                    standardPercentage = legend.barWidth / tickWidth;
+                    standardPercentage = legend.barWidth / pointWidth;
                 } else {
                     standardPercentage  = barPercentage / legendLen;
                     legend.barWidth = pointWidth * standardPercentage;
@@ -721,10 +635,10 @@ export default class WxBar extends WxChart {
      * @param {WxScale} [yScale=this.yAxis] - Bar's x-axis
      */
     calculateBarRect(index, legendIndex, xScale = this.xAxis, yScale = this.yAxis) {
+
         let me = this,
             stacked = me.chartConfig.stacked,
-            barRuler = me.barRuler || me.calculateBarRuler(xScale);
-
+            barRuler = me.barRuler ? me.barRuler : me.calculateBarRuler(xScale);
         let legendOpt = me.legends[legendIndex];
         if (!legendOpt) {
             return;
@@ -740,7 +654,10 @@ export default class WxBar extends WxChart {
         }
 
         let xPoint, yPoint, barWidth, barHeight;
+        // console.log(index);
         let xPointInstance = xScale.getPoint(index);
+
+        // console.log(xPointInstance);
         if (stacked) {
             xPoint = xPointInstance.x - barRuler.pointWidth/2 + barRuler.barIntervalWidth/2;
             yPoint = me._getStackPoint(index, legendIndex).y;
@@ -769,16 +686,12 @@ export default class WxBar extends WxChart {
      *
      * @private
      */
-    _drawScale(wxLayout) {
-        let box,
-            me = this;
+    _drawScale(box) {
+        let me = this;
 
-        box = wxLayout.adjustBox();
         let xDatasets = me.xScaleAxisDatas(),
             yDatasets = me.yScaleAxisDatas(box);
-        let {xBox, yBox} = me.wxCrossScale.draw(box, xDatasets, yDatasets);
-        wxLayout.addBox(xBox);
-        wxLayout.addBox(yBox);
+        return me.wxCrossScale.draw(box, xDatasets, yDatasets);
     }
 
     /**
@@ -835,5 +748,89 @@ export default class WxBar extends WxChart {
         });
 
         return me.xAxis.buildDatasets(xScaleConfig);
+    }
+
+    /**
+     * Tooltip 'Element' model
+     * @param {WxEvent} event
+     * @param {Object[][]} viewsArr
+     */
+    elementTooltip(event, viewsArr) {
+        let me = this;
+        let tc = me.chartConfig.tooltip;
+        let { content } = tc;
+
+        let position, text, view;
+        for (let i=0; i< viewsArr.length; i++) {
+            let views = viewsArr[i];
+            for (let j=0; j< views.length; j++) {
+                view = views[j];
+                let element = view.element;
+                if (element && element.inRange(event.x, event.y)) {
+                    position = tc.mouseFollow ?
+                        { x: event.x, y: event.y, padding: element.padding } :
+                        element.tooltipPosition(event.x, event.y);
+                    text = is.Function(content) ? content.call(me, view, me.labels) : content.toString();
+                    break;
+                }
+            }
+        }
+
+        return { position, text, views: view }
+    }
+
+    /**
+     * Tooltip 'Axis' model
+     * @param {WxEvent} event
+     * @param {Object[][]} viewsArr
+     * @return {Object} position and text
+     */
+    axisTooltip(event, viewsArr) {
+        let me = this;
+        let tc = me.chartConfig.tooltip;
+        let { axisMark, content } = tc;
+
+        // Get all axis views
+        let marchIndex = -1, axisViews=[];
+        for (let i=0; i< viewsArr.length; i++) {
+            let views = viewsArr[i];
+            for (let j=0; j< views.length; j++) {
+                let view = views[j];
+                let element = view.element;
+                if (marchIndex > -1 && view.index == marchIndex) {
+                    axisViews.push(view);
+                } else if (element && element.inXRange(event.x)) {
+                    marchIndex = view.index;
+                    axisViews.push(view);
+                }
+            }
+        }
+
+        let position, text, labels, checker, before;
+        if (marchIndex >= 0) {
+            let xP = me.xAxis.getPoint(marchIndex);
+            position = { x: xP.x, y: event.y, padding: axisViews[0].element.padding };
+            text = is.Function(content) ? content.call(me, axisViews, me.labels) : content.toString();
+
+            // prepare
+            let ctx = event.canvas.contextInstance;
+            checker = (opt, lastOpt) => {
+                return opt && lastOpt && opt.views[0].index === lastOpt.views[0].index;
+            };
+            before = () => {
+
+                let startY = me.yAxis.getPoint(me.yAxis.visDatasets[me.yAxis.visDatasets.length - 1].value),
+                    endY = me.yAxis.getPoint(me.yAxis.visDatasets[0].value);
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = axisMark.lineWidth;
+                ctx.strokeStyle = axisMark.strokeStyle || me.yAxis.config.color;
+                ctx.moveTo(xP.x, endY.y);
+                ctx.lineTo(xP.x, startY.y);
+                ctx.stroke();
+                ctx.restore();
+            };
+        }
+        return { position, text, views: axisViews, checker, before }
     }
 }

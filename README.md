@@ -2,6 +2,8 @@
 
 wx-chart是一个跨平台的图形库，可在普通站点，React环境以及微信小程序中部署
 
+新版1.0 beta已经发布，全新更新的底层实现，兼容1.1.0-1.9.90及以上所有版本微信小程序SDK，并大幅优化了性能。
+
 ### 特点
 * 跨平台：可以使用在AMD,CMD,微信小程序,React等环境中使用
 * 封装性：基于自有开发的Canvas兼容层，支持W3C的Canvas标准。
@@ -17,14 +19,19 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
   单维度饼状图(Pie)，单维度多纳圈图(Doughnut)
 * 柱状图
   单维度/多维度柱状图(Bar)，多维度堆叠柱状图(Stacked Bar)
+* 气泡图
+  单维度/多维度气泡图(Bar)
 
 ##### 近期计划支持图表
+- [ ] 独立微信兼容层wxCanvas
+- [x] 支持1.9.90微信版本
+- [x] 中间层优化性能
 - [x] 增加动画效果
 - [x] Canvas中间层优化
 - [x] 增加bar，line点展示
-- [ ] 增加Tooltip
+- [x] 增加Tooltip
 - [ ] 雷达图
-- [ ] 泡状图
+- [x] 泡状图
 - [ ] 支持Vue
 - [ ] 支持React Native
 
@@ -34,10 +41,7 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 
 #### 微信场景下
 
-<img src="https://user-images.githubusercontent.com/4920540/31314633-8c5d9b76-ac37-11e7-8be6-95ef3113c143.gif" width="500">
-<img src="https://user-images.githubusercontent.com/4920540/31167947-56dc348a-a926-11e7-959a-bb9aed012ccc.gif" width="500">
-<img src="https://user-images.githubusercontent.com/4920540/31314621-6ccd0f30-ac37-11e7-9379-e594771f5d12.gif" width="500">
-<img src="https://user-images.githubusercontent.com/4920540/31167948-56dd334e-a926-11e7-962b-1d68e4d08ff3.gif" width="500">
+<img src="https://user-images.githubusercontent.com/4920540/37877101-9716dc28-3088-11e8-8498-2ea1e8abea3a.gif" width="400">
 
 
 ## 快速使用
@@ -85,6 +89,12 @@ wxLiner.update([{
   value: 71,
   label: '五月'
 }]);
+
+// 增加Tooltip
+wxLiner.once('draw',(views) => {
+   let handler = wxLiner.mouseoverTooltip(views);
+   canvas.addEventListener('mousemove', handler);
+});
 ```
 
 搞定，一个简单的线图诞生了。可以看到在我们引用wx-chart后，全局变量 `WxChart` 中就包含的我们所需的图形库类。在进行初始化后，使用 `update` 方法便可以更新我们的数据部分，从而触发图形渲染。
@@ -98,7 +108,7 @@ wxLiner.update([{
 微信小程序中，首先在 view 声明一个Canvas节点,请注意需要声明 canvas-id
 ```
 <view class="container">
-   <canvas canvas-id="myCanvas" style="width:600px; height:400px; border: 1px solid #ffffff;"></canvas>
+   <canvas canvas-id="myCanvas" style="width:600px; height:400px; border: 1px solid #ffffff;" bindtouchend="lineTouched"></canvas>
 </view>
 ```
 
@@ -107,8 +117,21 @@ wxLiner.update([{
 let WxChart = require("you/path/wx-chart.min.js");
 
 // 初始化
-let options = {...};
-let myChart = new WxChart.WxLiner('myCanvas', options);
+// 设置项与上一例子相同
+Page({
+   ...,
+   onReady: function() {
+       // 建议在onReady中声明
+       let me = this;
+       let options = {...};
+       let myChart = new WxChart.WxLiner('myCanvas', options);
+
+       myChart.once('draw', function (views) {
+           // 动态生成touch事件的绑定函数
+           me.lineTouched = myChart.mouseoverTooltip(views);
+       });
+   },
+   ...
 ```
 
 完整的例子请见：
@@ -126,6 +149,12 @@ https://www.kancloud.cn/xchhhh/wx-chart
 [微信小程序开发跨平台图表库：part1](https://segmentfault.com/a/1190000011469347)
 
 ## ChangeLog
+v1.0.0
+整体升级兼容层，支持1.1.0-1.9.90及以上所有版本微信小程序SDK
+增减tooltip支持
+加入气泡图
+完善单元测试，重写底层模拟各个版本微信小程序SDK
+
 v0.3.4
 对微信新接口兼容
 增加坐标轴转换类

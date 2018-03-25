@@ -365,3 +365,40 @@ export function retinaScale(ctx, width, height) {
     }
 }
 
+/**
+ * Mutilines text render
+ * http://www.html5canvastutorials.com/tutorials/html5-canvas-wrap-text-tutorial/
+ * @param context
+ * @param text
+ * @param x
+ * @param y
+ * @param maxWidth
+ * @param lineHeight
+ */
+export function wrapText(context, text, x, y, maxWidth, lineHeight) {
+    let cars = text.split("</br>");
+    for (let ii = 0; ii < cars.length; ii++) {
+        let line = "";
+        let words = cars[ii].split(" ");
+
+        for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + " ";
+            let metrics = context.measureText(testLine);
+            let testWidth = metrics.width;
+
+            if (testWidth > maxWidth) {
+                context.fillText(line, x, y);
+                line = words[n] + " ";
+                y += lineHeight;
+            }
+            else {
+                line = testLine;
+            }
+        }
+        context.fillText(line, x, y);
+        y += lineHeight;
+    }
+    return { x, y }
+}
+
+

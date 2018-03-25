@@ -19,8 +19,9 @@ module.exports = function(config) {
         {pattern: 'verdor/**/*.js', included: false},
         'verdor/**',
         'src/**',
+        // 'test/chart.wxBubble.Spec.js'
         'test/**.Spec.js',
-        // 'test/chart.wxBar.Spec.js'
+        //'test/core.wxScale.Spec.js'
     ],
 
 
@@ -45,8 +46,8 @@ module.exports = function(config) {
               ['babelify'],
               ['browserify-replace', {
                   replace: [
-                      { from: /__GLOBAL__DEBUG__WX__/, to: true },
-                      { from: /__GLOBAL__DEBUG__/, to: true }
+                      { from: /__GLOBAL__DEBUG__WX__/g, to: true },
+                      { from: /__GDEBUG__/g, to: true }
                   ]
               }]
           ]

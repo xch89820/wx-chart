@@ -53,16 +53,16 @@ gulp.task('build',function(){
                     ]
                 }
             ],
-            [
-                "browserify-shim"
-            ]
+            // [
+            //     "browserify-shim"
+            // ]
         ]})
-        .transform(browserifyshim)
+        // .transform(browserifyshim)
         //.plugin(collapse)
         .bundle()
         .pipe(source('wx-chart.js'))
         .pipe(streamify(babel({
-            presets: ['es2015',"stage-0", 'react']
+            presets: ['es2015',"stage-0"]
         })))
         .pipe(buffer())
         .pipe(sourcemaps.init({loadMaps: true}))

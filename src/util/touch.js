@@ -41,10 +41,8 @@ export class WxTouch {
         }
         return null;
     }
-    static getRelativeCanvasPos(evt, canvas, rectInfo) {
-        if (!rectInfo) {
-            rectInfo = WxTouch.calculateRectInfo(canvas);
-        }
+    static getRelativeCanvasPos(evt, canvas) {
+        let rectInfo = WxTouch.calculateRectInfo(canvas);
 
         let { left, top, scaleX, scaleY, width, height } = rectInfo;
 
@@ -69,10 +67,12 @@ export class WxTouch {
     }
     static wxGetRelativeCanvasPos(evt) {
         let mouseX, mouseY;
-        let touches = evt.touches;
-        if (touches && touches.length > 0) {
-            mouseX = touches[0].x;
-            mouseY = touches[0].y;
+        if (evt.type === 'touchend' || evt.type === 'touchstart') {
+            let changedTouches = evt.changedTouches;
+            if (changedTouches && changedTouches.length > 0) {
+                mouseX = changedTouches[0].x;
+                mouseY = changedTouches[0].y;
+            }
         }
 
         return {

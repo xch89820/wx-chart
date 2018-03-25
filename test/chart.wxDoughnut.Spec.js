@@ -21,10 +21,19 @@ describe('WxDoughnut component test', () => {
             height: 350,
             title: '各直销公司业务销量',
             point: {
-                format: function(label, value, totalValue) {
+                format: function(label, value, index, totalValue) {
                     return label + ' (' + (value/totalValue*100).toFixed(2) + '%)';
                 }
             }
+        });
+
+        // let lastHandler;
+        wxDoughnut.once('draw', (views) => {
+            // if (lastHandler) canvas.removeEventListener('mousemove', lastHandler);
+            let handler = wxDoughnut.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
+            // lastHandler = handler;
+            done();
         });
 
         wxDoughnut.update([{
@@ -44,9 +53,49 @@ describe('WxDoughnut component test', () => {
             value: 3
         }]);
 
-        wxDoughnut.on('draw',function() {
-            setTimeout(done, 200);
+
+    });
+
+    it('Draw an Pie without animate',function (done) {
+        wxDoughnut = new WxDoughnut(id, {
+            width: 600,
+            height: 350,
+            animate: false,
+            title: '各直销公司业务销量',
+            point: {
+                format: function(label, value, index, totalValue) {
+                    return label + ' (' + (value/totalValue*100).toFixed(2) + '%)';
+                }
+            }
         });
+
+        // let lastHandler;
+        wxDoughnut.once('draw', (views) => {
+            // if (lastHandler) canvas.removeEventListener('mousemove', lastHandler);
+            let handler = wxDoughnut.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
+            // lastHandler = handler;
+            done();
+        });
+
+        wxDoughnut.update([{
+            label: '北京',
+            value: 30
+        },{
+            label: '天津',
+            value: 32
+        },{
+            label: '厦门',
+            value: 10
+        },{
+            label: '福建',
+            value: 100
+        },{
+            label: '广州',
+            value: 3
+        }]);
+
+
     });
 
     it('Draw an wxDoughnut', function(done) {
@@ -54,6 +103,10 @@ describe('WxDoughnut component test', () => {
             'width': 600,
             'height': 350,
             'title': '测试多纳圈图'
+        });
+
+        wxDoughnut.once('draw',() => {
+            setTimeout(done, 200);
         });
 
         wxDoughnut.update([{
@@ -73,9 +126,7 @@ describe('WxDoughnut component test', () => {
             value: 30
         }]);
 
-        wxDoughnut.on('draw',() => {
-            setTimeout(done, 200);
-        });
+
     });
 
     it('Draw an wxDoughnut with percentage options', function(done){
@@ -83,6 +134,10 @@ describe('WxDoughnut component test', () => {
             width: 600,
             height: 350,
             title: '各直销公司业务销量'
+        });
+
+        wxDoughnut.once('draw',() => {
+            setTimeout(done, 200);
         });
 
         wxDoughnut.update([{
@@ -106,9 +161,7 @@ describe('WxDoughnut component test', () => {
             value: 30,
             percentage: 100
         }]);
-        wxDoughnut.on('draw',() => {
-            setTimeout(done, 200);
-        });
+
     });
 
     afterEach(() => {

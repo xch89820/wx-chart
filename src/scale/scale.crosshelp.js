@@ -49,12 +49,12 @@ export default class WxCrossScale {
 
         // Adjust X-BOX
         let xMWidth = yBox.outerWidth - yBox.marginLR - me.yScale.lineSpace;
-
-
         let xOffset = xMWidth - me.xScale.fixPadding / 2;
+        let xlineWidth = me.xScale.config.ticks.lineWidth || 1;
 
         let xExtendLeft;
         if (xFirstPointSpace === 'auto') {
+            yScaleDatasets[yScaleDatasets.length - 1].text = '';
             xExtendLeft = me.xScale.config.extendLeft || Math.min(xBox.width / 10, me.xScale.calculateTickWidth(xScaleDatasets, xBox) / xScaleDatasets.length);
         } else if (xFirstPointSpace === 0) {
             // Zero y-space; The first point of Y will overlap the last point of X, so remove the last point of X
@@ -66,7 +66,11 @@ export default class WxCrossScale {
             xExtendLeft = parseFloat(xFirstPointSpace);
         }
 
-        xOffset -= (me.xScale.config.ticks.lineWidth || 1);
+        if (xExtendLeft) {
+            xOffset -= xlineWidth *2;
+        } else {
+            xOffset -= xlineWidth;
+        }
         xOffset += xExtendLeft;
 
         let xAxisXPoint = area.x + xOffset;
@@ -83,6 +87,9 @@ export default class WxCrossScale {
         me.xScale.setBox(calXbox, false);
         me.xScale.config.extendLeft = xExtendLeft;
         me.xScale.update(xScaleDatasets);
+
+        me.xBox = calXbox;
+        me.yBox = yBox;
 
         return {xBox: calXbox, yBox: yBox};
     }

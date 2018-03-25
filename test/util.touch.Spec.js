@@ -21,6 +21,7 @@ describe('WxTouch class test', () => {
         realCanvas.style.borderWidth = 1;
         realCanvas.style.borderColor = '#000000';
 
+        debugger
         realContext.lineWidth = 1;
         realContext.stokeStyle = '#000000';
         realContext.fillStyle = '#000000';

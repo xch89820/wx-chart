@@ -26,6 +26,13 @@ describe('WxBar component test', () => {
             }]
         });
 
+        // let lastHandler;
+        wxBar.once('draw',(views) => {
+            let handler = wxBar.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
+            done();
+        });
+
         wxBar.update([{
             value: 1,
             label: '一月'
@@ -42,10 +49,43 @@ describe('WxBar component test', () => {
             value: 71,
             label: '五月'
         }]);
+    });
 
-        wxBar.on('draw',() => {
+    it('Draw an WxBar without animate', function(done) {
+        wxBar = new WxBar(id, {
+            width: 700,
+            height: 400,
+            animate: false,
+            title: '北京分公司业务销量对比',
+            legends:[{
+                text: '北京'
+            }]
+        });
+
+        // let lastHandler;
+        wxBar.once('draw',(views) => {
+            let handler = wxBar.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
             done();
         });
+
+
+        wxBar.update([{
+            value: 1,
+            label: '一月'
+        }, {
+            value: 40,
+            label: '二月'
+        }, {
+            value: 35,
+            label: '三月'
+        }, {
+            value: 56,
+            label: '四月'
+        }, {
+            value: 71,
+            label: '五月'
+        }]);
     });
 
     it('Draw an mutil-data WxBar', function(done) {
@@ -66,6 +106,13 @@ describe('WxBar component test', () => {
                 position: 'left',
                 title: '人民币(万)'
             },
+        });
+
+        // let lastHandler;
+        wxBar.once('draw',(views) => {
+            let handler = wxBar.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
+            done();
         });
 
         wxBar.update([{
@@ -89,11 +136,62 @@ describe('WxBar component test', () => {
             sh: 56,
             label: '五月'
         }]);
-        wxBar.on('draw',() => {
+    });
+
+    it('Draw an mutil-data WxBar with axis tooltip', function(done) {
+        wxBar = new WxBar(id, {
+            width: 700,
+            height: 400,
+            title: '北京-上海分公司业务销量对比',
+            legends:[{
+                text: '北京',
+                key: 'bj',
+                fillStyle: '#3385ff',
+                strokeStyle: '#3385ff'
+            }, {
+                text: '上海',
+                key: 'sh',
+            }],
+            yScaleOptions: {
+                position: 'left',
+                title: '人民币(万)'
+            },
+            tooltip: {
+                model: 'axis'
+            }
+        });
+
+        // let lastHandler;
+        wxBar.once('draw',(views) => {
+            let handler = wxBar.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
             done();
         });
+
+        wxBar.update([{
+            bj: 10,
+            sh: 20,
+            label: '一月'
+        }, {
+            bj: 42,
+            sh: 115,
+            label: '二月'
+        }, {
+            bj: 38,
+            //sh: 34.5,
+            label: '三月'
+        }, {
+            bj: 56,
+            sh: 22,
+            label: '四月'
+        }, {
+            bj: 80,
+            sh: 56,
+            label: '五月'
+        }]);
     });
-    //
+
+
     it('Draw an mutil-data stacked WxBar', function(done) {
         wxBar = new WxBar(id, {
             width: 700,
@@ -116,6 +214,13 @@ describe('WxBar component test', () => {
                 text: '深圳',
                 key: 'sz'
             }]
+        });
+
+        // let lastHandler;
+        wxBar.once('draw',(views) => {
+            let handler = wxBar.mouseoverTooltip(views);
+            canvas.addEventListener('mousemove', handler);
+            done();
         });
 
         wxBar.update([{
@@ -144,7 +249,7 @@ describe('WxBar component test', () => {
             sz: 70,
             label: '五月'
         }]);
-        wxBar.on('draw',() => {
+        wxBar.once('draw',() => {
             done();
         });
     });

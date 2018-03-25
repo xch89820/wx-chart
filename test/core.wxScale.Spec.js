@@ -194,23 +194,39 @@ describe('WxScale component test', () => {
 
         let box = wxChart.innerBox.clone();
         scale.update(datasets, box);
+
+        let fixPadding = scale.calculateFixPadding(scale.config);
+        let tx = scale.box.x - scale.config.extendLeft + fixPadding / 2 + (scale.config.extendLeft
+            ? scale.config.ticks.lineWidth
+            : 0);
+        let ty = scale.box.ly + scale.lineSpace;
         assert.deepEqual({
-            x: 13.25,
-            y: 334
+            x: tx,
+            y: ty
+        }, scale.getTicksPosition(-1), 'Position tick: -1');
+
+
+        tx = scale.box.lx + scale._getTicksLineWidthOffset(0, scale.visDatasets)  + fixPadding / 2;
+        assert.deepEqual({
+            x: tx,
+            y: ty
         }, scale.getTicksPosition(0), 'Position tick: 1');
 
+        tx = scale.box.lx + scale._getTicksLineWidthOffset(1, scale.visDatasets) + (scale.tickWidth * 1) + fixPadding / 2;
         assert.deepEqual({
-            x: 128.35,
-            y: 334
+            x: tx,
+            y: ty
         }, scale.getTicksPosition(1), 'Position tick: 2');
 
+        let endIndex = datasets.length-1;
+        tx = scale.box.lx + scale._getTicksLineWidthOffset(endIndex, scale.visDatasets) + (scale.tickWidth * endIndex) + fixPadding / 2;
         assert.deepEqual({
-            x: 588.75,
-            y: 334
-        }, scale.getTicksPosition(datasets.length-1), 'End tick');
+            x: tx,
+            y: ty
+        }, scale.getTicksPosition(endIndex), 'End tick');
     });
 
-    it('getTicksPosition', () => {
+    it('getTicksPosition 2', () => {
         let scale = new WxScale(wxChart, {
             'position': 'bottom',
             'extendLeft': 30
@@ -235,14 +251,21 @@ describe('WxScale component test', () => {
         let box = wxChart.innerBox.clone();
         scale.update(datasets, box);
 
-        assert.deepEqual({
-            x: -17.75,
-            y: 334
-        }, scale.getTicksPosition(-1), 'Position tick: 1');
+        let fixPadding = scale.calculateFixPadding(scale.config);
+        let tx = scale.box.x - scale.config.extendLeft + fixPadding / 2 + (scale.config.extendLeft
+                ? scale.config.ticks.lineWidth
+                : 0);
+        let ty = scale.box.ly + scale.lineSpace;
 
         assert.deepEqual({
-            x: 13.25,
-            y: 334
+            x: tx,
+            y: ty
+        }, scale.getTicksPosition(-1), 'Position tick: 1');
+
+        tx = scale.box.lx + scale._getTicksLineWidthOffset(0, scale.visDatasets)  + fixPadding / 2;
+        assert.deepEqual({
+            x: tx,
+            y: ty
         }, scale.getTicksPosition(0), 'Position tick: 1');
     });
 

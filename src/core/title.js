@@ -102,15 +102,14 @@ export default class WxTitle extends WxBaseComponent {
         ctx.save();
 
         ctx.textBaseline = 'top';
-        ctx.textAlign = 'start';
+        ctx.textAlign = 'center';
         ctx.fillStyle = fontColor;
         ctx.fontSize = fontSize;
 
-        let textLen = ctx.measureText(text).width;
-        x += (width - textLen) / 2;
+        x += outerWidth / 2;
         ctx.fillText(text, x, y);
 
-        ctx.restore();
         ctx.draw();
+        ctx.restore();
     }
 };

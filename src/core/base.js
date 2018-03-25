@@ -108,7 +108,7 @@ export default class WxBaseComponent {
             me.clear();
         }
         if (box && box instanceof BoxInstance) {
-            me.box = box;
+            me.box = me.calculateBox(box, this.datasets);
         }
         if (redraw && me.isVisiable()) {
             me.draw();
@@ -133,6 +133,33 @@ export default class WxBaseComponent {
             me.wxChart.ctx.draw();
         }
     }
+
+    // /**
+    //  * Register event to bind wxChart
+    //  *
+    //  * @param {string} eventName - Event name
+    //  * @param {WxBaseComponent~EventCallback} listener - The callback of event
+    //  * @param {}
+    //  */
+    // registerEvent(eventName, listener, done) {
+    //
+    // }
+    //
+    // /**
+    //  * unRegister event
+    //  * @param eventName
+    //  */
+    // unRegisterEvent(eventName) {
+    //
+    // }
+    //
+    // /**
+    //  * Event callback
+    //  *
+    //  * @callback WxBaseComponent~EventCallback
+    //  * @param {WxEvent} event - event Object
+    //  * @param {Object} datasets - A reference of Chart's data
+    //  */
 
     isVisiable() {
         return !!this.config.display;
@@ -167,4 +194,6 @@ export default class WxBaseComponent {
     isHorizontal() {
         return this.position == 'top' || this.position == 'bottom';
     }
+
+
 }
