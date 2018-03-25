@@ -47,7 +47,7 @@ wx-chart是一个跨平台的图形库，可在普通站点，React环境以及�
 ## 快速使用
 
 ### 安装
-使用npm下载： `npm install wx-chart --save-dev`
+使用npm下载： `npm install wx-chart --save`
 
 使用bower下载：`bower install wx-chart`
 
